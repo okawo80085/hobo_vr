@@ -1,0 +1,10 @@
+*.txt
+*.json
+!CMakeLists.txt
+x64
+Release
+out
+Debug
+bin
+__pycache__
+.vs
