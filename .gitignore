@@ -8,3 +8,4 @@ Debug
 bin
 __pycache__
 .vs
+*.user
