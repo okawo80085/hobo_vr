@@ -35,7 +35,7 @@ class Poser:
 
 	async def close(self):
 		while 1:
-			await asyncio.sleep(1)
+			await asyncio.sleep(5)
 			try:
 				if keyboard.is_pressed('q'):
 					break
