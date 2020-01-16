@@ -3,13 +3,14 @@ import utilz as u
 import time
 from win32 import winxpgui
 import math as m
+import keyboard
 
 class Poser:
 	def __init__(self, addr='127.0.0.1', port=6969):
 		self.pose = {
-			'x':0,
-			'y':1,
-			'z':0,
+			'x':0,	# left/right
+			'y':1,	# up/down
+			'z':0,	# forwards/backwards
 			'rW':1,
 			'rX':0,
 			'rY':0,
@@ -19,9 +20,11 @@ class Poser:
 		self.ypr = {'yaw':0, 'pitch':0, 'roll':0} # yaw is real roll, pitch is real yaw, roll is real pitch
 		self._send = True
 		self._track = True
-		self._trackDelay = 0.008 # should be smaller 0.3
-		self._sendDelay = 0.01 # should be smaller 0.5
+		self._trackDelay = 0.008 # should be less than 0.3
+		self._sendDelay = 0.01 # should be less than 0.5
 		self._tasks = []
+
+		self.moveStep = 0.05
 
 		self.addr = addr
 		self.port = port
@@ -31,7 +34,15 @@ class Poser:
 												   loop=asyncio.get_event_loop())
 
 	async def close(self):
-		await asyncio.sleep(60)
+		while 1:
+			await asyncio.sleep(1)
+			try:
+				if keyboard.is_pressed('q'):
+					break
+
+			except:
+				break
+
 		print ('closing...')
 		self._send = False
 		self._track = False
@@ -75,6 +86,28 @@ class Poser:
 
 				await asyncio.sleep(self._trackDelay)
 
+				if keyboard.is_pressed('4'):
+					self.pose['x'] -= self.moveStep
+				elif keyboard.is_pressed('6'):
+					self.pose['x'] += self.moveStep
+
+
+				if keyboard.is_pressed('8'):
+					self.pose['z'] += self.moveStep
+				elif keyboard.is_pressed('5'):
+					self.pose['z'] -= self.moveStep
+
+
+				if keyboard.is_pressed('3'):
+					self.pose['y'] += self.moveStep
+				elif keyboard.is_pressed('2'):
+					self.pose['y'] -= self.moveStep
+
+				if keyboard.is_pressed('9'):
+					self.pose['x'] = 0
+					self.pose['y'] = 1
+					self.pose['z'] = 0
+
 			except:
 				self._track = False
 				break
@@ -84,8 +117,8 @@ class Poser:
 
 		await asyncio.gather(
 				self.send(),
-				self.close(),
 				self.getPose(),
+				self.close(),
 			)
 
 
