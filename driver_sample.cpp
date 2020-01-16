@@ -278,6 +278,7 @@ public:
 	virtual void Deactivate() 
 	{
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
+		remotePoser.socClose();
 	}
 
 	virtual void EnterStandby()
@@ -372,13 +373,13 @@ public:
 		auto resp = remotePoser.socRecv();
 		if (resp != 0) {
 			pose.result = TrackingResult_Uninitialized;
+		} else {
+			pose.vecPosition[0] = remotePoser.newPose[0];
+			pose.vecPosition[1] = remotePoser.newPose[1];
+			pose.vecPosition[2] = remotePoser.newPose[2];
+
+			pose.qRotation = HmdQuaternion_Init(remotePoser.newPose[3], remotePoser.newPose[4], remotePoser.newPose[5], remotePoser.newPose[6]);
 		}
-
-		pose.vecPosition[0] = remotePoser.newPose[0];
-		pose.vecPosition[1] = remotePoser.newPose[1];
-		pose.vecPosition[2] = remotePoser.newPose[2];
-
-		pose.qRotation = HmdQuaternion_Init(remotePoser.newPose[3], remotePoser.newPose[4], remotePoser.newPose[5], remotePoser.newPose[6]);
 
 		if ((0x01 & GetAsyncKeyState(VK_NUMPAD9)) != 0) {
 			pose.vecPosition[0] = 0;
