@@ -103,6 +103,11 @@ class Poser:
 				elif keyboard.is_pressed('2'):
 					self.pose['y'] -= self.moveStep
 
+				if keyboard.is_pressed('1'):
+					self.ypr['yaw'] += self.moveStep
+				elif keyboard.is_pressed('0'):
+					self.ypr['yaw'] -= self.moveStep
+
 				if keyboard.is_pressed('9'):
 					self.pose['x'] = 0
 					self.pose['y'] = 1
