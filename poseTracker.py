@@ -93,9 +93,9 @@ class Poser:
 
 
 				if keyboard.is_pressed('8'):
-					self.pose['z'] += self.moveStep
-				elif keyboard.is_pressed('5'):
 					self.pose['z'] -= self.moveStep
+				elif keyboard.is_pressed('5'):
+					self.pose['z'] += self.moveStep
 
 
 				if keyboard.is_pressed('3'):
