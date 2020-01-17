@@ -5,6 +5,13 @@ from win32 import winxpgui
 import math as m
 import keyboard
 
+def hasCharsInString(str1, str2):
+	for i in str1:
+		if i in str2:
+			return True
+
+	return False
+
 class Poser:
 	def __init__(self, addr='127.0.0.1', port=6969):
 		self.pose = {
@@ -20,6 +27,7 @@ class Poser:
 		self.ypr = {'yaw':0, 'pitch':0, 'roll':0} # yaw is real roll, pitch is real yaw, roll is real pitch
 		self._send = True
 		self._track = True
+		self._listen = True
 		self._trackDelay = 0.008 # should be less than 0.3
 		self._sendDelay = 0.01 # should be less than 0.5
 		self._tasks = []
@@ -33,9 +41,11 @@ class Poser:
 		self.reader, self.writer = await asyncio.open_connection(self.addr, self.port,
 												   loop=asyncio.get_event_loop())
 
+		self.writer.write(u.convv('poser here'))
+
 	async def close(self):
 		while 1:
-			await asyncio.sleep(5)
+			await asyncio.sleep(2)
 			try:
 				if keyboard.is_pressed('q'):
 					break
@@ -46,6 +56,7 @@ class Poser:
 		print ('closing...')
 		self._send = False
 		self._track = False
+		self._listen = False
 		self.writer.write(u.convv('CLOSE'))
 		self.writer.close()
 
@@ -67,10 +78,10 @@ class Poser:
 	async def getPose(self):
 		while self._track:
 			try:
-				x, y = winxpgui.GetCursorPos()
+				# x, y = winxpgui.GetCursorPos()
 
-				self.ypr['pitch'] = ((960 - x)/960) * m.pi
-				self.ypr['roll'] = ((960 - y)/960) * m.pi
+				# self.ypr['pitch'] = ((960 - x)/960) * m.pi
+				# self.ypr['roll'] = ((960 - y)/960) * m.pi
 
 				t0 = m.cos(self.ypr['yaw'])
 				t1 = m.sin(self.ypr['yaw'])
@@ -108,7 +119,8 @@ class Poser:
 				elif keyboard.is_pressed('0'):
 					self.ypr['yaw'] -= self.moveStep
 
-				if keyboard.is_pressed('9'):
+
+				if keyboard.is_pressed('7'):
 					self.pose['x'] = 0
 					self.pose['y'] = 1
 					self.pose['z'] = 0
@@ -117,12 +129,30 @@ class Poser:
 				self._track = False
 				break
 
+	async def yprListener(self):
+		while self._listen:
+			try:
+				data = await u.newRead(self.reader)
+				if not hasCharsInString(data, 'aqzwsxedcrfvtgbyhnujmikolp[]{}'):
+					x, y, z = [float(i) for i in data.strip('\n').strip('\r').split(',')]
+
+					self.ypr['yaw'] = (z * m.pi/180) - m.pi
+					self.ypr['roll'] = (y * m.pi/180) * -1
+					self.ypr['pitch'] = (x * m.pi/180) * -1
+
+				await asyncio.sleep(0.01)
+
+			except:
+				self._listen = False
+				break
+
 	async def main(self):
 		await self._socketInit()
 
 		await asyncio.gather(
 				self.send(),
 				self.getPose(),
+				self.yprListener(),
 				self.close(),
 			)
 
