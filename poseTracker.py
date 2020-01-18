@@ -5,6 +5,11 @@ from win32 import winxpgui
 import math as m
 import keyboard
 
+import imutils
+import cv2
+import numpy as np
+from imutils.video import VideoStream
+
 def hasCharsInString(str1, str2):
 	for i in str1:
 		if i in str2:
@@ -24,6 +29,15 @@ class Poser:
 			'rZ':0,
 		}
 
+		self.offsets = {
+			'x':0,
+			'y':0,
+			'z':0,
+			'yaw':0,
+			'pitch':0,
+			'roll':0,
+		}
+
 		self.ypr = {'yaw':0, 'pitch':0, 'roll':0} # yaw is real roll, pitch is real yaw, roll is real pitch
 		self._send = True
 		self._track = True
@@ -32,7 +46,7 @@ class Poser:
 		self._sendDelay = 0.01 # should be less than 0.5
 		self._tasks = []
 
-		self.moveStep = 0.05
+		self.moveStep = 0.005
 
 		self.addr = addr
 		self.port = port
@@ -76,6 +90,15 @@ class Poser:
 				break
 
 	async def getPose(self):
+		orangeHigh = (80, 50, 255)
+		orangeLow = (20, 0, 200)
+
+		vs = VideoStream(src=0).start()
+
+		px, py, pz = 0, 0, 0
+
+		await asyncio.sleep(2)
+
 		while self._track:
 			try:
 				# x, y = winxpgui.GetCursorPos()
@@ -83,12 +106,12 @@ class Poser:
 				# self.ypr['pitch'] = ((960 - x)/960) * m.pi
 				# self.ypr['roll'] = ((960 - y)/960) * m.pi
 
-				t0 = m.cos(self.ypr['yaw'])
-				t1 = m.sin(self.ypr['yaw'])
-				t2 = m.cos(self.ypr['roll'])
-				t3 = m.sin(self.ypr['roll'])
-				t4 = m.cos(self.ypr['pitch'])
-				t5 = m.sin(self.ypr['pitch'])
+				t0 = m.cos(self.ypr['yaw'] + self.offsets['yaw'])
+				t1 = m.sin(self.ypr['yaw'] + self.offsets['yaw'])
+				t2 = m.cos(self.ypr['roll'] + self.offsets['roll'])
+				t3 = m.sin(self.ypr['roll'] + self.offsets['roll'])
+				t4 = m.cos(self.ypr['pitch'] + self.offsets['pitch'])
+				t5 = m.sin(self.ypr['pitch'] + self.offsets['pitch'])
 
 				self.pose['rW'] = round(t0 * t2 * t4 + t1 * t3 * t5, 9)
 				self.pose['rX'] = round(t0 * t3 * t4 - t1 * t2 * t5, 9)
@@ -98,27 +121,46 @@ class Poser:
 				await asyncio.sleep(self._trackDelay)
 
 				if keyboard.is_pressed('4'):
-					self.pose['x'] -= self.moveStep
+					self.offsets['yaw'] -= self.moveStep
 				elif keyboard.is_pressed('6'):
-					self.pose['x'] += self.moveStep
+					self.offsets['yaw'] += self.moveStep
 
 
 				if keyboard.is_pressed('8'):
-					self.pose['z'] -= self.moveStep
+					self.offsets['pitch'] -= self.moveStep
 				elif keyboard.is_pressed('5'):
-					self.pose['z'] += self.moveStep
+					self.offsets['pitch'] += self.moveStep
 
 
 				if keyboard.is_pressed('3'):
-					self.pose['y'] += self.moveStep
+					self.offsets['roll'] += self.moveStep
 				elif keyboard.is_pressed('2'):
-					self.pose['y'] -= self.moveStep
+					self.offsets['roll'] -= self.moveStep
 
-				if keyboard.is_pressed('1'):
-					self.ypr['yaw'] += self.moveStep
-				elif keyboard.is_pressed('0'):
-					self.ypr['yaw'] -= self.moveStep
+				frame = vs.read()
 
+				if frame is not None:
+					frame = imutils.resize(frame, width=600)
+
+					blurred = cv2.GaussianBlur(frame, (11, 11), 0)
+
+					hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
+
+					mask = cv2.inRange(hsv, orangeLow, orangeHigh)
+					mask = cv2.erode(mask, None, iterations=2)
+					mask = cv2.dilate(mask, None, iterations=2)
+
+					cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,
+						cv2.CHAIN_APPROX_SIMPLE)
+					cnts = imutils.grab_contours(cnts)
+
+					if len(cnts) > 0:
+						c = max(cnts, key=cv2.contourArea)
+						((x, y), radius) = cv2.minEnclosingCircle(c)
+						px, py, pz = round(0.5 - x/600, 3), round(0.5 - y/450, 3), round(0.5 - (radius*1.2727)/42, 3)
+						self.pose['x'] = px
+						self.pose['y'] = py + 1
+						self.pose['z'] = pz - 1
 
 				if keyboard.is_pressed('7'):
 					self.pose['x'] = 0
@@ -128,6 +170,8 @@ class Poser:
 			except:
 				self._track = False
 				break
+		vs.stop()
+		cv2.destroyAllWindows()
 
 	async def yprListener(self):
 		while self._listen:
@@ -136,9 +180,9 @@ class Poser:
 				if not hasCharsInString(data, 'aqzwsxedcrfvtgbyhnujmikolp[]{}'):
 					x, y, z = [float(i) for i in data.strip('\n').strip('\r').split(',')]
 
-					self.ypr['yaw'] = (z * m.pi/180) - m.pi
+					self.ypr['yaw'] = ((z * m.pi/180) - m.pi/2)
 					self.ypr['roll'] = (y * m.pi/180) * -1
-					self.ypr['pitch'] = (x * m.pi/180) * -1
+					self.ypr['pitch'] = (x * m.pi/180)
 
 				await asyncio.sleep(0.01)
 
