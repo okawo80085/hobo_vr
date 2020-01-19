@@ -33,16 +33,16 @@ class Poser:
 			'x':0,
 			'y':0,
 			'z':0,
+			'roll':0,
 			'yaw':0,
 			'pitch':0,
-			'roll':0,
 		}
 
-		self.ypr = {'yaw':0, 'pitch':0, 'roll':0} # yaw is real roll, pitch is real yaw, roll is real pitch
+		self.ypr = {'roll':0, 'yaw':0, 'pitch':0} # yaw is real roll, pitch is real yaw, roll is real pitch
 		self._send = True
 		self._track = True
 		self._listen = True
-		self._trackDelay = 0.008 # should be less than 0.3
+		self._trackDelay = 0.002 # should be less than 0.3
 		self._sendDelay = 0.01 # should be less than 0.5
 		self._tasks = []
 
@@ -67,7 +67,7 @@ class Poser:
 			except:
 				break
 
-		print ('closing...')
+		print ('closing...', self.offsets)
 		self._send = False
 		self._track = False
 		self._listen = False
@@ -89,9 +89,9 @@ class Poser:
 				self._send = False
 				break
 
-	async def getPose(self):
-		orangeHigh = (80, 50, 255)
-		orangeLow = (20, 0, 200)
+	async def getLocation(self):
+		orangeHigh = (255, 50, 255)
+		orangeLow = (90, 10, 250)
 
 		vs = VideoStream(src=0).start()
 
@@ -103,39 +103,27 @@ class Poser:
 			try:
 				# x, y = winxpgui.GetCursorPos()
 
-				# self.ypr['pitch'] = ((960 - x)/960) * m.pi
-				# self.ypr['roll'] = ((960 - y)/960) * m.pi
-
-				t0 = m.cos(self.ypr['yaw'] + self.offsets['yaw'])
-				t1 = m.sin(self.ypr['yaw'] + self.offsets['yaw'])
-				t2 = m.cos(self.ypr['roll'] + self.offsets['roll'])
-				t3 = m.sin(self.ypr['roll'] + self.offsets['roll'])
-				t4 = m.cos(self.ypr['pitch'] + self.offsets['pitch'])
-				t5 = m.sin(self.ypr['pitch'] + self.offsets['pitch'])
-
-				self.pose['rW'] = round(t0 * t2 * t4 + t1 * t3 * t5, 9)
-				self.pose['rX'] = round(t0 * t3 * t4 - t1 * t2 * t5, 9)
-				self.pose['rY'] = round(t0 * t2 * t5 + t1 * t3 * t4, 9)
-				self.pose['rZ'] = round(t1 * t2 * t4 - t0 * t3 * t5, 9)
+				# self.ypr['yaw'] = ((960 - x)/960) * m.pi
+				# self.ypr['pitch'] = ((960 - y)/960) * m.pi
 
 				await asyncio.sleep(self._trackDelay)
 
 				if keyboard.is_pressed('4'):
-					self.offsets['yaw'] -= self.moveStep
+					self.offsets['roll'] -= self.moveStep
 				elif keyboard.is_pressed('6'):
-					self.offsets['yaw'] += self.moveStep
+					self.offsets['roll'] += self.moveStep
 
 
 				if keyboard.is_pressed('8'):
-					self.offsets['pitch'] -= self.moveStep
+					self.offsets['yaw'] -= self.moveStep
 				elif keyboard.is_pressed('5'):
-					self.offsets['pitch'] += self.moveStep
+					self.offsets['yaw'] += self.moveStep
 
 
 				if keyboard.is_pressed('3'):
-					self.offsets['roll'] += self.moveStep
+					self.offsets['pitch'] += self.moveStep
 				elif keyboard.is_pressed('2'):
-					self.offsets['roll'] -= self.moveStep
+					self.offsets['pitch'] -= self.moveStep
 
 				frame = vs.read()
 
@@ -157,11 +145,11 @@ class Poser:
 					if len(cnts) > 0:
 						c = max(cnts, key=cv2.contourArea)
 						((x, y), radius) = cv2.minEnclosingCircle(c)
-						px, py, pz = round(0.5 - x/600, 3), round(0.5 - y/450, 3), round(0.5 - (radius*1.2727)/42, 3)
+						px, py, pz = round(0.5 - x/600, 5), round(0.5 - y/450, 5), round((0.3 - radius/300), 5)
 						self.pose['x'] = px
 						self.pose['y'] = py + 1
-						self.pose['z'] = pz - 1
-
+						self.pose['z'] = pz
+ 
 				if keyboard.is_pressed('7'):
 					self.pose['x'] = 0
 					self.pose['y'] = 1
@@ -180,9 +168,27 @@ class Poser:
 				if not hasCharsInString(data, 'aqzwsxedcrfvtgbyhnujmikolp[]{}'):
 					x, y, z = [float(i) for i in data.strip('\n').strip('\r').split(',')]
 
-					self.ypr['yaw'] = ((z * m.pi/180) - m.pi/2)
-					self.ypr['roll'] = (y * m.pi/180) * -1
-					self.ypr['pitch'] = (x * m.pi/180)
+					# x -= 0.5
+					# y += 0.5
+					# z -= 0.5
+
+					self.ypr['roll'] = (z * m.pi)
+					self.ypr['yaw'] = (y * m.pi) * (-1)
+					self.ypr['pitch'] = (x * m.pi)
+
+					# print (self.ypr)
+
+					cy = m.cos((self.ypr['roll'] + self.offsets['roll']) * 0.5)
+					sy = m.sin((self.ypr['roll'] + self.offsets['roll']) * 0.5)
+					cp = m.cos((self.ypr['pitch'] + self.offsets['pitch']) * 0.5)
+					sp = m.sin((self.ypr['pitch'] + self.offsets['pitch']) * 0.5)
+					cr = m.cos((self.ypr['yaw'] + self.offsets['yaw']) * 0.5)
+					sr = m.sin((self.ypr['yaw'] + self.offsets['yaw']) * 0.5)
+
+					self.pose['rW'] = round(cy * cp * cr + sy * sp * sr, 9)
+					self.pose['rZ'] = round(cy * cp * sr - sy * sp * cr, 9)
+					self.pose['rX'] = round(sy * cp * sr + cy * sp * cr, 9)
+					self.pose['rY'] = round(sy * cp * cr - cy * sp * sr, 9)
 
 				await asyncio.sleep(0.01)
 
@@ -195,7 +201,7 @@ class Poser:
 
 		await asyncio.gather(
 				self.send(),
-				self.getPose(),
+				self.getLocation(),
 				self.yprListener(),
 				self.close(),
 			)

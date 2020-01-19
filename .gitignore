@@ -11,3 +11,4 @@ __pycache__
 *.user
 data
 t.py
+*.pyc
