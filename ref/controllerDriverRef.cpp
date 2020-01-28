@@ -12,10 +12,11 @@ public:
 
 		if (side) {
 			m_sSerialNumber = "nut666";
+			m_sModelNumber = "MyController666";
 		} else {
 			m_sSerialNumber = "nut999";
+			m_sModelNumber = "MyController999";
 		}
-		m_sModelNumber = "MyController";
 
 		poseController.poseTimeOffset = 0;
 		poseController.poseIsValid = true;
@@ -61,9 +62,12 @@ public:
 		vr::VRProperties()->SetStringProperty( m_ulPropertyContainer, Prop_InputProfilePath_String, "{sample}/input/mycontroller_profile.json" );
 
 		// create all the input components
-		vr::VRDriverInput()->CreateBooleanComponent( m_ulPropertyContainer, "/input/a/click", &m_compA );
-		vr::VRDriverInput()->CreateBooleanComponent( m_ulPropertyContainer, "/input/b/click", &m_compB );
-		vr::VRDriverInput()->CreateBooleanComponent( m_ulPropertyContainer, "/input/c/click", &m_compC );
+		vr::VRDriverInput()->CreateBooleanComponent( m_ulPropertyContainer, "/input/grip/click", &m_compA );
+		vr::VRDriverInput()->CreateBooleanComponent( m_ulPropertyContainer, "/input/system/click", &m_compB );
+		vr::VRDriverInput()->CreateBooleanComponent( m_ulPropertyContainer, "/input/application_menu/click", &m_compC );
+
+		// trigger
+		vr::VRDriverInput()->CreateScalarComponent( m_ulPropertyContainer, "/input/trigger/value", &m_compTrigger, vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided );
 
 		// create our haptic component
 		vr::VRDriverInput()->CreateHapticComponent( m_ulPropertyContainer, "/output/haptic", &m_compHaptic );
@@ -137,6 +141,8 @@ public:
 			vr::VRDriverInput()->UpdateBooleanComponent( m_compA, (0x8000 & GetAsyncKeyState( 'V' )) != 0, 0 );
 			vr::VRDriverInput()->UpdateBooleanComponent( m_compB, (0x8000 & GetAsyncKeyState( 'B' )) != 0, 0 );
 			vr::VRDriverInput()->UpdateBooleanComponent( m_compC, (0x8000 & GetAsyncKeyState( 'C' )) != 0, 0 );
+
+			vr::VRDriverInput()->UpdateScalarComponent( m_compC, (0x8000 & GetAsyncKeyState( 'O' )) != 0, 0 );
 		}
 #endif
 		if ( m_unObjectId != vr::k_unTrackedDeviceIndexInvalid )
@@ -171,6 +177,7 @@ private:
 	vr::VRInputComponentHandle_t m_compA;
 	vr::VRInputComponentHandle_t m_compB;
 	vr::VRInputComponentHandle_t m_compC;
+	vr::VRInputComponentHandle_t m_compTrigger;
 	vr::VRInputComponentHandle_t m_compHaptic;
 
 	std::string m_sSerialNumber;
