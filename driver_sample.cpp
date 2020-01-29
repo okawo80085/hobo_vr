@@ -486,12 +486,17 @@ public:
 		vr::VRProperties()->SetStringProperty( m_ulPropertyContainer, Prop_InputProfilePath_String, "{sample}/input/mycontroller_profile.json" );
 
 		// create all the input components
-		vr::VRDriverInput()->CreateBooleanComponent( m_ulPropertyContainer, "/input/grip/click", &m_compA );
-		vr::VRDriverInput()->CreateBooleanComponent( m_ulPropertyContainer, "/input/system/click", &m_compB );
-		vr::VRDriverInput()->CreateBooleanComponent( m_ulPropertyContainer, "/input/application_menu/click", &m_compC );
+		vr::VRDriverInput()->CreateBooleanComponent( m_ulPropertyContainer, "/input/grip/click", &m_compGrip );
+		vr::VRDriverInput()->CreateBooleanComponent( m_ulPropertyContainer, "/input/system/click", &m_compSystem );
+		vr::VRDriverInput()->CreateBooleanComponent( m_ulPropertyContainer, "/input/application_menu/click", &m_compAppMenu );
+		vr::VRDriverInput()->CreateBooleanComponent( m_ulPropertyContainer, "/input/trackpad/click", &m_compTrackpadClick );
 
 		// trigger
 		vr::VRDriverInput()->CreateScalarComponent( m_ulPropertyContainer, "/input/trigger/value", &m_compTrigger, vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided );
+
+		// trackpad
+		vr::VRDriverInput()->CreateScalarComponent( m_ulPropertyContainer, "/input/trackpad/x", &m_compTrackpadX, vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided );
+		vr::VRDriverInput()->CreateScalarComponent( m_ulPropertyContainer, "/input/trackpad/y", &m_compTrackpadY, vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided );
 
 		// create our haptic component
 		vr::VRDriverInput()->CreateHapticComponent( m_ulPropertyContainer, "/output/haptic", &m_compHaptic );
@@ -562,9 +567,9 @@ public:
 		// state. There's no need to update input state unless it changes, but it doesn't do any harm to do so.
 		if (handSide_)
 		{
-			vr::VRDriverInput()->UpdateBooleanComponent( m_compA, (0x8000 & GetAsyncKeyState( 'V' )) != 0, 0 );
-			vr::VRDriverInput()->UpdateBooleanComponent( m_compB, (0x8000 & GetAsyncKeyState( 'B' )) != 0, 0 );
-			vr::VRDriverInput()->UpdateBooleanComponent( m_compC, (0x8000 & GetAsyncKeyState( 'C' )) != 0, 0 );
+			vr::VRDriverInput()->UpdateBooleanComponent( m_compGrip, (0x8000 & GetAsyncKeyState( 'V' )) != 0, 0 );
+			vr::VRDriverInput()->UpdateBooleanComponent( m_compSystem, (0x8000 & GetAsyncKeyState( 'B' )) != 0, 0 );
+			vr::VRDriverInput()->UpdateBooleanComponent( m_compAppMenu, (0x8000 & GetAsyncKeyState( 'C' )) != 0, 0 );
 
 			vr::VRDriverInput()->UpdateScalarComponent( m_compTrigger, (0x8000 & GetAsyncKeyState( 'O' )) != 0, 0 );
 		}
@@ -598,10 +603,13 @@ private:
 	vr::TrackedDeviceIndex_t m_unObjectId;
 	vr::PropertyContainerHandle_t m_ulPropertyContainer;
 
-	vr::VRInputComponentHandle_t m_compA;
-	vr::VRInputComponentHandle_t m_compB;
-	vr::VRInputComponentHandle_t m_compC;
+	vr::VRInputComponentHandle_t m_compGrip;
+	vr::VRInputComponentHandle_t m_compSystem;
+	vr::VRInputComponentHandle_t m_compAppMenu;
 	vr::VRInputComponentHandle_t m_compTrigger;
+	vr::VRInputComponentHandle_t m_compTrackpadX;
+	vr::VRInputComponentHandle_t m_compTrackpadY;
+	vr::VRInputComponentHandle_t m_compTrackpadClick;
 	vr::VRInputComponentHandle_t m_compHaptic;
 
 	std::string m_sSerialNumber;
