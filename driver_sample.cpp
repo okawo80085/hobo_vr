@@ -533,50 +533,47 @@ public:
 	virtual DriverPose_t GetPose()
 	{
 		poseController.result = TrackingResult_Running_OK;
-		if (handSide_) {
-			if ( (0x01 & GetAsyncKeyState( VK_UP )) != 0) {
-				poseController.vecPosition[2] -= 0.01;
-			}
-			if ( (0x01 & GetAsyncKeyState( VK_DOWN )) != 0) {
-				poseController.vecPosition[2] += 0.01;
-			}
+		auto resp = remotePoser.returnStatus;
+		if (resp != 0) {
+			poseController.result = TrackingResult_Uninitialized;
+		} else {
+			int i_indexOffset = 7;
+			if (!handSide_) {i_indexOffset += 14}
+			poseController.vecPosition[0] = remotePoser.newPose[(i_indexOffset + 0)];
+			poseController.vecPosition[1] = remotePoser.newPose[(i_indexOffset + 1)];
+			poseController.vecPosition[2] = remotePoser.newPose[(i_indexOffset + 2)];
 
-			if ( (0x01 & GetAsyncKeyState( VK_LEFT )) != 0) {
-				poseController.vecPosition[0] -= 0.01;
-			}
-			if ( (0x01 & GetAsyncKeyState( VK_RIGHT )) != 0) {
-				poseController.vecPosition[0] += 0.01;
-			}
-
-			if ( (0x01 & GetAsyncKeyState( VK_NUMPAD0 )) != 0) {
-				poseController.vecPosition[1] -= 0.01;
-			}
-			if ( (0x01 & GetAsyncKeyState( VK_NUMPAD1 )) != 0) {
-				poseController.vecPosition[1] += 0.01;
-			}
+			poseController.qRotation = HmdQuaternion_Init(remotePoser.newPose[(i_indexOffset + 3)], remotePoser.newPose[(7 + 4)], remotePoser.newPose[(i_indexOffset + 5)], remotePoser.newPose[(i_indexOffset + 6)]);
 		}
+
 		return poseController;
 	}
 
 
 	void RunFrame()
 	{
-#if defined( _WINDOWS )
 		// Your driver would read whatever hardware state is associated with its input components and pass that
 		// in to UpdateBooleanComponent. This could happen in RunFrame or on a thread of your own that's reading USB
 		// state. There's no need to update input state unless it changes, but it doesn't do any harm to do so.
-		if (handSide_)
-		{
-			vr::VRDriverInput()->UpdateBooleanComponent( m_compGrip, (0x8000 & GetAsyncKeyState( 'V' )) != 0, 0 );
-			vr::VRDriverInput()->UpdateBooleanComponent( m_compSystem, (0x8000 & GetAsyncKeyState( 'B' )) != 0, 0 );
-			vr::VRDriverInput()->UpdateBooleanComponent( m_compAppMenu, (0x8000 & GetAsyncKeyState( 'C' )) != 0, 0 );
+		auto resp = remotePoser.returnStatus;
+		if (resp == 0) {
+			int i_indexOffset = 7;
+			if (!handSide_) {i_indexOffset += 14}
 
-			vr::VRDriverInput()->UpdateScalarComponent( m_compTrigger, (0x8000 & GetAsyncKeyState( 'O' )) != 0, 0 );
-		}
-#endif
-		if ( m_unObjectId != vr::k_unTrackedDeviceIndexInvalid )
-		{
-			vr::VRServerDriverHost()->TrackedDevicePoseUpdated( m_unObjectId, GetPose(), sizeof( DriverPose_t ) );
+			vr::VRDriverInput()->UpdateBooleanComponent( m_compGrip, remotePoser.newPose[(i_indexOffset + 7)] > 0.1, 0 );
+			vr::VRDriverInput()->UpdateBooleanComponent( m_compSystem, remotePoser.newPose[(i_indexOffset + 8)] > 0.1, 0 );
+			vr::VRDriverInput()->UpdateBooleanComponent( m_compAppMenu, remotePoser.newPose[(i_indexOffset + 9)] > 0.1, 0 );
+			vr::VRDriverInput()->UpdateBooleanComponent( m_compTrackpadClick, remotePoser.newPose[(i_indexOffset + 10)] > 0.1, 0 );
+
+			vr::VRDriverInput()->UpdateScalarComponent( m_compTrigger, remotePoser.newPose[(i_indexOffset + 11)], 0 );
+			vr::VRDriverInput()->UpdateScalarComponent( m_compTrackpadX, remotePoser.newPose[(i_indexOffset + 12)], 0 );
+			vr::VRDriverInput()->UpdateScalarComponent( m_compTrackpadY, remotePoser.newPose[(i_indexOffset + 13)], 0 );
+
+
+			if ( m_unObjectId != vr::k_unTrackedDeviceIndexInvalid )
+			{
+				vr::VRServerDriverHost()->TrackedDevicePoseUpdated( m_unObjectId, GetPose(), sizeof( DriverPose_t ) );
+			}
 		}
 	}
 
