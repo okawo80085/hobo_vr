@@ -35,14 +35,19 @@ public:
 
 	double* newPose;
 	int returnStatus;
+	int bufLen;
+	int expectedPoseSize;
+	bool readyForOutput;
 
-	socketPoser() {
+	socketPoser(int i_expectedPoseSize) {
+		expectedPoseSize = i_expectedPoseSize;
 		recvbuflen = DEFAULT_BUFLEN;
 		bufLen = recvbuflen;
 		ConnectSocket = INVALID_SOCKET;
 		result = NULL;
 		ptr = NULL;
 		returnStatus = 0;
+		readyForOutput = false;
 
 		// Initialize Winsock
 		iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -113,7 +118,6 @@ private:
 	int iResult;
 	int recvbuflen;
 	char recvbuf[DEFAULT_BUFLEN];
-	int bufLen;
 
 };
 
@@ -133,12 +137,20 @@ int socketPoser::socSend(const char* buff, int len) {
 }
 
 int socketPoser::socRecv() {
+	readyForOutput = false;
 	if (returnStatus == 0) {
 		iResult = recv(ConnectSocket, recvbuf, recvbuflen, 0);
 		bufLen = iResult;
 		if (iResult > 0) {
 			// DriverLog("Bytes received: %d\n", iResult);
 			newPose = convert2ss(recvbuf, &bufLen);
+			if (bufLen != expectedPoseSize) {
+				DriverLog("received pose packet size mismatch, %d expected but got %d, returning null", expectedPoseSize, bufLen);
+
+				// for (int i=0; i<expectedPoseSize; i++) {
+				// 	newPose[i] = 0;
+				// }
+			}
 		}
 		else if (iResult == 0) {
 			DriverLog("Connection closed\n");
@@ -149,6 +161,7 @@ int socketPoser::socRecv() {
 			DriverLog("recv failed with error: %d\n", returnStatus);
 		}
 	}
+	readyForOutput = true;
 
 	return returnStatus;
 }

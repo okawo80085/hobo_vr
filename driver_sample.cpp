@@ -153,7 +153,7 @@ void CWatchdogDriver_Sample::Cleanup()
 }
 
 
-SP::socketPoser remotePoser;
+SP::socketPoser remotePoser(35);
 
 //-----------------------------------------------------------------------------
 // Purpose: hmdDriver
@@ -371,7 +371,7 @@ public:
 	virtual DriverPose_t GetPose() 
 	{
 		pose.result = TrackingResult_Running_OK;
-		auto resp = remotePoser.socRecv();
+		auto resp = remotePoser.returnStatus;
 		if (resp != 0) {
 			pose.result = TrackingResult_Uninitialized;
 		} else {
@@ -538,7 +538,7 @@ public:
 			poseController.result = TrackingResult_Uninitialized;
 		} else {
 			int i_indexOffset = 7;
-			if (!handSide_) {i_indexOffset += 14}
+			if (!handSide_) { i_indexOffset += 14; }
 			poseController.vecPosition[0] = remotePoser.newPose[(i_indexOffset + 0)];
 			poseController.vecPosition[1] = remotePoser.newPose[(i_indexOffset + 1)];
 			poseController.vecPosition[2] = remotePoser.newPose[(i_indexOffset + 2)];
@@ -555,10 +555,11 @@ public:
 		// Your driver would read whatever hardware state is associated with its input components and pass that
 		// in to UpdateBooleanComponent. This could happen in RunFrame or on a thread of your own that's reading USB
 		// state. There's no need to update input state unless it changes, but it doesn't do any harm to do so.
-		auto resp = remotePoser.returnStatus;
-		if (resp == 0) {
+
+		int ret = remotePoser.returnStatus;
+		if (ret == 0) {
 			int i_indexOffset = 7;
-			if (!handSide_) {i_indexOffset += 14}
+			if (!handSide_) { i_indexOffset += 14; }
 
 			vr::VRDriverInput()->UpdateBooleanComponent( m_compGrip, remotePoser.newPose[(i_indexOffset + 7)] > 0.1, 0 );
 			vr::VRDriverInput()->UpdateBooleanComponent( m_compSystem, remotePoser.newPose[(i_indexOffset + 8)] > 0.1, 0 );
@@ -673,20 +674,24 @@ void CServerDriver_Sample::Cleanup()
 
 
 void CServerDriver_Sample::RunFrame()
-{
-	if ( m_pNullHmdLatest != NULL )
-	{
-		m_pNullHmdLatest->RunFrame();
-	}
+{	
+	int ret = remotePoser.socRecv();
 
-	if ( m_pRightController != NULL )
-	{
-		m_pRightController->RunFrame();
-	}
+	if (ret == 0) {
+		if ( m_pNullHmdLatest != NULL )
+		{
+			m_pNullHmdLatest->RunFrame();
+		}
 
-	if ( m_pLeftController != NULL )
-	{
-		m_pLeftController->RunFrame();
+		if ( m_pRightController != NULL )
+		{
+			m_pRightController->RunFrame();
+		}
+
+		if ( m_pLeftController != NULL )
+		{
+			m_pLeftController->RunFrame();
+		}
 	}
 }
 

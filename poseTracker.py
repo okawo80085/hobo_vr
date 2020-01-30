@@ -9,6 +9,7 @@ import imutils
 import cv2
 import numpy as np
 from imutils.video import VideoStream
+import random
 
 def hasCharsInString(str1, str2):
 	for i in str1:
@@ -33,6 +34,39 @@ class Poser:
 			'rZ':0,
 		}
 
+		self.poseControllerR = {
+			'x':0.5,	# left/right
+			'y':1,	# up/down
+			'z':0,	# forwards/backwards
+			'rW':1,
+			'rX':0,
+			'rY':0,
+			'rZ':0,
+			'grip':0,	# 0 or 1
+			'system':0,	# 0 or 1
+			'menu':0,	# 0 or 1
+			'trackpadClick':0,	# 0 or 1
+			'triggerValue':0,	# from 0 to 1
+			'trackpadX':0,	# from -1 to 1
+			'trackpadY':0,	# from -1 to 1
+		}
+		self.poseControllerL = {
+			'x':0.5,	# left/right
+			'y':1.1,	# up/down
+			'z':0,	# forwards/backwards
+			'rW':1,
+			'rX':0,
+			'rY':0,
+			'rZ':0,
+			'grip':0,	# 0 or 1
+			'system':0,	# 0 or 1
+			'menu':0,	# 0 or 1
+			'trackpadClick':0,	# 0 or 1
+			'triggerValue':0,	# from 0 to 1
+			'trackpadX':0,	# from -1 to 1
+			'trackpadY':0,	# from -1 to 1
+		}
+
 		self.offsets = {
 			'x':0,
 			'y':0,
@@ -47,7 +81,7 @@ class Poser:
 		self._track = True
 		self._listen = True
 		self._trackDelay = 0.002 # should be less than 0.3
-		self._sendDelay = 0.01 # should be less than 0.5
+		self._sendDelay = 0.04 # should be less than 0.5
 		self._tasks = []
 
 		self.moveStep = 0.005
@@ -76,7 +110,7 @@ class Poser:
 		self._track = False
 		self._listen = False
 
-		await asyncio.sleep(0.2)
+		await asyncio.sleep(1)
 
 		self.writer.write(u.convv('CLOSE'))
 		self.writer.close()
@@ -88,7 +122,8 @@ class Poser:
 	async def send(self):
 		while self._send:
 			try:
-				msg = u.convv(' '.join([str(i) for _, i in self.pose.items()]))
+				msg = u.convv(' '.join([str(i) for _, i in self.pose.items()] + [str(i) for _, i in self.poseControllerR.items()] + [str(i) for _, i in self.poseControllerL.items()]))
+				# msg = u.convv(' '.join([str(random.random()) for _ in range(35)]))
 				self.writer.write(msg)
 				await asyncio.sleep(self._sendDelay)
 
@@ -209,15 +244,15 @@ class Poser:
 					cr = np.cos((self.ypr['yaw'] + self.offsets['yaw']) * 0.5)
 					sr = np.sin((self.ypr['yaw'] + self.offsets['yaw']) * 0.5)
 
-					self.pose['rW'] = cy * cp * cr + sy * sp * sr
-					self.pose['rZ'] = cy * cp * sr - sy * sp * cr
-					self.pose['rX'] = sy * cp * sr + cy * sp * cr
-					self.pose['rY'] = sy * cp * cr - cy * sp * sr
+					self.pose['rW'] = round(cy * cp * cr + sy * sp * sr, 4)
+					self.pose['rZ'] = round(cy * cp * sr - sy * sp * cr, 4)
+					self.pose['rX'] = round(sy * cp * sr + cy * sp * cr, 4)
+					self.pose['rY'] = round(sy * cp * cr - cy * sp * sr, 4)
 
 				await asyncio.sleep(self._trackDelay)
 
 			except Exception as e:
-				print (e)
+				print ('listener',e)
 				self._listen = False
 				break
 
@@ -233,6 +268,6 @@ class Poser:
 
 
 
-t = Poser('192.168.31.60')
+t = Poser()
 
 asyncio.run(t.main())
