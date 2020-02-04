@@ -15,7 +15,7 @@
 #pragma comment (lib, "AdvApi32.lib")
 
 
-#define DEFAULT_BUFLEN 1024
+#define DEFAULT_BUFLEN 2048
 #define DEFAULT_PORT "6969"
 
 //using namespace std;
@@ -28,7 +28,7 @@ namespace SP {
 class socketPoser {
 public:
 	double* convert2ss(char* buffer, int* len);
-	char* cleanCharList(char* buffer, int* len);
+	void cleanCharList(char* buffer, int* len);
 	int socSend(const char* buf, int len);
 	int socRecv();
 	int socClose();
@@ -143,13 +143,19 @@ int socketPoser::socRecv() {
 		bufLen = iResult;
 		if (iResult > 0) {
 			// DriverLog("Bytes received: %d\n", iResult);
+			cleanCharList(recvbuf, &bufLen);
 			newPose = convert2ss(recvbuf, &bufLen);
 			if (bufLen != expectedPoseSize) {
 				DriverLog("received pose packet size mismatch, %d expected but got %d, returning null", expectedPoseSize, bufLen);
 
-				// for (int i=0; i<expectedPoseSize; i++) {
-				// 	newPose[i] = 0;
-				// }
+				if (bufLen < expectedPoseSize) {
+					delete[] newPose;
+
+					newPose = new double[expectedPoseSize];
+					for (int i=0; i<expectedPoseSize; i++) {
+						newPose[i] = 0;
+					}
+				}
 			}
 		}
 		else if (iResult == 0) {
@@ -183,7 +189,7 @@ int socketPoser::socClose() {
 	return returnStatus;
 }
 
-char* socketPoser::cleanCharList(char* buffer, int* len) {
+void socketPoser::cleanCharList(char* buffer, int* len) {
 	int i;
 	for (i = 0; i < *len && buffer[i] != '\0';i++) {
 		if (buffer[i] == '\n') {
@@ -191,7 +197,6 @@ char* socketPoser::cleanCharList(char* buffer, int* len) {
 		}
 	}
 	*len = i - 1;
-	return buffer;
 }
 
 double* socketPoser::convert2ss(char* buffer, int* len) {
