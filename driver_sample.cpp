@@ -105,7 +105,7 @@ void WatchdogThreadFunction(  )
 	{
 #if defined( _WINDOWS )
 		// on windows send the event when the Y key is pressed.
-		if ( (0x01 & GetAsyncKeyState( 'Y' )) != 0 )
+		if ( (0x01 & GetAsyncKeyState( VK_MULTIPLY )) != 0 )
 		{
 			// Y key was pressed. 
 			vr::VRWatchdogHost()->WatchdogWakeUp( vr::TrackedDeviceClass_HMD );
