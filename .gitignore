@@ -9,6 +9,9 @@ bin
 __pycache__
 .vs
 *.user
-data
+data/
 t.py
 *.pyc
+*.jpg
+tests/
+t2.py

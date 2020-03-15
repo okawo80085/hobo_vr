@@ -1,4 +1,8 @@
 import asyncio
+import time
+import cv2
+import numpy as np
+import math as m
 
 def convv(sss):
 	if len(sss) < 1:
@@ -18,3 +22,191 @@ async def newRead(reader):
 		data.append(temp)
 
 	return ''.join(data)
+
+def rotateZ(points, angle):
+	sin = np.sin(angle)
+	cos = np.cos(angle)
+
+	for key, p in points.items():
+		x = p['x']*cos - p['y']*sin
+		y = p['y']*cos + p['x']*sin
+
+		points[key]['x'] = x
+		points[key]['y'] = y
+
+def rotateX(points, angle):
+	sin = np.sin(angle)
+	cos = np.cos(angle)
+
+	for key, p in points.items():
+		y = p['y']*cos - p['z']*sin
+		z = p['z']*cos + p['y']*sin
+
+		points[key]['y'] = y
+		points[key]['z'] = z
+
+def rotateY(points, angle):
+	sin = np.sin(angle)
+	cos = np.cos(angle)
+
+	for key, p in points.items():
+		x = p['x']*cos - p['z']*sin
+		z = p['z']*cos + p['x']*sin
+
+		points[key]['x'] = x
+		points[key]['z'] = z
+
+def hasCharsInString(str1, str2):
+	for i in str1:
+		if i in str2:
+			return True
+
+	return False
+
+def getOnlyNums(text):
+	if not hasCharsInString(text, 'aqzwsxedcrfvtgbyhnujmikolp[]{}*<>,') and len(text) != 0:
+		out = []
+		try:
+			for i in text.strip('\n').strip('\r').split('\t'):
+				out.append(float(i))
+
+			if len(out) < 4:
+				raise Exception('to few numbers found')
+
+		except:
+			out = [0, 0, 0, 0]
+
+		return out
+
+	return [0, 0, 0, 0]
+
+
+
+class Tracker:
+	def __init__(self, cam_index=4, focal_length_px=490, ball_size_cm=2):
+		self.vs = cv2.VideoCapture(cam_index)
+
+		self.camera_focal_length = focal_length_px
+		self.BALL_RADIUS_CM = ball_size_cm
+
+		time.sleep(2)
+
+		self.can_track, frame = self.vs.read()
+
+		if not self.can_track:
+			self.vs.release()
+
+		self.frame_height, self.frame_width, _ = frame.shape if self.can_track else (0, 0, 0)
+
+
+		self.markerMasks = {
+		'blue':{
+			'h':(95, 20),
+			's':(170, 95),
+			'v':(200, 62)
+				},
+		'red':{
+			'h':(18, 24),
+			's':(210, 65),
+			'v':(200, 62)
+			},
+		'green':{
+			'h':(62, 24),
+			's':(188, 95),
+			'v':(180, 70)
+			}
+		}
+
+		self.poses = {}
+		self.blobs = {}
+
+		for i in self.markerMasks:
+			self.poses[i] = {'x':0, 'y':0, 'z':0}
+			self.blobs[i] = None
+
+	def _reinit(self):
+		self.can_track, frame = self.vs.read()
+
+		if not self.can_track:
+			self.vs.release()
+
+		self.frame_height, self.frame_width, _ = frame.shape if self.can_track else (0, 0, 0)
+
+		self.poses = {}
+		self.blobs = {}
+
+		for i in self.markerMasks:
+			self.poses[i] = {'x':0, 'y':0, 'z':0}
+			self.blobs[i] = None
+
+	def getFrame(self):
+		self.can_track, frame = self.vs.read()
+
+		for key, maskRange in self.markerMasks.items():
+			hc, hr = maskRange['h']
+
+			sc, sr = maskRange['s']
+
+			vc, vr = maskRange['v']
+
+			colorHigh = [hc+hr, sc+sr, vc+vr]
+			colorLow = [hc-hr, sc-sr, vc-vr]
+
+			if self.can_track:
+				blurred = cv2.GaussianBlur(frame, (3, 3), 0)
+
+				hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
+
+				mask = cv2.inRange(hsv, tuple(colorLow), tuple(colorHigh))
+
+				cnts, hr = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,
+					cv2.CHAIN_APPROX_SIMPLE)
+
+				if len(cnts) > 0:
+					c = max(cnts, key=cv2.contourArea)
+					self.blobs[key] = c if len(c) >= 5 and cv2.contourArea(c) > 10 else None
+
+	def solvePose(self):
+		for key, blob in self.blobs.items():
+			if blob is not None:
+				elip = cv2.fitEllipse(blob)
+
+				x, y = elip[0]
+				w, h = elip[1]
+
+				f_px = self.camera_focal_length
+				X_px = x
+				Y_px = y
+				A_px = w/2
+
+				X_px -= self.frame_width/2
+				Y_px = self.frame_height/2 - Y_px
+
+				L_px = np.sqrt(X_px**2 + Y_px**2)
+
+				k = L_px / f_px
+
+				j = (L_px + A_px) / f_px
+
+				l = (j - k) / (1+j*k)
+
+				D_cm = self.BALL_RADIUS_CM * np.sqrt(1+l**2)/l
+
+				fl = f_px/L_px
+
+				Z_cm = D_cm * fl/np.sqrt(1+fl**2)
+
+				L_cm = Z_cm*k
+
+				X_cm = L_cm * X_px/L_px
+				Y_cm = L_cm * Y_px/L_px
+
+				self.poses[key]['x'] = X_cm/100
+				self.poses[key]['y'] = Y_cm/100
+				self.poses[key]['z'] = Z_cm/100
+
+	def close(self):
+		if self.can_track:
+			self.vs.release()
+
+		cv2.destroyAllWindows()
