@@ -101,6 +101,13 @@ public:
 					WSACleanup();
 					returnStatus = -1;
 				}
+
+				// unsigned long iMode = 21;
+
+				// iResult = ioctlsocket(ConnectSocket, FIONBIO, &iMode);
+				// if (iResult != NO_ERROR)
+				// 	DriverLog("ioctlsocket failed with error: %ld\n", iResult);
+
 			}
 		}
 	}

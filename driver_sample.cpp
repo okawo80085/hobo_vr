@@ -1,6 +1,8 @@
 //============ Copyright (c) Valve Corporation, All rights reserved. ============
 
+//#include "openvr.h"
 #include "openvr_driver.h"
+//#include "openvr_capi.h"
 #include "driverlog.h"
 
 #include <vector>
@@ -153,17 +155,17 @@ void CWatchdogDriver_Sample::Cleanup()
 }
 
 
-SP::socketPoser remotePoser(35);
 
 //-----------------------------------------------------------------------------
 // Purpose: hmdDriver
 //-----------------------------------------------------------------------------
 
-class CSampleDeviceDriver : public vr::ITrackedDeviceServerDriver, public vr::IVRDisplayComponent
+class ChmdDriver : public vr::ITrackedDeviceServerDriver, public vr::IVRDisplayComponent
 {
 public:
-	CSampleDeviceDriver(  )
+	ChmdDriver( SP::socketPoser* remotePoser )
 	{
+		this->remotePoser = remotePoser;
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
 		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
 
@@ -203,13 +205,9 @@ public:
 		pose.vecPosition[1] = 0.;
 		pose.vecPosition[2] = 0.;
 
-		yawRRR = 0;
-		rollRRR = 0;
-		pitchRRR = 0;
-
 	}
 
-	virtual ~CSampleDeviceDriver()
+	virtual ~ChmdDriver()
 	{
 	}
 
@@ -217,7 +215,6 @@ public:
 	virtual EVRInitError Activate( vr::TrackedDeviceIndex_t unObjectId ) 
 	{
 		srand(time(NULL));
-		remotePoser.socSend("hello\n", 6);
 		m_unObjectId = unObjectId;
 		m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer( m_unObjectId );
 
@@ -279,7 +276,6 @@ public:
 	virtual void Deactivate() 
 	{
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
-		remotePoser.socClose();
 	}
 
 	virtual void EnterStandby()
@@ -371,15 +367,15 @@ public:
 	virtual DriverPose_t GetPose() 
 	{
 		pose.result = TrackingResult_Running_OK;
-		auto resp = remotePoser.returnStatus;
+		auto resp = remotePoser->returnStatus;
 		if (resp != 0) {
 			pose.result = TrackingResult_Uninitialized;
 		} else {
-			pose.vecPosition[0] = remotePoser.newPose[0];
-			pose.vecPosition[1] = remotePoser.newPose[1];
-			pose.vecPosition[2] = remotePoser.newPose[2];
+			pose.vecPosition[0] = remotePoser->newPose[0];
+			pose.vecPosition[1] = remotePoser->newPose[1];
+			pose.vecPosition[2] = remotePoser->newPose[2];
 
-			pose.qRotation = HmdQuaternion_Init(remotePoser.newPose[3], remotePoser.newPose[4], remotePoser.newPose[5], remotePoser.newPose[6]);
+			pose.qRotation = HmdQuaternion_Init(remotePoser->newPose[3], remotePoser->newPose[4], remotePoser->newPose[5], remotePoser->newPose[6]);
 		}
 
 		return pose;
@@ -416,9 +412,7 @@ private:
 	float m_flDisplayFrequency;
 	float m_flIPD;
 
-	double yawRRR; // roll
-	double rollRRR; // pitch
-	double pitchRRR; // yaw
+	SP::socketPoser* remotePoser;
 
 	DriverPose_t pose;
 };
@@ -426,11 +420,12 @@ private:
 //-----------------------------------------------------------------------------
 // Purpose:controllerDriver
 //-----------------------------------------------------------------------------
-class CSampleControllerDriver : public vr::ITrackedDeviceServerDriver
+class ControllerDriver : public vr::ITrackedDeviceServerDriver
 {
 public:
-	CSampleControllerDriver(bool side)
+	ControllerDriver(bool side, SP::socketPoser* remotePoser)
 	{
+		this->remotePoser = remotePoser;
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
 		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
 
@@ -458,7 +453,7 @@ public:
 		handSide_ = side;
 	}
 
-	virtual ~CSampleControllerDriver()
+	virtual ~ControllerDriver()
 	{
 	}
 
@@ -490,6 +485,8 @@ public:
 		vr::VRDriverInput()->CreateBooleanComponent( m_ulPropertyContainer, "/input/system/click", &m_compSystem );
 		vr::VRDriverInput()->CreateBooleanComponent( m_ulPropertyContainer, "/input/application_menu/click", &m_compAppMenu );
 		vr::VRDriverInput()->CreateBooleanComponent( m_ulPropertyContainer, "/input/trackpad/click", &m_compTrackpadClick );
+		vr::VRDriverInput()->CreateBooleanComponent( m_ulPropertyContainer, "/input/trackpad/touch", &m_compTrackpadTouch );
+		vr::VRDriverInput()->CreateBooleanComponent( m_ulPropertyContainer, "/input/trigger/click", &m_compTriggerClick );
 
 		// trigger
 		vr::VRDriverInput()->CreateScalarComponent( m_ulPropertyContainer, "/input/trigger/value", &m_compTrigger, vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided );
@@ -533,17 +530,17 @@ public:
 	virtual DriverPose_t GetPose()
 	{
 		poseController.result = TrackingResult_Running_OK;
-		auto resp = remotePoser.returnStatus;
+		auto resp = remotePoser->returnStatus;
 		if (resp != 0) {
 			poseController.result = TrackingResult_Uninitialized;
 		} else {
 			int i_indexOffset = 7;
-			if (!handSide_) { i_indexOffset += 14; }
-			poseController.vecPosition[0] = remotePoser.newPose[(i_indexOffset + 0)];
-			poseController.vecPosition[1] = remotePoser.newPose[(i_indexOffset + 1)];
-			poseController.vecPosition[2] = remotePoser.newPose[(i_indexOffset + 2)];
+			if (!handSide_) { i_indexOffset += 16; }
+			poseController.vecPosition[0] = remotePoser->newPose[(i_indexOffset + 0)];
+			poseController.vecPosition[1] = remotePoser->newPose[(i_indexOffset + 1)];
+			poseController.vecPosition[2] = remotePoser->newPose[(i_indexOffset + 2)];
 
-			poseController.qRotation = HmdQuaternion_Init(remotePoser.newPose[(i_indexOffset + 3)], remotePoser.newPose[(i_indexOffset + 4)], remotePoser.newPose[(i_indexOffset + 5)], remotePoser.newPose[(i_indexOffset + 6)]);
+			poseController.qRotation = HmdQuaternion_Init(remotePoser->newPose[(i_indexOffset + 3)], remotePoser->newPose[(i_indexOffset + 4)], remotePoser->newPose[(i_indexOffset + 5)], remotePoser->newPose[(i_indexOffset + 6)]);
 		}
 
 		return poseController;
@@ -558,16 +555,18 @@ public:
 
 
 		int i_indexOffset = 7;
-		if (!handSide_) { i_indexOffset += 14; }
+		if (!handSide_) { i_indexOffset += 16; }
 
-		vr::VRDriverInput()->UpdateBooleanComponent( m_compGrip, remotePoser.newPose[(i_indexOffset + 7)] > 0.1, 0 );
-		vr::VRDriverInput()->UpdateBooleanComponent( m_compSystem, remotePoser.newPose[(i_indexOffset + 8)] > 0.1, 0 );
-		vr::VRDriverInput()->UpdateBooleanComponent( m_compAppMenu, remotePoser.newPose[(i_indexOffset + 9)] > 0.1, 0 );
-		vr::VRDriverInput()->UpdateBooleanComponent( m_compTrackpadClick, remotePoser.newPose[(i_indexOffset + 10)] > 0.1, 0 );
+		vr::VRDriverInput()->UpdateBooleanComponent( m_compGrip, remotePoser->newPose[(i_indexOffset + 7)] > 0.1, 0 );
+		vr::VRDriverInput()->UpdateBooleanComponent( m_compSystem, remotePoser->newPose[(i_indexOffset + 8)] > 0.1, 0 );
+		vr::VRDriverInput()->UpdateBooleanComponent( m_compAppMenu, remotePoser->newPose[(i_indexOffset + 9)] > 0.1, 0 );
+		vr::VRDriverInput()->UpdateBooleanComponent( m_compTrackpadClick, remotePoser->newPose[(i_indexOffset + 10)] > 0.1, 0 );
+		vr::VRDriverInput()->UpdateBooleanComponent( m_compTrackpadTouch, remotePoser->newPose[(i_indexOffset + 14)] > 0.1, 0 );
+		vr::VRDriverInput()->UpdateBooleanComponent( m_compTriggerClick, remotePoser->newPose[(i_indexOffset + 15)] > 0.1, 0 );
 
-		vr::VRDriverInput()->UpdateScalarComponent( m_compTrigger, remotePoser.newPose[(i_indexOffset + 11)], 0 );
-		vr::VRDriverInput()->UpdateScalarComponent( m_compTrackpadX, remotePoser.newPose[(i_indexOffset + 12)], 0 );
-		vr::VRDriverInput()->UpdateScalarComponent( m_compTrackpadY, remotePoser.newPose[(i_indexOffset + 13)], 0 );
+		vr::VRDriverInput()->UpdateScalarComponent( m_compTrigger, remotePoser->newPose[(i_indexOffset + 11)], 0 );
+		vr::VRDriverInput()->UpdateScalarComponent( m_compTrackpadX, remotePoser->newPose[(i_indexOffset + 12)], 0 );
+		vr::VRDriverInput()->UpdateScalarComponent( m_compTrackpadY, remotePoser->newPose[(i_indexOffset + 13)], 0 );
 
 
 		if ( m_unObjectId != vr::k_unTrackedDeviceIndexInvalid )
@@ -586,6 +585,7 @@ public:
 			if ( vrEvent.data.hapticVibration.componentHandle == m_compHaptic )
 			{
 				// This is where you would send a signal to your hardware to trigger actual haptic feedback
+				remotePoser->socSend("driver:buzz\n", 12);
 				DriverLog( "BUZZ!\n" );
 			}
 		}
@@ -606,6 +606,8 @@ private:
 	vr::VRInputComponentHandle_t m_compTrigger;
 	vr::VRInputComponentHandle_t m_compTrackpadX;
 	vr::VRInputComponentHandle_t m_compTrackpadY;
+	vr::VRInputComponentHandle_t m_compTrackpadTouch;
+	vr::VRInputComponentHandle_t m_compTriggerClick;
 	vr::VRInputComponentHandle_t m_compTrackpadClick;
 	vr::VRInputComponentHandle_t m_compHaptic;
 
@@ -614,6 +616,7 @@ private:
 
 	DriverPose_t poseController;
 	bool handSide_;
+	SP::socketPoser* remotePoser;
 
 };
 
@@ -633,9 +636,10 @@ public:
 	virtual void LeaveStandby()  {}
 
 private:
-	CSampleDeviceDriver *m_pNullHmdLatest = nullptr;
-	CSampleControllerDriver *m_pRightController = nullptr;
-	CSampleControllerDriver *m_pLeftController = nullptr;
+	ChmdDriver *m_pNullHmdLatest = nullptr;
+	ControllerDriver *m_pRightController = nullptr;
+	ControllerDriver *m_pLeftController = nullptr;
+	SP::socketPoser* remotePoser;
 
 };
 
@@ -644,14 +648,17 @@ CServerDriver_Sample g_serverDriverNull;
 
 EVRInitError CServerDriver_Sample::Init( vr::IVRDriverContext *pDriverContext )
 {
+	this->remotePoser = new SP::socketPoser(39);
 	VR_INIT_SERVER_DRIVER_CONTEXT( pDriverContext );
+	remotePoser->socSend("hello\n", 6);
+
 	InitDriverLog( vr::VRDriverLog() );
 
-	m_pNullHmdLatest = new CSampleDeviceDriver();
+	m_pNullHmdLatest = new ChmdDriver(remotePoser);
 	vr::VRServerDriverHost()->TrackedDeviceAdded( m_pNullHmdLatest->GetSerialNumber().c_str(), vr::TrackedDeviceClass_HMD, m_pNullHmdLatest );
 
-	m_pRightController = new CSampleControllerDriver(1);
-	m_pLeftController = new CSampleControllerDriver(0);
+	m_pRightController = new ControllerDriver(1, remotePoser);
+	m_pLeftController = new ControllerDriver(0, remotePoser);
 
 	vr::VRServerDriverHost()->TrackedDeviceAdded( m_pRightController->GetSerialNumber().c_str(), vr::TrackedDeviceClass_Controller, m_pRightController );
 	vr::VRServerDriverHost()->TrackedDeviceAdded( m_pLeftController->GetSerialNumber().c_str(), vr::TrackedDeviceClass_Controller, m_pLeftController );
@@ -662,6 +669,7 @@ EVRInitError CServerDriver_Sample::Init( vr::IVRDriverContext *pDriverContext )
 void CServerDriver_Sample::Cleanup() 
 {
 	CleanupDriverLog();
+	remotePoser->socClose();
 	delete m_pNullHmdLatest;
 	delete m_pRightController;
 	delete m_pLeftController;
@@ -673,8 +681,9 @@ void CServerDriver_Sample::Cleanup()
 
 
 void CServerDriver_Sample::RunFrame()
-{	
-	int ret = remotePoser.socRecv();
+{
+	// Sleep(16.8);
+	int ret = remotePoser->socRecv();
 
 	if (ret == 0) {
 		if ( m_pNullHmdLatest != NULL )
