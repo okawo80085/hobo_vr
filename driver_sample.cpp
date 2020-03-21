@@ -160,10 +160,10 @@ void CWatchdogDriver_Sample::Cleanup()
 // Purpose: hmdDriver
 //-----------------------------------------------------------------------------
 
-class ChmdDriver : public vr::ITrackedDeviceServerDriver, public vr::IVRDisplayComponent
+class HeadsetDriver : public vr::ITrackedDeviceServerDriver, public vr::IVRDisplayComponent
 {
 public:
-	ChmdDriver( SP::socketPoser* remotePoser )
+	HeadsetDriver( SP::socketPoser* remotePoser )
 	{
 		this->remotePoser = remotePoser;
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
@@ -207,7 +207,7 @@ public:
 
 	}
 
-	virtual ~ChmdDriver()
+	virtual ~HeadsetDriver()
 	{
 	}
 
@@ -636,7 +636,7 @@ public:
 	virtual void LeaveStandby()  {}
 
 private:
-	ChmdDriver *m_pNullHmdLatest = nullptr;
+	HeadsetDriver *m_pNullHmdLatest = nullptr;
 	ControllerDriver *m_pRightController = nullptr;
 	ControllerDriver *m_pLeftController = nullptr;
 	SP::socketPoser* remotePoser;
@@ -654,7 +654,7 @@ EVRInitError CServerDriver_Sample::Init( vr::IVRDriverContext *pDriverContext )
 
 	InitDriverLog( vr::VRDriverLog() );
 
-	m_pNullHmdLatest = new ChmdDriver(remotePoser);
+	m_pNullHmdLatest = new HeadsetDriver(remotePoser);
 	vr::VRServerDriverHost()->TrackedDeviceAdded( m_pNullHmdLatest->GetSerialNumber().c_str(), vr::TrackedDeviceClass_HMD, m_pNullHmdLatest );
 
 	m_pRightController = new ControllerDriver(1, remotePoser);
