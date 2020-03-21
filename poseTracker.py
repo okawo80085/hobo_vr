@@ -203,7 +203,7 @@ class Poser:
 				temp['rY'] = self.tempPose['rY']
 				temp['rZ'] = self.tempPose['rZ']
 
-				apply_noise(self.pose)
+				# apply_noise(self.pose)
 				# apply_noise(self.poseControllerL)
 				# apply_noise(self.poseControllerR)
 
@@ -392,15 +392,15 @@ class Poser:
 		await asyncio.gather(
 				self.send(),
 				# self.recv(),
-				self.getLocation(),
+				# self.getLocation(),
 				# self.yprListener(),
 				self.keyListener(),
-				self.serialListener(),
+				# self.serialListener(),
 				self.close(),
 			)
 
 
 
-t = Poser('192.168.31.60')
+t = Poser()
 
 asyncio.run(t.main())

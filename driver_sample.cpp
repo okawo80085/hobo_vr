@@ -673,6 +673,8 @@ void CServerDriver_Sample::Cleanup()
 	delete m_pNullHmdLatest;
 	delete m_pRightController;
 	delete m_pLeftController;
+	delete remotePoser;
+	remotePoser = NULL;
 	m_pNullHmdLatest = NULL;
 	m_pRightController = NULL;
 	m_pLeftController = NULL;
@@ -683,7 +685,10 @@ void CServerDriver_Sample::Cleanup()
 void CServerDriver_Sample::RunFrame()
 {
 	// Sleep(16.8);
-	int ret = remotePoser->socRecv();
+	int ret = 1;
+	if (remotePoser != NULL){
+		ret = remotePoser->socRecv();
+	}
 
 	if (ret == 0) {
 		if ( m_pNullHmdLatest != NULL )
