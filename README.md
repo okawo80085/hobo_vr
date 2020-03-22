@@ -9,7 +9,6 @@ openvr
 
 requirements python:
 ```
-asyncio
 keyboard
 opencv-python
 numpy
