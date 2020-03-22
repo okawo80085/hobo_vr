@@ -11,7 +11,7 @@ requirements python:
 ```
 asyncio
 keyboard
-opencv2
+opencv-python
 numpy
 pyserial
 imutils
