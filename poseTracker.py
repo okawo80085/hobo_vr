@@ -93,7 +93,7 @@ class Poser:
 			'triggerClick':0,
 		}
 
-		self.serialPaths = {'red':'/dev/ttyUSB0'}
+		self.serialPaths = {'blue':'/dev/ttyUSB1', 'green': '/dev/ttyUSB0'}
 
 		self.mode = 0
 
@@ -106,11 +106,11 @@ class Poser:
 		self._serialListen = True
 		self._retrySerial = True
 
-		self._trackDelay = 0.01# should be less than 0.3
+		self._trackDelay = 1/60# should be less than 0.3
 		self._yprListenDelay = 0.006
-		self._sendDelay = 1/19.5 # should be less than 0.5
+		self._sendDelay = 1/60 # should be less than 0.5
 		self._keyListenDelay = 0.01
-		self._serialListenDelay = 0.0005 # don't change this
+		self._serialListenDelay = 1/300 # don't change this
 
 		try:
 			self.t1 = u.Tracker()
@@ -157,41 +157,23 @@ class Poser:
 		self.writer.close()
 		self.t1.close()
 
-		# for i in self._tasks:
-		# 	if not i.done() or not i.cancelled():
-		# 		i.cancel()
-
-	# async def recv(self):
-	# 	while self._read:
-	# 		try:
-	# 			self.readBuffer = await u.newRead(self.reader)
-
-	# 			await asyncio.sleep(self._sendDelay)
-
-	# 		except:
-	# 			self._read = False
-	# 			break
-
 	async def send(self):
 		while self._send:
 			try:
-				if self.mode == 0:
-					temp = self.pose
 
-				else:
-					temp = self.poseControllerR if self.mode == 1 else self.poseControllerL
+				temp = self.poseControllerR if self.mode == 1 else self.poseControllerL
 
-					temp['grip'] = self.tempPose['grip']
-					temp['system'] = self.tempPose['system']
-					temp['menu'] = self.tempPose['menu']
-					temp['triggerValue'] = self.tempPose['triggerValue']
-					temp['trackpadClick'] = self.tempPose['trackpadClick']
-					temp['trackpadClick'] = self.tempPose['trackpadClick']
-					temp['trackpadX'] = self.tempPose['trackpadX']
-					temp['trackpadY'] = self.tempPose['trackpadY']
-					temp['trackpadClick'] = self.tempPose['trackpadClick']
-					temp['trackpadTouch'] = self.tempPose['trackpadTouch']
-					temp['triggerClick'] = self.tempPose['triggerClick']
+				temp['grip'] = self.tempPose['grip']
+				temp['system'] = self.tempPose['system']
+				temp['menu'] = self.tempPose['menu']
+				temp['triggerValue'] = self.tempPose['triggerValue']
+				temp['trackpadClick'] = self.tempPose['trackpadClick']
+				temp['trackpadClick'] = self.tempPose['trackpadClick']
+				temp['trackpadX'] = self.tempPose['trackpadX']
+				temp['trackpadY'] = self.tempPose['trackpadY']
+				temp['trackpadClick'] = self.tempPose['trackpadClick']
+				temp['trackpadTouch'] = self.tempPose['trackpadTouch']
+				temp['triggerClick'] = self.tempPose['triggerClick']
 
 				# if self.mode != 0:
 				temp['x'] = self.tempPose['x']
@@ -225,12 +207,17 @@ class Poser:
 				self.t1.solvePose()
 
 				u.rotateX(self.t1.poses, 0.6981317007977318)
-				u.rotateY(self.t1.poses, -1.0471975511965976)
+				# u.rotateY(self.t1.poses, -1.0471975511965976)
 
 
-				self.tempPose['x'] = round(-self.t1.poses['blue']['x'], 6)
-				self.tempPose['y'] = round(self.t1.poses['blue']['y'] + 1, 6)
-				self.tempPose['z'] = round(self.t1.poses['blue']['z'], 6)
+				self.tempPose['x'] = round(-self.t1.poses['green']['x'], 6)
+				self.tempPose['y'] = round(self.t1.poses['green']['y'] + 1, 6)
+				self.tempPose['z'] = round(self.t1.poses['green']['z'], 6)
+
+
+				self.pose['x'] = round(-self.t1.poses['blue']['x'] + 0.095, 6)
+				self.pose['y'] = round(self.t1.poses['blue']['y'] + 1 - 0.07, 6)
+				self.pose['z'] = round(self.t1.poses['blue']['z'] - 0.03, 6)
 
 				# self.pose['x'] = round(-self.t1.poses['red']['x'], 6)
 				# self.pose['y'] = round(self.t1.poses['red']['y'] + 1, 6)
@@ -244,77 +231,121 @@ class Poser:
 				break
 		print (f'{self.getLocation.__name__} stop')
 
-	async def yprListener(self):
-		while self._listen:
-			try:
-				data = await u.newRead(self.reader)
-				if not u.hasCharsInString(data.lower(), 'aqzwsxedcrfvtgbyhnujmikolp[]{}'):
-					x, y, z = [float(i) for i in data.strip('\n').strip('\r').split(',')]
-
-					# x -= 0.5
-					# y += 0.5
-					# z -= 0.5
-
-					x, y = swapByOffset(x, y, z)
-
-					self.ypr['roll'] = (z * m.pi)	# yaw
-					self.ypr['yaw'] = (y * m.pi) * (-1)	# roll
-					self.ypr['pitch'] = (x * m.pi)	#pitch
-
-					# print (self.ypr)
-
-					# for key, val in self.ypr.items():
-					# 	if val < 0:
-					# 		self.ypr[key] = 2*m.pi - abs(val)
-
-
-					# print (quaternion2ypr(self.pose['rW'], self.pose['rX'], self.pose['rY'], self.pose['rZ']))
-
-					cy = np.cos(self.ypr['roll'] * 0.5)
-					sy = np.sin(self.ypr['roll'] * 0.5)
-					cp = np.cos(self.ypr['pitch'] * 0.5)
-					sp = np.sin(self.ypr['pitch'] * 0.5)
-					cr = np.cos(self.ypr['yaw'] * 0.5)
-					sr = np.sin(self.ypr['yaw'] * 0.5)
-
-					self.tempPose['rW'] = round(cy * cp * cr + sy * sp * sr, 4)
-					self.tempPose['rZ'] = round(cy * cp * sr - sy * sp * cr, 4)
-					self.tempPose['rX'] = round(sy * cp * sr + cy * sp * cr, 4)
-					self.tempPose['rY'] = round(sy * cp * cr - cy * sp * sr, 4)
-
-				elif data == 'driver:buzz\n':
-					print (data)
-
-				await asyncio.sleep(self._yprListenDelay)
-
-			except Exception as e:
-				print ('stopping yprListener:',e)
-				self._listen = False
-				break
-		print (f'{self.yprListener.__name__} stop')
-
-	async def serialListener(self):
+	async def serialListener2(self):
 		while self._retrySerial:
 			try:
-				with serial.Serial(self.serialPaths['red'], 115200, timeout=0) as ser:
+				self._serialListen = True
+
+				with serial.Serial(self.serialPaths['blue'], 115200, timeout=0) as ser:
 					startTime = time.time()
+
 
 					while self._serialListen:
 						try:
 							if 2 < time.time() - startTime < 4:
 								ser.write(b'nut\n')
 
-							resp = ser.readline()
 
-							rrr = u.getOnlyNums(resp.decode())
+							respB = ser.readline()
 
-							self.tempPose['rW'] = rrr[0]
-							self.tempPose['rX'] = rrr[1]
-							self.tempPose['rY'] = rrr[3]
-							self.tempPose['rZ'] = -rrr[2]
+							if len(respB) > 5:
+								rrr = u.getOnlyNums(respB.decode())
 
-							if keyboard.is_pressed('r'):
-								break
+								if rrr != [0, 0, 0, 0]:
+									self.tempPose['rW'] = rrr[0]
+									self.tempPose['rX'] = -rrr[1]
+									self.tempPose['rY'] = rrr[2]
+									self.tempPose['rZ'] = -rrr[3]
+
+								try:
+									if len(rrr) > 4:
+										self.tempPose['triggerValue'] = int(abs(rrr[4] - 1))
+										if len(rrr) > 6:
+											self.tempPose['grip'] = int(abs(rrr[5] - 1))
+
+											tempMode = int(abs(rrr[6] - 1))
+
+										if len(rrr) > 8:
+											self.tempPose['system'] = int(abs(rrr[7] - 1))
+											self.tempPose['menu'] = int(abs(rrr[8] - 1))
+											self.tempPose['trackpadClick'] = int(abs(rrr[9] - 1))
+
+										if len(rrr) > 10:
+											self.tempPose['trackpadY'] = round((rrr[10] - 524)/530, 3)*(-1)
+											self.tempPose['trackpadX'] = round((rrr[11] - 506)/512, 3)*(-1)
+
+										if abs(self.tempPose['trackpadX']) > 0.07 or abs(self.tempPose['trackpadY']) > 0.07:
+											self.tempPose['trackpadTouch'] = 1
+
+										else:
+											self.tempPose['trackpadTouch'] = 0
+
+										if self.tempPose['trackpadX'] > 0.6 and tempMode:
+											self.mode = 0
+
+										elif self.tempPose['trackpadX'] < -0.6 and tempMode:
+											self.mode = 1
+
+										elif tempMode:
+											self._serialListen = False
+								except IndexError:
+										self.tempPose['triggerValue'] = 0
+
+										self.tempPose['grip'] = 0
+
+										self.tempPose['system'] = 0
+
+										self.tempPose['menu'] = 0
+
+										self.tempPose['trackpadClick'] = 0
+
+										self.tempPose['trackpadY'] = 0
+
+										self.tempPose['trackpadX'] = 0
+
+							if self.tempPose['triggerValue'] > 0.9:
+								self.tempPose['triggerClick'] = 1
+
+							else:
+								self.tempPose['triggerClick'] = 0
+
+							await asyncio.sleep(self._serialListenDelay)
+
+						except Exception as e:
+							print (f'{self.serialListener2.__name__}: {e}')
+							self._serialListen = False
+							break
+
+			except Exception as e:
+				print (f'{self.serialListener2.__name__}: {e}')
+
+			await asyncio.sleep(1)
+		print (f'{self.serialListener2.__name__} stop')
+
+
+	async def serialListener(self):
+		while self._retrySerial:
+			try:
+				self._serialListen = True
+
+				with serial.Serial(self.serialPaths['green'], 115200, timeout=0) as ser2:
+					startTime = time.time()
+
+
+					while self._serialListen:
+						try:
+							if 2 < time.time() - startTime < 4:
+								ser2.write(b'nut\n')
+
+							respG = ser2.readline()
+
+							if len(respG) > 5:
+								rrr2 = u.getOnlyNums(respG.decode())
+
+								self.pose['rW'] = rrr2[0]
+								self.pose['rX'] = -rrr2[2]
+								self.pose['rY'] = rrr2[3]
+								self.pose['rZ'] = -rrr2[1]
 
 							await asyncio.sleep(self._serialListenDelay)
 
@@ -333,51 +364,6 @@ class Poser:
 	async def keyListener(self):
 		while self._keyListen:
 			try:
-				self.tempPose['grip'] = 1 if keyboard.is_pressed('1') else 0
-				self.tempPose['menu'] = 1 if keyboard.is_pressed('2') else 0
-				self.tempPose['system'] = 1 if keyboard.is_pressed('3') else 0
-				self.tempPose['triggerValue'] = 1 if keyboard.is_pressed('4') else 0
-				self.tempPose['trackpadClick'] = 1 if keyboard.is_pressed('ctrl') else 0
-
-
-				if self.tempPose['triggerValue'] > 0.9:
-					self.tempPose['triggerClick'] = 1
-
-				else:
-					self.tempPose['triggerClick'] = 0
-
-
-				self.tempPose['trackpadTouch'] = 0
-
-				self.tempPose['trackpadX'] = 0
-				if keyboard.is_pressed('right arrow'):
-					self.tempPose['trackpadX'] = 0.8
-					self.tempPose['trackpadTouch'] = 1
-				elif keyboard.is_pressed('left arrow'):
-					self.tempPose['trackpadX'] = -0.8
-					self.tempPose['trackpadTouch'] = 1
-
-				self.tempPose['trackpadY'] = 0
-				if keyboard.is_pressed('up arrow'):
-					self.tempPose['trackpadY'] = 0.8
-					self.tempPose['trackpadTouch'] = 1
-				elif keyboard.is_pressed('down arrow'):
-					self.tempPose['trackpadY'] = -0.8
-					self.tempPose['trackpadTouch'] = 1
-
-				if keyboard.is_pressed('k'):
-					self.mode = 0
-
-				elif keyboard.is_pressed('j'):
-					self.mode = 2
-
-				elif keyboard.is_pressed('l'):
-					self.mode = 1
- 
-				if keyboard.is_pressed('7'):
-					self.tempPose['x'] = 0
-					self.tempPose['y'] = 1
-					self.tempPose['z'] = 0
 
 				await asyncio.sleep(self._keyListenDelay)
 
@@ -392,15 +378,16 @@ class Poser:
 		await asyncio.gather(
 				self.send(),
 				# self.recv(),
-				# self.getLocation(),
+				self.getLocation(),
 				# self.yprListener(),
-				self.keyListener(),
-				# self.serialListener(),
+				# self.keyListener(),
+				self.serialListener(),
+				self.serialListener2(),
 				self.close(),
 			)
 
 
 
-t = Poser()
+t = Poser('192.168.31.60')
 
 asyncio.run(t.main())

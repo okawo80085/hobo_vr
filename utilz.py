@@ -4,6 +4,9 @@ import cv2
 import numpy as np
 import math as m
 
+from pykalman import KalmanFilter
+
+
 def convv(sss):
 	if len(sss) < 1:
 		return ''.encode('utf-8')
@@ -74,12 +77,20 @@ def getOnlyNums(text):
 				raise Exception('to few numbers found')
 
 		except:
+			# print (text, len(text))
 			out = [0, 0, 0, 0]
 
 		return out
+	# print (text, len(text))
 
 	return [0, 0, 0, 0]
 
+def hasNanInPose(pose):
+	for key in ['x', 'y', 'z']:
+		if np.isnan(pose[key]) or np.isinf(pose[key]):
+			return True
+
+	return False
 
 
 class Tracker:
@@ -111,18 +122,29 @@ class Tracker:
 			'v':(200, 62)
 			},
 		'green':{
-			'h':(62, 24),
-			's':(188, 95),
-			'v':(180, 70)
+			'h':(51, 24),
+			's':(150, 95),
+			'v':(230, 70)
 			}
 		}
 
 		self.poses = {}
 		self.blobs = {}
 
+		self.kalmanTrainSize = 15
+		self.kalmanFilterz = {}
+		self.kalmanTrainBatch = {}
+		self.kalmanWasInited = {}
+		self.kalmanStateUpdate = {}
+
 		for i in self.markerMasks:
 			self.poses[i] = {'x':0, 'y':0, 'z':0}
 			self.blobs[i] = None
+
+			self.kalmanFilterz[i] = None
+			self.kalmanStateUpdate[i] = None
+			self.kalmanTrainBatch[i] = []
+			self.kalmanWasInited[i] = False
 
 	def _reinit(self):
 		self.can_track, frame = self.vs.read()
@@ -135,9 +157,56 @@ class Tracker:
 		self.poses = {}
 		self.blobs = {}
 
+		self.kalmanFilterz = {}
+		self.kalmanTrainBatch = {}
+		self.kalmanWasInited = {}
+		self.kalmanStateUpdate = {}
+
 		for i in self.markerMasks:
 			self.poses[i] = {'x':0, 'y':0, 'z':0}
 			self.blobs[i] = None
+
+			self.kalmanFilterz[i] = None
+			self.kalmanStateUpdate[i] = None
+			self.kalmanTrainBatch[i] = []
+			self.kalmanWasInited[i] = False
+
+	def _initKalman(self, key):
+		self.kalmanTrainBatch[key] = np.array(self.kalmanTrainBatch[key])
+
+		initState = [*self.kalmanTrainBatch[key][0]]
+
+		transition_matrix = [[1, 0, 0],
+							 [0, 1, 0],
+							 [0, 0, 1]]
+
+		observation_matrix = [[1, 0, 0],
+							  [0, 1, 0],
+							  [0, 0, 1]]
+
+		self.kalmanFilterz[key] = KalmanFilter(transition_matrices = transition_matrix,
+										 observation_matrices = observation_matrix,
+										 initial_state_mean = initState)
+
+		print (f'initializing Kalman filter for mask "{key}"...')
+
+		tStart = time.time()
+		self.kalmanFilterz[key] = self.kalmanFilterz[key].em(self.kalmanTrainBatch[key], n_iter=5)
+		print (f'took: {time.time() - tStart}')
+
+		fMeans, fCovars = self.kalmanFilterz[key].filter(self.kalmanTrainBatch[key])
+		self.kalmanStateUpdate[key] = {'x_now':fMeans[-1, :], 'p_now':fCovars[-1, :]}
+
+		self.kalmanWasInited[key] = True
+
+	def _applyKalman(self, key):
+		obz = np.array([self.poses[key]['x'], self.poses[key]['y'], self.poses[key]['z']])
+		if self.kalmanFilterz[key] is not None:
+			self.kalmanStateUpdate[key]['x_now'], self.kalmanStateUpdate[key]['p_now'] = self.kalmanFilterz[key].filter_update(filtered_state_mean = self.kalmanStateUpdate[key]['x_now'],
+																															 filtered_state_covariance = self.kalmanStateUpdate[key]['p_now'],
+																															 observation = obz)
+
+			self.poses[key]['x'], self.poses[key]['y'], self.poses[key]['z'] = self.kalmanStateUpdate[key]['x_now']
 
 	def getFrame(self):
 		self.can_track, frame = self.vs.read()
@@ -204,6 +273,17 @@ class Tracker:
 				self.poses[key]['x'] = X_cm/100
 				self.poses[key]['y'] = Y_cm/100
 				self.poses[key]['z'] = Z_cm/100
+
+				if len(self.kalmanTrainBatch[key]) < self.kalmanTrainSize:
+					self.kalmanTrainBatch[key].append([self.poses[key]['x'], self.poses[key]['y'], self.poses[key]['z']])
+
+				elif len(self.kalmanTrainBatch[key]) >= self.kalmanTrainSize and not self.kalmanWasInited[key]:
+					self._initKalman(key)
+
+				else:
+					if not hasNanInPose(self.poses[key]):
+						self._applyKalman(key)
+
 
 	def close(self):
 		if self.can_track:
