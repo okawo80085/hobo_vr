@@ -126,7 +126,7 @@ EVRInitError CWatchdogDriver_Sample::Init( vr::IVRDriverContext *pDriverContext 
 	VR_INIT_WATCHDOG_DRIVER_CONTEXT( pDriverContext );
 	InitDriverLog( vr::VRDriverLog() );
 
-	// Watchdog mode on Windows starts a thread that listens for the 'Y' key on the keyboard to 
+	// Watchdog mode on Windows starts a thread that listens for the '*' key on the keyboard to 
 	// be pressed. A real driver should wait for a system button event or something else from the 
 	// the hardware that signals that the VR system should start up.
 	g_bExiting = false;
@@ -204,6 +204,7 @@ public:
 		pose.vecPosition[0] = 0.;
 		pose.vecPosition[1] = 0.;
 		pose.vecPosition[2] = 0.;
+		pose.willDriftInYaw = true;
 
 	}
 
@@ -450,6 +451,7 @@ public:
 		}
 
 		poseController.vecPosition[2] = 0.;
+		poseController.willDriftInYaw = true;
 		handSide_ = side;
 	}
 
@@ -627,28 +629,39 @@ private:
 class CServerDriver_Sample: public IServerTrackedDeviceProvider
 {
 public:
+	CServerDriver_Sample() {
+		m_bMyThreadKeepAlive = false;
+		m_pMyTread = nullptr;
+	}
 	virtual EVRInitError Init( vr::IVRDriverContext *pDriverContext ) ;
 	virtual void Cleanup() ;
 	virtual const char * const *GetInterfaceVersions() { return vr::k_InterfaceVersions; }
-	virtual void RunFrame() ;
 	virtual bool ShouldBlockStandbyMode()  { return false; }
-	virtual void EnterStandby()  {}
-	virtual void LeaveStandby()  {}
+	virtual void EnterStandby() {}
+	virtual void LeaveStandby() {}
+	virtual void RunFrame() {}
+	static void myThreadEnter(CServerDriver_Sample* pClass) {
+		pClass->myTrackingThread();
+	}
+	void myTrackingThread() ;
 
 private:
 	HeadsetDriver *m_pNullHmdLatest = nullptr;
 	ControllerDriver *m_pRightController = nullptr;
 	ControllerDriver *m_pLeftController = nullptr;
+
 	SP::socketPoser* remotePoser;
+
+	bool m_bMyThreadKeepAlive;
+	std::thread* m_pMyTread;
 
 };
 
-CServerDriver_Sample g_serverDriverNull;
 
 
 EVRInitError CServerDriver_Sample::Init( vr::IVRDriverContext *pDriverContext )
 {
-	this->remotePoser = new SP::socketPoser(39);
+	remotePoser = new SP::socketPoser(39);
 	VR_INIT_SERVER_DRIVER_CONTEXT( pDriverContext );
 	remotePoser->socSend("hello\n", 6);
 
@@ -663,12 +676,28 @@ EVRInitError CServerDriver_Sample::Init( vr::IVRDriverContext *pDriverContext )
 	vr::VRServerDriverHost()->TrackedDeviceAdded( m_pRightController->GetSerialNumber().c_str(), vr::TrackedDeviceClass_Controller, m_pRightController );
 	vr::VRServerDriverHost()->TrackedDeviceAdded( m_pLeftController->GetSerialNumber().c_str(), vr::TrackedDeviceClass_Controller, m_pLeftController );
 
+	m_bMyThreadKeepAlive = true;
+	m_pMyTread = new std::thread(myThreadEnter, this);
+
+	if (!m_pMyTread){
+		DriverLog( "failed to start tracking thread\n" );
+		return VRInitError_Driver_Failed;
+	}
+
 	return VRInitError_None;
 }
 
 void CServerDriver_Sample::Cleanup() 
 {
 	CleanupDriverLog();
+
+	m_bMyThreadKeepAlive = false;
+	if (m_pMyTread) {
+		m_pMyTread->join();
+		delete m_pMyTread;
+		m_pMyTread = nullptr;
+	}
+
 	remotePoser->socClose();
 	delete m_pNullHmdLatest;
 	delete m_pRightController;
@@ -682,31 +711,37 @@ void CServerDriver_Sample::Cleanup()
 }
 
 
-void CServerDriver_Sample::RunFrame()
+void CServerDriver_Sample::myTrackingThread()
 {
-	// Sleep(16.8);
-	int ret = 1;
-	if (remotePoser != NULL){
-		ret = remotePoser->socRecv();
-	}
-
-	if (ret == 0) {
-		if ( m_pNullHmdLatest != NULL )
-		{
-			m_pNullHmdLatest->RunFrame();
+	while (m_bMyThreadKeepAlive)
+	{
+		int ret = 1;
+		if (remotePoser != NULL){
+			ret = remotePoser->socRecv();
+		}
+	
+		if (ret == 0) {
+			if ( m_pNullHmdLatest != NULL )
+			{
+				m_pNullHmdLatest->RunFrame();
+			}
+	
+			if ( m_pRightController != NULL )
+			{
+				m_pRightController->RunFrame();
+			}
+	
+			if ( m_pLeftController != NULL )
+			{
+				m_pLeftController->RunFrame();
+			}
 		}
 
-		if ( m_pRightController != NULL )
-		{
-			m_pRightController->RunFrame();
-		}
-
-		if ( m_pLeftController != NULL )
-		{
-			m_pLeftController->RunFrame();
-		}
+		std::this_thread::sleep_for(std::chrono::microseconds(1000));
 	}
 }
+
+CServerDriver_Sample g_serverDriverNull;
 
 //-----------------------------------------------------------------------------
 // Purpose: driverFactory

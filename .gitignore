@@ -16,3 +16,4 @@ t.py
 tests/
 t2.py
 openvr*.h
+!sample/bin
