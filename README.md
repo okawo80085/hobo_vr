@@ -2,6 +2,13 @@
 
 *a pc vr solution for hobos*
 
+steamvr/openvr driver installation:
+```
+1. install steamvr though steam
+2. go to "{steamvr installation directory}\bin\win64\"
+3. open a console and run: .\vrpathreg.exe adddriver {full path to "sample/" directory}
+```
+
 requirements c++:
 ```
 openvr
