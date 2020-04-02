@@ -82,7 +82,7 @@ also changes in 'trackpadX'/'trackpadY' are useless if 'trackpadTouch' is not se
 or, if you are ok with python, you can modify `poserTemplate.py` for your needs and save yourself the headache of starting from scratch. you can also use `poseTracker.py` as a reference of how to manage tracking, don't rely on it too much though, because it is made for my hardware.
 
 
-## MOST IMPORTANTLY
+## MOST IMPORTANT
 to ensure stability, keep the network messages free of poser/driver id messages, the messages are `"poser here\n"` for the poser and `"hello\n"` for the driver
 
 # TODO
