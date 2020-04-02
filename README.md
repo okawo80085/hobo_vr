@@ -38,6 +38,8 @@ sample/ # steamvr driver, you need to register it's path with vrpathreg.exe
 
 the steamvr driver connects to the server and gets pose data from it, the rest is handled by steamvr
 
+## MOST IMPORTANTLY
+to ensure stability, keep the network messages free of poser/driver id messages, the messages are `"poser here\n"` for the poser and `"hello\n"` for the driver
 
 and since the poser it self it optional, here is a few thing about the message structure it has to follow:
 ```
