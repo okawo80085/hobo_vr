@@ -1,0 +1,151 @@
+'''
+this is a template of a poser script
+
+modify the Poser class to your needs, except:
+1. don't modify the keys in self.pose, self.poseControllerR, self.poseControllerL
+2. stay within the value ranges for the keys in self.pose, self.poseControllerR, self.poseControllerL
+3. don't modify send and _socketInit methods
+4. all values in self.pose, self.poseControllerR and self.poseControllerL need to be numeric
+
+other notes:
+* 
+'''
+
+import asyncio
+import utilz as u
+import time
+import keyboard
+
+class Poser:
+	def __init__(self, addr='127.0.0.1', port=6969):
+		self.pose = {
+			'x':0,	# left/right in meters
+			'y':1,	# up/down in meters
+			'z':0,	# forwards/backwards in meters
+			'rW':1,	# from 0 to 1
+			'rX':0,	# from -1 to 1
+			'rY':0,	# from -1 to 1
+			'rZ':0,	# from -1 to 1
+		}
+
+		self.poseControllerR = {
+			'x':0.5,	# left/right in meters
+			'y':1,	# up/down in meters
+			'z':-1,	# forwards/backwards in meters
+			'rW':1,	# from 0 to 1
+			'rX':0,	# from -1 to 1
+			'rY':0,	# from -1 to 1
+			'rZ':0,	# from -1 to 1
+			'grip':0,	# 0 or 1
+			'system':0,	# 0 or 1
+			'menu':0,	# 0 or 1
+			'trackpadClick':0,	# 0 or 1
+			'triggerValue':0,	# from 0 to 1
+			'trackpadX':0,	# from -1 to 1
+			'trackpadY':0,	# from -1 to 1
+			'trackpadTouch':0,	# 0 or 1
+			'triggerClick':0,	# 0 or 1
+		}
+
+		self.poseControllerL = {
+			'x':0.5,	# left/right in meters
+			'y':1.1,	# up/down in meters
+			'z':-1,	# forwards/backwards in meters
+			'rW':1,	# from 0 to 1
+			'rX':0,	# from -1 to 1
+			'rY':0,	# from -1 to 1
+			'rZ':0,	# from -1 to 1
+			'grip':0,	# 0 or 1
+			'system':0,	# 0 or 1
+			'menu':0,	# 0 or 1
+			'trackpadClick':0,	# 0 or 1
+			'triggerValue':0,	# from 0 to 1
+			'trackpadX':0,	# from -1 to 1
+			'trackpadY':0,	# from -1 to 1
+			'trackpadTouch':0,	# 0 or 1
+			'triggerClick':0,	# 0 or 1
+		}
+
+		self._send = True
+		self._exampleThread = True # keep alive for the example thread
+
+		self._sendDelay = 1/60 # frequency at which the commands are sent out to the driver, default is 60 fps
+		self._exampleThreadDelay = 1/50 # delay for the example thread, the delay is in seconds
+
+		self.addr = addr
+		self.port = port
+
+	async def _socketInit(self):
+		# not a thread
+
+		# connect to the server
+		self.reader, self.writer = await asyncio.open_connection(self.addr, self.port,
+												   loop=asyncio.get_event_loop())
+		# send poser id message
+		self.writer.write(u.convv('poser here'))
+
+	async def close(self):
+		# wait to stop thread
+		while 1:	# a waiting loop
+			await asyncio.sleep(2)
+			try:
+				if keyboard.is_pressed('q'):	# hold 'q' for 2 seconds to stop the poser
+					break
+
+			except:
+				break
+
+		print ('closing...')
+		# kill all threads
+		self._send = False
+
+		await asyncio.sleep(1)
+
+		# disconnect from the server
+		self.writer.write(u.convv('CLOSE'))
+		self.writer.close()
+		self.t1.close()
+
+	async def send(self):
+		# send thread
+		while self._send:
+			try:
+				msg = u.convv(' '.join([str(i) for _, i in self.pose.items()] + [str(i) for _, i in self.poseControllerR.items()] + [str(i) for _, i in self.poseControllerL.items()]))
+
+				self.writer.write(msg)
+
+				await asyncio.sleep(self._sendDelay)
+
+			except:
+				# kill the thread if it breaks
+				self._send = False
+				break
+		print (f'{self.send.__name__} stop')
+
+	async def exampleThread(self):
+		while self._exampleThread:
+			try:
+
+				# do some work here work
+
+				await asyncio.sleep(self._exampleThreadDelay) # thread sleep, every thread needs to have sleep in its loop to allow other threads to execute
+
+			except:
+				self._exampleThread = False
+				break
+		print (f'{self.exampleThread.__name__} stop')
+
+
+	async def main(self):
+		await self._socketInit()
+
+		await asyncio.gather(
+				self.send(),	# don't modify this
+				self.close(),	# don't modify this
+				self.exampleThread(),	# example thread async start
+			)
+
+
+t = Poser('local within the network address of the machine with the server script running on it')
+
+asyncio.run(t.main()) # runs the threads in async mode

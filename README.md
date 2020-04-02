@@ -6,7 +6,7 @@ steamvr/openvr driver installation:
 ```
 1. install steamvr though steam
 2. go to "{steamvr installation directory}\bin\win64\"
-3. open a console and run: .\vrpathreg.exe adddriver {full path to "sample/" directory}
+3. open the console and run: .\vrpathreg.exe adddriver {full path to "sample/" directory}
 ```
 
 requirements c++:
@@ -16,19 +16,20 @@ openvr
 
 requirements python:
 ```
-keyboard
+keyboard # optional
 opencv-python
 numpy
-pyserial
-imutils
+pyserial # optional
+imutils # optional
+pykalman
 ```
 
 how it works:
 ```python
 com_server.py # the server
-poseTracker.py # poser(optional), sends pose data through the server
+poserTemplate.py # poser(optional, you can write it all from scratch if you want to), sends pose data through the server, can be also used for tracking, refer to poseTracker.py for more examples
 
-sample/ # steamvr driver, you need to register it's path with vrpathreg
+sample/ # steamvr driver, you need to register it's path with vrpathreg.exe
 ```
 
 the steamvr driver connects to the server and gets pose data from it, the rest is handled by steamvr
@@ -71,3 +72,5 @@ and after that is tracking and input values for the other controller, in the sam
 
 also changes in 'trackpadX'/'trackpadY' are useless if 'trackpadTouch' is not set to true
 ```
+
+or, if you are ok with python, you can modify `poserTemplate.py` for your needs and save yourself the headache of starting from scratch. you can also use `poseTracker.py` as a reference of how to manage tracking, don't rely on it too much though, because it is made for my hardware.

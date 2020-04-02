@@ -93,7 +93,7 @@ class Poser:
 			'triggerClick':0,
 		}
 
-		self.serialPaths = {'blue':'/dev/ttyUSB1', 'green': '/dev/ttyUSB0'}
+		self.serialPaths = {'blue':'/dev/ttyUSB0', 'green': '/dev/ttyUSB1'}
 
 		self.mode = 0
 
@@ -215,7 +215,7 @@ class Poser:
 				self.tempPose['z'] = round(self.t1.poses['green']['z'], 6)
 
 
-				self.pose['x'] = round(-self.t1.poses['blue']['x'] + 0.095, 6)
+				self.pose['x'] = round(-self.t1.poses['blue']['x'] - 0.01, 6)
 				self.pose['y'] = round(self.t1.poses['blue']['y'] + 1 - 0.07, 6)
 				self.pose['z'] = round(self.t1.poses['blue']['z'] - 0.03, 6)
 
