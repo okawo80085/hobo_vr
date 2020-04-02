@@ -76,6 +76,7 @@ and after that is tracking and input values for the other controller, in the sam
 
 also changes in 'trackpadX'/'trackpadY' are useless if 'trackpadTouch' is not set to true
 ```
+## poserTemplate
 
 or, if you are ok with python, you can modify `poserTemplate.py` for your needs and save yourself the headache of starting from scratch. you can also use `poseTracker.py` as a reference of how to manage tracking, don't rely on it too much though, because it is made for my hardware.
 
