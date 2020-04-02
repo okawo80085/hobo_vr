@@ -30,7 +30,7 @@ pykalman
 
 how it works:
 ```python
-com_server.py # the server
+com_server.py # the server, starts a local server on port 6969
 poserTemplate.py # poser(optional, you can write it all from scratch if you want to), sends pose data through the server, can be also used for tracking, refer to poseTracker.py for more examples
 
 sample/ # steamvr driver, you need to register it's path with vrpathreg.exe
