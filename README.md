@@ -2,6 +2,8 @@
 
 *a pc vr solution for hobos*
 
+# installation/requirements
+
 steamvr/openvr driver installation:
 ```
 1. install steamvr though steam
@@ -9,13 +11,13 @@ steamvr/openvr driver installation:
 3. open the console and run: .\vrpathreg.exe adddriver {full path to "sample/" directory}
 ```
 
-requirements c++:
+requirements c++(only if you are compiling it yourself):
 ```
 openvr
 ```
 
 requirements python:
-```
+```python
 keyboard # optional
 opencv-python
 numpy
@@ -23,6 +25,8 @@ pyserial # optional
 imutils # optional
 pykalman
 ```
+
+# rambling/how it works
 
 how it works:
 ```python
@@ -74,3 +78,11 @@ also changes in 'trackpadX'/'trackpadY' are useless if 'trackpadTouch' is not se
 ```
 
 or, if you are ok with python, you can modify `poserTemplate.py` for your needs and save yourself the headache of starting from scratch. you can also use `poseTracker.py` as a reference of how to manage tracking, don't rely on it too much though, because it is made for my hardware.
+
+# TODO
+
+on the steamvr/openvr side of things:
+```
+1. since the driver started as a heavily modified null driver, it lacks/unfinished on the display side of things, plus i don't have a spare display to experiment on
+2. that's it really, for now at least
+```
