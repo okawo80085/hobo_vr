@@ -96,6 +96,7 @@ class Poser:
 		print ('closing...')
 		# kill all threads
 		self._send = False
+		self._exampleThread = False
 
 		await asyncio.sleep(1)
 
@@ -121,10 +122,11 @@ class Poser:
 		print (f'{self.send.__name__} stop')
 
 	async def exampleThread(self):
+		# example thread
 		while self._exampleThread:
 			try:
 
-				# do some work here work
+				# do some work here
 
 				await asyncio.sleep(self._exampleThreadDelay) # thread sleep, every thread needs to have sleep in its loop to allow other threads to execute
 
