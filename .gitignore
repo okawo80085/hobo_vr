@@ -20,3 +20,4 @@ openvr*.h
 t.cpp
 tLOL
 *.p
+!images/*.jpg

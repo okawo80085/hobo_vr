@@ -38,6 +38,8 @@ sample/ # steamvr driver, you need to register it's path with vrpathreg.exe
 
 the steamvr driver connects to the server and gets pose data from it, the rest is handled by steamvr
 
+![network_diagram](/images/network_diagram.jpg)
+
 and since the poser it self it optional, here is a few thing about the message structure it has to follow:
 ```
 1. poser needs to send "poser here\n"(encoded as a utf-8 binary string) as it first message to the server
