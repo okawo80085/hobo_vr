@@ -38,9 +38,6 @@ sample/ # steamvr driver, you need to register it's path with vrpathreg.exe
 
 the steamvr driver connects to the server and gets pose data from it, the rest is handled by steamvr
 
-## MOST IMPORTANTLY
-to ensure stability, keep the network messages free of poser/driver id messages, the messages are `"poser here\n"` for the poser and `"hello\n"` for the driver
-
 and since the poser it self it optional, here is a few thing about the message structure it has to follow:
 ```
 1. poser needs to send "poser here\n"(encoded as a utf-8 binary string) as it first message to the server
@@ -81,6 +78,10 @@ also changes in 'trackpadX'/'trackpadY' are useless if 'trackpadTouch' is not se
 ## poserTemplate
 
 or, if you are ok with python, you can modify `poserTemplate.py` for your needs and save yourself the headache of starting from scratch. you can also use `poseTracker.py` as a reference of how to manage tracking, don't rely on it too much though, because it is made for my hardware.
+
+
+## MOST IMPORTANTLY
+to ensure stability, keep the network messages free of poser/driver id messages, the messages are `"poser here\n"` for the poser and `"hello\n"` for the driver
 
 # TODO
 
