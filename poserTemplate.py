@@ -7,8 +7,6 @@ modify the Poser class to your needs, except:
 3. don't modify send and _socketInit methods
 4. all values in self.pose, self.poseControllerR and self.poseControllerL need to be numeric
 
-other notes:
-* 
 '''
 
 import asyncio
