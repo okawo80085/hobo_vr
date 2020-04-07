@@ -92,3 +92,9 @@ on the steamvr/openvr side of things:
 1. since the driver started as a heavily modified null driver, it lacks/unfinished on the display side of things, plus i don't have a spare display to experiment on
 2. that's it really, for now at least
 ```
+
+## bug reporting/contributions
+*just do it*
+
+## other stuff... ?
+[simplified vr & hobo_vr system overview](/simplified_vr_systems.md)
