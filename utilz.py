@@ -59,6 +59,21 @@ def rotateY(points, angle):
 		points[key]['x'] = x
 		points[key]['z'] = z
 
+def rotate(points, angles):
+	x, y, z = angles
+
+	rotateX(points, x)
+	rotateY(points, y)
+	rotateZ(points, z)
+
+def translate(points, offsets):
+	x, y, z = offsets
+
+	for key, p in points.items():
+		points[key]['x'] += x
+		points[key]['y'] += y
+		points[key]['z'] += z
+
 def hasCharsInString(str1, str2):
 	for i in str1:
 		if i in str2:
@@ -92,9 +107,13 @@ def hasNanInPose(pose):
 
 	return False
 
-
+# a positional tracker, can work on any camera(but it's settings need to be fixed)
+# you will also need to adjust the color masks
+# this tracking method is made to track color eluminated spheres in 3D space
 class Tracker:
-	def __init__(self, cam_index=4, focal_length_px=490, ball_size_cm=2):
+	def __init__(self, cam_index=4, focal_length_px=490, ball_size_cm=2): #, offsets={'translation':[0, 0, 0], 'rotation':[0, 0, 0]}):
+		# self.transform_offsets = offsets
+
 		self.vs = cv2.VideoCapture(cam_index)
 
 		self.camera_focal_length = focal_length_px
@@ -132,10 +151,17 @@ class Tracker:
 		self.blobs = {}
 
 		self.kalmanTrainSize = 15
+
 		self.kalmanFilterz = {}
 		self.kalmanTrainBatch = {}
 		self.kalmanWasInited = {}
 		self.kalmanStateUpdate = {}
+
+		self.kalmanFilterz2 = {}
+		self.kalmanTrainBatch2 = {}
+		self.kalmanWasInited2 = {}
+		self.kalmanStateUpdate2 = {}
+		self.xywForKalman2 = {}
 
 		for i in self.markerMasks:
 			self.poses[i] = {'x':0, 'y':0, 'z':0}
@@ -145,6 +171,11 @@ class Tracker:
 			self.kalmanStateUpdate[i] = None
 			self.kalmanTrainBatch[i] = []
 			self.kalmanWasInited[i] = False
+
+			self.kalmanFilterz2[i] = None
+			self.kalmanStateUpdate2[i] = None
+			self.kalmanTrainBatch2[i] = []
+			self.kalmanWasInited2[i] = False
 
 	def _reinit(self):
 		self.can_track, frame = self.vs.read()
@@ -157,10 +188,18 @@ class Tracker:
 		self.poses = {}
 		self.blobs = {}
 
+		self.kalmanTrainSize = 15
+
 		self.kalmanFilterz = {}
 		self.kalmanTrainBatch = {}
 		self.kalmanWasInited = {}
 		self.kalmanStateUpdate = {}
+
+		self.kalmanFilterz2 = {}
+		self.kalmanTrainBatch2 = {}
+		self.kalmanWasInited2 = {}
+		self.kalmanStateUpdate2 = {}
+		self.xywForKalman2 = {}
 
 		for i in self.markerMasks:
 			self.poses[i] = {'x':0, 'y':0, 'z':0}
@@ -170,6 +209,11 @@ class Tracker:
 			self.kalmanStateUpdate[i] = None
 			self.kalmanTrainBatch[i] = []
 			self.kalmanWasInited[i] = False
+
+			self.kalmanFilterz2[i] = None
+			self.kalmanStateUpdate2[i] = None
+			self.kalmanTrainBatch2[i] = []
+			self.kalmanWasInited2[i] = False
 
 	def _initKalman(self, key):
 		self.kalmanTrainBatch[key] = np.array(self.kalmanTrainBatch[key])
@@ -192,12 +236,40 @@ class Tracker:
 
 		tStart = time.time()
 		self.kalmanFilterz[key] = self.kalmanFilterz[key].em(self.kalmanTrainBatch[key], n_iter=5)
-		print (f'took: {time.time() - tStart}')
+		print (f'took: {time.time() - tStart}s')
 
 		fMeans, fCovars = self.kalmanFilterz[key].filter(self.kalmanTrainBatch[key])
 		self.kalmanStateUpdate[key] = {'x_now':fMeans[-1, :], 'p_now':fCovars[-1, :]}
 
 		self.kalmanWasInited[key] = True
+
+	def _initKalman2(self, key):
+		self.kalmanTrainBatch2[key] = np.array(self.kalmanTrainBatch2[key])
+
+		initState = [*self.kalmanTrainBatch2[key][0]]
+
+		transition_matrix = [[1, 0, 0],
+							 [0, 1, 0],
+							 [0, 0, 1]]
+
+		observation_matrix = [[1, 0, 0],
+							  [0, 1, 0],
+							  [0, 0, 1]]
+
+		self.kalmanFilterz2[key] = KalmanFilter(transition_matrices = transition_matrix,
+										 observation_matrices = observation_matrix,
+										 initial_state_mean = initState)
+
+		print (f'initializing second Kalman filter for mask "{key}"...')
+
+		tStart = time.time()
+		self.kalmanFilterz2[key] = self.kalmanFilterz2[key].em(self.kalmanTrainBatch2[key], n_iter=5)
+		print (f'took: {time.time() - tStart}s')
+
+		fMeans, fCovars = self.kalmanFilterz2[key].filter(self.kalmanTrainBatch2[key])
+		self.kalmanStateUpdate2[key] = {'x_now':fMeans[-1, :], 'p_now':fCovars[-1, :]}
+
+		self.kalmanWasInited2[key] = True
 
 	def _applyKalman(self, key):
 		obz = np.array([self.poses[key]['x'], self.poses[key]['y'], self.poses[key]['z']])
@@ -207,6 +279,19 @@ class Tracker:
 																															 observation = obz)
 
 			self.poses[key]['x'], self.poses[key]['y'], self.poses[key]['z'] = self.kalmanStateUpdate[key]['x_now']
+
+	def _applyKalman2(self, key):
+		obz = np.array(self.xywForKalman2[key])
+		if self.kalmanFilterz2[key] is not None:
+			self.kalmanStateUpdate2[key]['x_now'], self.kalmanStateUpdate2[key]['p_now'] = self.kalmanFilterz2[key].filter_update(filtered_state_mean = self.kalmanStateUpdate2[key]['x_now'],
+																															 filtered_state_covariance = self.kalmanStateUpdate2[key]['p_now'],
+																															 observation = obz)
+
+			self.xywForKalman2[key] = self.kalmanStateUpdate2[key]['x_now']
+
+	# def _translate(self):
+	# 	rotate(self.poses, self.transform_offsets['rotation'])
+	# 	translate(self.poses, self.transform_offsets['translation'])
 
 	def getFrame(self):
 		self.can_track, frame = self.vs.read()
@@ -243,6 +328,18 @@ class Tracker:
 				x, y = elip[0]
 				w, h = elip[1]
 
+				self.xywForKalman2[key] = [x, y, w]
+
+				if len(self.kalmanTrainBatch2[key]) < self.kalmanTrainSize:
+					self.kalmanTrainBatch2[key].append([x, y, w])
+
+				elif len(self.kalmanTrainBatch2[key]) >= self.kalmanTrainSize and not self.kalmanWasInited2[key]:
+					self._initKalman2(key)
+
+				else:
+					self._applyKalman2(key)
+					x, y, w = self.xywForKalman2[key]
+
 				f_px = self.camera_focal_length
 				X_px = x
 				Y_px = y
@@ -273,6 +370,8 @@ class Tracker:
 				self.poses[key]['x'] = X_cm/100
 				self.poses[key]['y'] = Y_cm/100
 				self.poses[key]['z'] = Z_cm/100
+
+				# self._translate()
 
 				if len(self.kalmanTrainBatch[key]) < self.kalmanTrainSize:
 					self.kalmanTrainBatch[key].append([self.poses[key]['x'], self.poses[key]['y'], self.poses[key]['z']])

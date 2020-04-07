@@ -93,7 +93,7 @@ class Poser:
 			'triggerClick':0,
 		}
 
-		self.serialPaths = {'blue':'/dev/ttyUSB0', 'green': '/dev/ttyUSB1'}
+		self.serialPaths = {'blue':'/dev/ttyUSB1', 'green': '/dev/ttyUSB0'}
 
 		self.mode = 0
 
@@ -111,9 +111,24 @@ class Poser:
 		self._sendDelay = 1/60 # should be less than 0.5
 		self._keyListenDelay = 0.01
 		self._serialListenDelay = 1/300 # don't change this
-
+  
 		try:
-			self.t1 = u.Tracker()
+			self.t1 = u.Tracker()#offsets={'translation':[0, 0, 0], 'rotation':[0.6981317007977318, 0, 0]})
+
+			self.t1.markerMasks = {
+				'blue':{
+					'h':(98, 10),
+					's':(200, 55),
+					'v':(250, 32)
+						},
+				'green':{
+					'h':(66, 15),
+					's':(90, 55),
+					'v':(250, 50)
+					}
+				}
+
+			self.t1._reinit()
 
 		except:
 			print ('failed to init location tracker')
@@ -203,6 +218,7 @@ class Poser:
 	async def getLocation(self):
 		while self._track:
 			try:
+				# a = time.time()
 				self.t1.getFrame()
 				self.t1.solvePose()
 
@@ -218,6 +234,8 @@ class Poser:
 				self.pose['x'] = round(-self.t1.poses['blue']['x'] - 0.01, 6)
 				self.pose['y'] = round(self.t1.poses['blue']['y'] + 1 - 0.07, 6)
 				self.pose['z'] = round(self.t1.poses['blue']['z'] - 0.03, 6)
+
+				# print (f'{time.time() - a}s/{self._trackDelay}')
 
 				# self.pose['x'] = round(-self.t1.poses['red']['x'], 6)
 				# self.pose['y'] = round(self.t1.poses['red']['y'] + 1, 6)
@@ -281,10 +299,10 @@ class Poser:
 											self.tempPose['trackpadTouch'] = 0
 
 										if self.tempPose['trackpadX'] > 0.6 and tempMode:
-											self.mode = 0
+											self.mode = 1
 
 										elif self.tempPose['trackpadX'] < -0.6 and tempMode:
-											self.mode = 1
+											self.mode = 0
 
 										elif tempMode:
 											self._serialListen = False
