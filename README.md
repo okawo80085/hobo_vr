@@ -18,7 +18,7 @@ openvr
 
 requirements python:
 ```python
-keyboard # optional
+keyboard
 opencv-python
 numpy
 pyserial # optional
