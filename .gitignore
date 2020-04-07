@@ -21,3 +21,5 @@ t.cpp
 tLOL
 *.p
 !images/*.jpg
+!images/*.svg
+*.drawio
