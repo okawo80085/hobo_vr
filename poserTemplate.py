@@ -4,8 +4,10 @@ this is a template of a poser script
 modify the Poser class to your needs, except:
 1. don't modify the keys in self.pose, self.poseControllerR, self.poseControllerL
 2. stay within the value ranges for the keys in self.pose, self.poseControllerR, self.poseControllerL
-3. don't modify send and _socketInit methods
-4. all values in self.pose, self.poseControllerR and self.poseControllerL need to be numeric
+3. don't modify send() and _socketInit() methods
+4. it is not recommended to modify recv() method if you don't know what you're doing
+6. to make sure that self.incomingData_readonly could be accessed by any thread at any time it is meant to be read only, if you need to modify self.incomingData_readonly make a copy
+5. all values in self.pose, self.poseControllerR and self.poseControllerL need to be numeric
 
 '''
 
@@ -64,9 +66,13 @@ class Poser:
 			'triggerClick':0,	# 0 or 1
 		}
 
+		self.incomingData_readonly = '' # used to access recently read data from the server
+
 		self._send = True
+		self._recv = True
 		self._exampleThread = True # keep alive for the example thread
 
+		self._recvDelay = 1/1000 # frequency at which other messages from the server are received
 		self._sendDelay = 1/60 # frequency at which the commands are sent out to the driver, default is 60 fps
 		self._exampleThreadDelay = 1/50 # delay for the example thread, the delay is in seconds
 
@@ -96,6 +102,7 @@ class Poser:
 		print ('closing...')
 		# kill all threads
 		self._send = False
+		self._recv = False
 		self._exampleThread = False
 
 		await asyncio.sleep(1)
@@ -121,6 +128,22 @@ class Poser:
 				break
 		print (f'{self.send.__name__} stop')
 
+	async def recv(self):
+		# receive thread
+		while self._keyListen:
+			try:
+				data = await u.newRead(self.reader)
+				self.incomingData_readonly = data
+				print ([self.incomingData_readonly])
+
+				await asyncio.sleep(self._recvDelay)
+
+			except:
+				# kill the thread if it breaks
+				self._recv = False
+				break
+		print (f'{self.recv.__name__} stop')
+
 	async def exampleThread(self):
 		# example thread
 		while self._exampleThread:
@@ -135,14 +158,14 @@ class Poser:
 				break
 		print (f'{self.exampleThread.__name__} stop')
 
-
 	async def main(self):
 		await self._socketInit()
 
 		await asyncio.gather(
 				self.send(),	# don't modify this
+				self.recv(),	# don't modify this
 				self.close(),	# don't modify this
-				self.exampleThread(),	# example thread async start
+				self.exampleThread(),	# example thread
 			)
 
 

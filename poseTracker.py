@@ -93,6 +93,8 @@ class Poser:
 			'triggerClick':0,
 		}
 
+		self.incomingData_readonly = ''
+
 		self.serialPaths = {'blue':'/dev/ttyUSB1', 'green': '/dev/ttyUSB0'}
 
 		self.mode = 0
@@ -100,15 +102,16 @@ class Poser:
 		self.ypr = {'roll':0, 'yaw':0, 'pitch':0} # yaw is real roll, pitch is real yaw, roll is real pitch
 
 		self._send = True
-		self._read = True
+		self._recv = True
 		self._listen = True
 		self._keyListen = True
 		self._serialListen = True
 		self._retrySerial = True
 
-		self._trackDelay = 1/60# should be less than 0.3
+		self._recvDelay = 1/1000
+		self._trackDelay = 1/60
 		self._yprListenDelay = 0.006
-		self._sendDelay = 1/60 # should be less than 0.5
+		self._sendDelay = 1/60
 		self._keyListenDelay = 0.01
 		self._serialListenDelay = 1/300 # don't change this
   
@@ -159,7 +162,7 @@ class Poser:
 
 		print ('closing...')
 		self._send = False
-		self._read = False
+		self._recv = False
 		self._track = False
 		self._listen = False
 		self._keyListen = False
@@ -390,14 +393,28 @@ class Poser:
 				break
 		print (f'{self.keyListener.__name__} stop')
 
+	async def recv(self):
+		while self._keyListen:
+			try:
+				data = await u.newRead(self.reader)
+				self.incomingData_readonly = data
+				print ([data])
+
+				await asyncio.sleep(self._recvDelay)
+
+			except:
+				self._recv = False
+				break
+		print (f'{self.recv.__name__} stop')
+
+
 	async def main(self):
 		await self._socketInit()
 
 		await asyncio.gather(
 				self.send(),
-				# self.recv(),
+				self.recv(),
 				self.getLocation(),
-				# self.yprListener(),
 				# self.keyListener(),
 				self.serialListener(),
 				self.serialListener2(),
