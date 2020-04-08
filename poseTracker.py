@@ -414,15 +414,15 @@ class Poser:
 		await asyncio.gather(
 				self.send(),
 				self.recv(),
-				self.getLocation(),
+				# self.getLocation(),
 				# self.keyListener(),
-				self.serialListener(),
-				self.serialListener2(),
+				# self.serialListener(),
+				# self.serialListener2(),
 				self.close(),
 			)
 
 
 
-t = Poser('192.168.31.60')
+t = Poser()
 
 asyncio.run(t.main())
