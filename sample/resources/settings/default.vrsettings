@@ -10,6 +10,10 @@
       "renderWidth" : 1920,
       "renderHeight" : 1080,
       "secondsFromVsyncToPhotons" : 0.01111111,
-      "displayFrequency" : 90.0
+      "displayFrequency" : 90.0,
+      "DistortionK1" = 0.4,
+      "DistortionK2" = 0.5,
+      "ZoomWidth" = 1,
+      "ZoomHeight" = 1,
    }
 }
