@@ -4,12 +4,9 @@
 
 # installation/requirements
 
-steamvr/openvr driver installation:
-```
-1. install steamvr though steam
-2. go to "{steamvr installation directory}\bin\win64\"
-3. open the console and run: .\vrpathreg.exe adddriver {full path to "sample/" directory}
-```
+[steamvr/openvr driver installation](https://github.com/okawo80085/hobo_vr/wiki/hobo_vr-driver#setupinstallation)
+
+***
 
 requirements c++(only if you are compiling it yourself):
 ```
