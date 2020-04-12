@@ -81,24 +81,20 @@ def hasCharsInString(str1, str2):
 
 	return False
 
-def getOnlyNums(text):
-	if not hasCharsInString(text, 'aqzwsxedcrfvtgbyhnujmikolp[]{}*<>,') and len(text) != 0:
-		out = []
-		try:
-			for i in text.strip('\n').strip('\r').split('\t'):
-				out.append(float(i))
+def decodeSerial(binaryString):
+	try:
+		decoded = binaryString.decode()
+		decoded = decoded.strip('\n').strip('\r')
 
-			if len(out) < 4:
-				raise Exception('to few numbers found')
+		if hasCharsInString(decoded.lower(), 'qwertyuiopsasdfghjklzxcvbnm><*[]{}()') or len(decoded) == 0:
+			return []
 
-		except:
-			# print (text, len(text))
-			out = [0, 0, 0, 0]
+		return [float(i) for i in decoded.split('\t')]
 
-		return out
-	# print (text, len(text))
+	except Exception as e:
+		print (f'decodeSerial: {e} "{binaryString}"')
 
-	return [0, 0, 0, 0]
+		return []
 
 def hasNanInPose(pose):
 	for key in ['x', 'y', 'z']:

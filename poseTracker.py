@@ -11,6 +11,7 @@ import numpy as np
 from imutils.video import VideoStream
 import random
 import serial
+import squaternion as sq
 
 def swapByOffset(a, b, offset):
 	offset = abs(offset)
@@ -104,16 +105,14 @@ class Poser:
 		self._send = True
 		self._recv = True
 		self._listen = True
-		self._keyListen = True
-		self._serialListen = True
 		self._retrySerial = True
+		self._serialResetYaw = False
 
 		self._recvDelay = 1/1000
 		self._trackDelay = 1/60
 		self._yprListenDelay = 0.006
 		self._sendDelay = 1/60
-		self._keyListenDelay = 0.01
-		self._serialListenDelay = 1/300 # don't change this
+		self._serialListenDelay = 1/1000 # don't change this
   
 		try:
 			self.t1 = u.Tracker()#offsets={'translation':[0, 0, 0], 'rotation':[0.6981317007977318, 0, 0]})
@@ -125,8 +124,8 @@ class Poser:
 					'v':(250, 32)
 						},
 				'green':{
-					'h':(66, 15),
-					's':(90, 55),
+					'h':(73, 15),
+					's':(160, 55),
 					'v':(250, 50)
 					}
 				}
@@ -165,8 +164,6 @@ class Poser:
 		self._recv = False
 		self._track = False
 		self._listen = False
-		self._keyListen = False
-		self._serialListen = False
 		self._retrySerial = False
 
 		await asyncio.sleep(1)
@@ -252,16 +249,14 @@ class Poser:
 				break
 		print (f'{self.getLocation.__name__} stop')
 
-	async def serialListener2(self):
+	def serialListener2(self):
 		while self._retrySerial:
 			try:
-				self._serialListen = True
-
-				with serial.Serial(self.serialPaths['blue'], 115200, timeout=0) as ser:
+				yawOffset = 0
+				with serial.Serial(self.serialPaths['blue'], 115200, timeout=1/4) as ser:
 					startTime = time.time()
 
-
-					while self._serialListen:
+					while self._retrySerial:
 						try:
 							if 2 < time.time() - startTime < 4:
 								ser.write(b'nut\n')
@@ -269,60 +264,45 @@ class Poser:
 
 							respB = ser.readline()
 
-							if len(respB) > 5:
-								rrr = u.getOnlyNums(respB.decode())
+							gg = u.decodeSerial(respB)
+							if len(gg) > 0:
+								y, p, r, trgr, grp, util, sys, menu, padClk, padY, padX = gg
 
-								if rrr != [0, 0, 0, 0]:
-									self.tempPose['rW'] = rrr[0]
-									self.tempPose['rX'] = -rrr[1]
-									self.tempPose['rY'] = rrr[2]
-									self.tempPose['rZ'] = -rrr[3]
+								yaw = y
+								w, x, y, z = sq.euler2quat(y + yawOffset, p, r, degrees=True)
 
-								try:
-									if len(rrr) > 4:
-										self.tempPose['triggerValue'] = int(abs(rrr[4] - 1))
-										if len(rrr) > 6:
-											self.tempPose['grip'] = int(abs(rrr[5] - 1))
+								self.tempPose['rW'] = round(w, 4)
+								self.tempPose['rX'] = round(y, 4)
+								self.tempPose['rY'] = round(-x, 4)
+								self.tempPose['rZ'] = round(-z, 4)
 
-											tempMode = int(abs(rrr[6] - 1))
+								self.tempPose['triggerValue'] = abs(trgr - 1)
+								self.tempPose['grip'] = abs(grp - 1)
+								self.tempPose['menu'] = abs(menu - 1)
+								self.tempPose['system'] = abs(sys - 1)
+								self.tempPose['trackpadClick'] = abs(padClk - 1)
 
-										if len(rrr) > 8:
-											self.tempPose['system'] = int(abs(rrr[7] - 1))
-											self.tempPose['menu'] = int(abs(rrr[8] - 1))
-											self.tempPose['trackpadClick'] = int(abs(rrr[9] - 1))
+								self.tempPose['trackpadX'] = round((padX - 524)/530, 3) * (-1)
+								self.tempPose['trackpadY'] = round((padY - 506)/512, 3) * (-1)
 
-										if len(rrr) > 10:
-											self.tempPose['trackpadY'] = round((rrr[10] - 524)/530, 3)*(-1)
-											self.tempPose['trackpadX'] = round((rrr[11] - 506)/512, 3)*(-1)
+								tempMode = abs(util - 1)
 
-										if abs(self.tempPose['trackpadX']) > 0.07 or abs(self.tempPose['trackpadY']) > 0.07:
-											self.tempPose['trackpadTouch'] = 1
+								self._serialResetYaw = False
+								if self.tempPose['trackpadX'] > 0.6 and tempMode:
+									self.mode = 1
 
-										else:
-											self.tempPose['trackpadTouch'] = 0
+								elif self.tempPose['trackpadX'] < -0.6 and tempMode:
+									self.mode = 0
 
-										if self.tempPose['trackpadX'] > 0.6 and tempMode:
-											self.mode = 1
+								elif tempMode:
+									yawOffset = 0 - yaw
+									self._serialResetYaw = True
 
-										elif self.tempPose['trackpadX'] < -0.6 and tempMode:
-											self.mode = 0
+							if abs(self.tempPose['trackpadX']) > 0.07 or abs(self.tempPose['trackpadY']) > 0.07:
+								self.tempPose['trackpadTouch'] = 1
 
-										elif tempMode:
-											self._serialListen = False
-								except IndexError:
-										self.tempPose['triggerValue'] = 0
-
-										self.tempPose['grip'] = 0
-
-										self.tempPose['system'] = 0
-
-										self.tempPose['menu'] = 0
-
-										self.tempPose['trackpadClick'] = 0
-
-										self.tempPose['trackpadY'] = 0
-
-										self.tempPose['trackpadX'] = 0
+							else:
+								self.tempPose['trackpadTouch'] = 0
 
 							if self.tempPose['triggerValue'] > 0.9:
 								self.tempPose['triggerClick'] = 1
@@ -330,71 +310,67 @@ class Poser:
 							else:
 								self.tempPose['triggerClick'] = 0
 
-							await asyncio.sleep(self._serialListenDelay)
+							time.sleep(self._serialListenDelay)
 
 						except Exception as e:
 							print (f'{self.serialListener2.__name__}: {e}')
-							self._serialListen = False
 							break
 
 			except Exception as e:
 				print (f'{self.serialListener2.__name__}: {e}')
 
-			await asyncio.sleep(1)
+			time.sleep(1)
 		print (f'{self.serialListener2.__name__} stop')
 
 
-	async def serialListener(self):
+	def serialListener(self):
 		while self._retrySerial:
 			try:
-				self._serialListen = True
-
-				with serial.Serial(self.serialPaths['green'], 115200, timeout=0) as ser2:
+				yawOffset = 0
+				with serial.Serial(self.serialPaths['green'], 115200, timeout=1/5) as ser2:
 					startTime = time.time()
 
-
-					while self._serialListen:
+					while self._retrySerial:
 						try:
 							if 2 < time.time() - startTime < 4:
 								ser2.write(b'nut\n')
 
 							respG = ser2.readline()
 
-							if len(respG) > 5:
-								rrr2 = u.getOnlyNums(respG.decode())
+							gg = u.decodeSerial(respG)
 
-								self.pose['rW'] = rrr2[0]
-								self.pose['rX'] = -rrr2[2]
-								self.pose['rY'] = rrr2[3]
-								self.pose['rZ'] = -rrr2[1]
+							if len(gg) > 0:
+								ypr = gg
 
-							await asyncio.sleep(self._serialListenDelay)
+								w, x, y, z = sq.euler2quat(ypr[0] + yawOffset, ypr[1], ypr[2], degrees=True)
+
+								# self.pose['rW'] = rrr2[0]
+								# self.pose['rX'] = -rrr2[2]
+								# self.pose['rY'] = rrr2[3]
+								# self.pose['rZ'] = -rrr2[1]
+
+								self.pose['rW'] = round(w, 4)
+								self.pose['rX'] = round(y, 4)
+								self.pose['rY'] = round(-x, 4)
+								self.pose['rZ'] = round(-z, 4)
+
+								if self._serialResetYaw:
+									yawOffset = 0-ypr[0]
+
+							time.sleep(self._serialListenDelay)
 
 						except Exception as e:
 							print (f'{self.serialListener.__name__}: {e}')
-							self._serialListen = False
 							break
 
 			except Exception as e:
 				print (f'{self.serialListener.__name__}: {e}')
 
-			await asyncio.sleep(1)
+			time.sleep(1)
 		print (f'{self.serialListener.__name__} stop')
 
-
-	async def keyListener(self):
-		while self._keyListen:
-			try:
-
-				await asyncio.sleep(self._keyListenDelay)
-
-			except:
-				self._keyListen = False
-				break
-		print (f'{self.keyListener.__name__} stop')
-
 	async def recv(self):
-		while self._keyListen:
+		while self._recv:
 			try:
 				data = await u.newRead(self.reader)
 				self.incomingData_readonly = data
@@ -411,17 +387,20 @@ class Poser:
 	async def main(self):
 		await self._socketInit()
 
+		loop = asyncio.get_running_loop()
+
+		# _ = await loop.run_in_executor(None, self.serialListener)
+
+
 		await asyncio.gather(
 				self.send(),
 				self.recv(),
-				self.getLocation(),
 				# self.keyListener(),
-				self.serialListener(),
-				self.serialListener2(),
+				loop.run_in_executor(None, self.serialListener2),
+				loop.run_in_executor(None, self.serialListener),
+				self.getLocation(),
 				self.close(),
 			)
-
-
 
 t = Poser('192.168.31.60')
 
