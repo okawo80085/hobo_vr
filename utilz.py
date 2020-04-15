@@ -309,7 +309,7 @@ class Tracker:
 
 				mask = cv2.inRange(hsv, tuple(colorLow), tuple(colorHigh))
 
-				cnts, hr = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,
+				_, cnts, hr = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,
 					cv2.CHAIN_APPROX_SIMPLE)
 
 				if len(cnts) > 0:

@@ -120,12 +120,12 @@ class Poser:
 			self.t1.markerMasks = {
 				'blue':{
 					'h':(98, 10),
-					's':(200, 55),
+					's':(230, 55),
 					'v':(250, 32)
 						},
 				'green':{
 					'h':(73, 15),
-					's':(160, 55),
+					's':(156, 53),
 					'v':(250, 50)
 					}
 				}
@@ -218,7 +218,7 @@ class Poser:
 	async def getLocation(self):
 		while self._track:
 			try:
-				# a = time.time()
+				a = time.time()
 				self.t1.getFrame()
 				self.t1.solvePose()
 
@@ -241,7 +241,12 @@ class Poser:
 				# self.pose['y'] = round(self.t1.poses['red']['y'] + 1, 6)
 				# self.pose['z'] = round(self.t1.poses['red']['z'], 6)
 
-				await asyncio.sleep(self._trackDelay)
+				slepDel = self._trackDelay - time.time()
+
+				if slepDel < 0.0001:
+					slepDel = 0.0001
+
+				await asyncio.sleep(slepDel)
 
 			except Exception as e:
 				print ('stopping getLocation:', e)
