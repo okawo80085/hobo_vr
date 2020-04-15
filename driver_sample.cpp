@@ -508,7 +508,7 @@ public:
 
 		// this file tells the UI what to show the user for binding this controller as well as what default bindings should
 		// be for legacy or other apps
-		vr::VRProperties()->SetStringProperty( m_ulPropertyContainer, Prop_InputProfilePath_String, "{sample}/input/mycontroller_profile.json" );
+		vr::VRProperties()->SetStringProperty( m_ulPropertyContainer, Prop_InputProfilePath_String, "{sample}/input/hobo_controller_profile.json" );
 
 		// create all the input components
 		vr::VRDriverInput()->CreateBooleanComponent( m_ulPropertyContainer, "/input/grip/click", &m_compGrip );
