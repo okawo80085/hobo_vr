@@ -25,10 +25,10 @@ pykalman
 
 how it works:
 ```python
-com_server.py # the server, starts a local server on port 6969
-poserTemplate.py # poser(optional, you can write it all from scratch if you want to), sends pose data through the server, can be also used for tracking, refer to poseTracker.py for more examples
+python -m pyVr.server # the server, more info: https://github.com/okawo80085/hobo_vr/wiki/server
+poserTemplate.py # a poser template, more info: https://github.com/okawo80085/hobo_vr/wiki/poser-script
 
-sample/ # steamvr driver, you need to register it's path with vrpathreg.exe
+sample/ # steamvr driver, mroe info: https://github.com/okawo80085/hobo_vr/wiki/driver
 ```
 
 the steamvr driver connects to the server and gets pose data from it, the rest is handled by steamvr
