@@ -1,11 +1,11 @@
 import asyncio
-import utilz as u
+import py_vr.utilz as u
 import random
 
 addrs = ('127.0.0.1', 6969)
 
 async def tcp_echo_client(message):
-	reader, writer = await asyncio.open_connection('127.0.0.1', 6969,
+	reader, writer = await asyncio.open_connection(*addrs,
 												   loop=asyncio.get_event_loop())
 
 	for _ in range(10):

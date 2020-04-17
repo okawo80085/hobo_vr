@@ -1,5 +1,5 @@
 import asyncio
-import utilz as u
+from .. import utilz as u
 
 DOMAIN = (None, 6969)
 conz = {}
@@ -46,6 +46,8 @@ async def handle_echo(reader, writer):
 			sendOK = await send2all(conz, data, addr, conz[addr][2])
 			print (sendOK)
 
+			await asyncio.sleep(0)
+
 		except Exception as e:
 			print ('Losing connection to {}, reason: {}'.format(addr, e))
 			break
@@ -54,18 +56,19 @@ async def handle_echo(reader, writer):
 	writer.close()
 	del conz[addr]
 
-loop = asyncio.get_event_loop()
-coro = asyncio.start_server(handle_echo, None, 6969, loop=loop)
-server = loop.run_until_complete(coro)
+def run_til_dead():
+	loop = asyncio.get_event_loop()
+	coro = asyncio.start_server(handle_echo, *DOMAIN, loop=loop)
+	server = loop.run_until_complete(coro)
 
-# Serve requests until Ctrl+C is pressed
-print('Serving on {}'.format(server.sockets[0].getsockname()))
-try:
-	loop.run_forever()
-except KeyboardInterrupt:
-	pass
+	# Serve requests until Ctrl+C is pressed
+	print('Serving on {}'.format(server.sockets[0].getsockname()))
+	try:
+		loop.run_forever()
+	except KeyboardInterrupt:
+		pass
 
-# Close the server
-server.close()
-loop.run_until_complete(server.wait_closed())
-loop.close()
+	# Close the server
+	server.close()
+	loop.run_until_complete(server.wait_closed())
+	loop.close()

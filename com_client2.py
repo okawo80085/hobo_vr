@@ -1,5 +1,5 @@
 import asyncio
-import utilz as u
+import py_vr.utilz as u
 
 addrs = ('127.0.0.1', 6969)
 
@@ -7,7 +7,7 @@ myTasks = []
 
 
 async def tcp_echo_client(message, loop):
-    reader, writer = await asyncio.open_connection('127.0.0.1', 6969,
+    reader, writer = await asyncio.open_connection(*addrs,
                                                    loop=loop)
 
     # print('Send: %r' % message)

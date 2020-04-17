@@ -12,7 +12,7 @@ modify the Poser class to your needs, except:
 '''
 
 import asyncio
-import utilz as u
+import py_vr.utilz as u
 import time
 import keyboard
 
