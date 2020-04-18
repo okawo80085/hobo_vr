@@ -5,20 +5,25 @@
 # docs
 [documentation](https://github.com/okawo80085/hobo_vr/wiki)
 
+# Install
+
+## Driver Setup
+1. Download the sample directory to some place on your machine
+2. register the driver dlls in that directory:
+```
+> cd C:\Program Files (x86)\Steam\steamapps\common\SteamVR\bin\win64
+> vrpathreg.exe "full path to where you put the sample directory"
+```
+
+## Python Setup
+```
+> pip install git+https://github.com/okawo80085/hobo_vr
+```
+
 # requirements
 requirements c++(only if you are compiling it yourself):
 ```
 openvr
-```
-
-requirements python:
-```python
-keyboard
-opencv-python
-numpy
-pyserial # optional
-imutils # optional
-pykalman
 ```
 
 # rambling/how it works
