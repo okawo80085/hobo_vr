@@ -130,7 +130,7 @@ class Poser:
 
 	async def recv(self):
 		# receive thread
-		while self._keyListen:
+		while self._recv:
 			try:
 				data = await u.newRead(self.reader)
 				self.incomingData_readonly = data
