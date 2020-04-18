@@ -390,6 +390,12 @@ public:
 
 	virtual DriverPose_t GetPose() 
 	{
+		return pose;
+	}
+	
+
+	void RunFrame()
+	{
 		pose.result = TrackingResult_Running_OK;
 		auto resp = remotePoser->returnStatus;
 		if (resp != 0) {
@@ -400,17 +406,16 @@ public:
 			pose.vecPosition[2] = remotePoser->newPose[2];
 
 			pose.qRotation = HmdQuaternion_Init(remotePoser->newPose[3], remotePoser->newPose[4], remotePoser->newPose[5], remotePoser->newPose[6]);
+
+			pose.vecVelocity[0] = remotePoser->newPose[7];
+			pose.vecVelocity[1] = remotePoser->newPose[8];
+			pose.vecVelocity[2] = remotePoser->newPose[9];
+
+			pose.vecAngularVelocity[0] = remotePoser->newPose[10];
+			pose.vecAngularVelocity[1] = remotePoser->newPose[11];
+			pose.vecAngularVelocity[2] = remotePoser->newPose[12];
 		}
 
-		return pose;
-	}
-	
-
-	void RunFrame()
-	{
-		// In a real driver, this should happen from some pose tracking thread.
-		// The RunFrame interval is unspecified and can be very irregular if some other
-		// driver blocks it for some periodic task.
 		if ( m_unObjectId != vr::k_unTrackedDeviceIndexInvalid )
 		{
 			vr::VRServerDriverHost()->TrackedDevicePoseUpdated( m_unObjectId, GetPose(), sizeof( DriverPose_t ) );
@@ -559,20 +564,6 @@ public:
 
 	virtual DriverPose_t GetPose()
 	{
-		poseController.result = TrackingResult_Running_OK;
-		auto resp = remotePoser->returnStatus;
-		if (resp != 0) {
-			poseController.result = TrackingResult_Uninitialized;
-		} else {
-			int i_indexOffset = 7;
-			if (!handSide_) { i_indexOffset += 16; }
-			poseController.vecPosition[0] = remotePoser->newPose[(i_indexOffset + 0)];
-			poseController.vecPosition[1] = remotePoser->newPose[(i_indexOffset + 1)];
-			poseController.vecPosition[2] = remotePoser->newPose[(i_indexOffset + 2)];
-
-			poseController.qRotation = HmdQuaternion_Init(remotePoser->newPose[(i_indexOffset + 3)], remotePoser->newPose[(i_indexOffset + 4)], remotePoser->newPose[(i_indexOffset + 5)], remotePoser->newPose[(i_indexOffset + 6)]);
-		}
-
 		return poseController;
 	}
 
@@ -584,20 +575,41 @@ public:
 		// state. There's no need to update input state unless it changes, but it doesn't do any harm to do so.
 
 
-		int i_indexOffset = 7;
-		if (!handSide_) { i_indexOffset += 16; }
+		int i_indexOffset = 13;
+		if (!handSide_) { i_indexOffset += 22; }
 
-		vr::VRDriverInput()->UpdateBooleanComponent( m_compGrip, remotePoser->newPose[(i_indexOffset + 7)] > 0.1, 0 );
-		vr::VRDriverInput()->UpdateBooleanComponent( m_compSystem, remotePoser->newPose[(i_indexOffset + 8)] > 0.1, 0 );
-		vr::VRDriverInput()->UpdateBooleanComponent( m_compAppMenu, remotePoser->newPose[(i_indexOffset + 9)] > 0.1, 0 );
-		vr::VRDriverInput()->UpdateBooleanComponent( m_compTrackpadClick, remotePoser->newPose[(i_indexOffset + 10)] > 0.1, 0 );
-		vr::VRDriverInput()->UpdateBooleanComponent( m_compTrackpadTouch, remotePoser->newPose[(i_indexOffset + 14)] > 0.1, 0 );
-		vr::VRDriverInput()->UpdateBooleanComponent( m_compTriggerClick, remotePoser->newPose[(i_indexOffset + 15)] > 0.1, 0 );
+		poseController.result = TrackingResult_Running_OK;
+		auto resp = remotePoser->returnStatus;
+		if (resp != 0) {
+			poseController.result = TrackingResult_Uninitialized;
+		} else {
+			poseController.vecPosition[0] = remotePoser->newPose[(i_indexOffset + 0)];
+			poseController.vecPosition[1] = remotePoser->newPose[(i_indexOffset + 1)];
+			poseController.vecPosition[2] = remotePoser->newPose[(i_indexOffset + 2)];
 
-		vr::VRDriverInput()->UpdateScalarComponent( m_compTrigger, remotePoser->newPose[(i_indexOffset + 11)], 0 );
-		vr::VRDriverInput()->UpdateScalarComponent( m_compTrackpadX, remotePoser->newPose[(i_indexOffset + 12)], 0 );
-		vr::VRDriverInput()->UpdateScalarComponent( m_compTrackpadY, remotePoser->newPose[(i_indexOffset + 13)], 0 );
+			poseController.qRotation = HmdQuaternion_Init(remotePoser->newPose[(i_indexOffset + 3)], remotePoser->newPose[(i_indexOffset + 4)], remotePoser->newPose[(i_indexOffset + 5)], remotePoser->newPose[(i_indexOffset + 6)]);
 
+			poseController.vecVelocity[0] = remotePoser->newPose[(i_indexOffset + 7)];
+			poseController.vecVelocity[1] = remotePoser->newPose[(i_indexOffset + 8)];
+			poseController.vecVelocity[2] = remotePoser->newPose[(i_indexOffset + 9)];
+
+
+			poseController.vecAngularVelocity[0] = remotePoser->newPose[(i_indexOffset + 10)];
+			poseController.vecAngularVelocity[1] = remotePoser->newPose[(i_indexOffset + 11)];
+			poseController.vecAngularVelocity[2] = remotePoser->newPose[(i_indexOffset + 12)];
+
+			vr::VRDriverInput()->UpdateBooleanComponent( m_compGrip, remotePoser->newPose[(i_indexOffset + 13)] > 0.1, 0 );
+			vr::VRDriverInput()->UpdateBooleanComponent( m_compSystem, remotePoser->newPose[(i_indexOffset + 14)] > 0.1, 0 );
+			vr::VRDriverInput()->UpdateBooleanComponent( m_compAppMenu, remotePoser->newPose[(i_indexOffset + 15)] > 0.1, 0 );
+			vr::VRDriverInput()->UpdateBooleanComponent( m_compTrackpadClick, remotePoser->newPose[(i_indexOffset + 16)] > 0.1, 0 );
+
+			vr::VRDriverInput()->UpdateScalarComponent( m_compTrigger, remotePoser->newPose[(i_indexOffset + 17)], 0 );
+			vr::VRDriverInput()->UpdateScalarComponent( m_compTrackpadX, remotePoser->newPose[(i_indexOffset + 18)], 0 );
+			vr::VRDriverInput()->UpdateScalarComponent( m_compTrackpadY, remotePoser->newPose[(i_indexOffset + 19)], 0 );
+
+			vr::VRDriverInput()->UpdateBooleanComponent( m_compTrackpadTouch, remotePoser->newPose[(i_indexOffset + 20)] > 0.1, 0 );
+			vr::VRDriverInput()->UpdateBooleanComponent( m_compTriggerClick, remotePoser->newPose[(i_indexOffset + 21)] > 0.1, 0 );
+		}
 
 		if ( m_unObjectId != vr::k_unTrackedDeviceIndexInvalid )
 		{
@@ -695,7 +707,7 @@ private:
 
 EVRInitError CServerDriver_Sample::Init( vr::IVRDriverContext *pDriverContext )
 {
-	remotePoser = new SP::socketPoser(39);
+	remotePoser = new SP::socketPoser(57);
 	VR_INIT_SERVER_DRIVER_CONTEXT( pDriverContext );
 	remotePoser->socSend("hello\n", 6);
 

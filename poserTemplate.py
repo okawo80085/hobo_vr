@@ -19,23 +19,53 @@ import keyboard
 class Poser:
 	def __init__(self, addr='127.0.0.1', port=6969):
 		self.pose = {
-			'x':0,	# left/right in meters
-			'y':1,	# up/down in meters
-			'z':0,	# forwards/backwards in meters
+			# location in meters and orientation in quaternion
+			'x':0,	# +(x) is right in meters
+			'y':1,	# +(y) is up in meters
+			'z':0,	# -(z) is forward in meters
 			'rW':1,	# from 0 to 1
 			'rX':0,	# from -1 to 1
 			'rY':0,	# from -1 to 1
 			'rZ':0,	# from -1 to 1
+
+			# velocity in meters/second
+			'velX':0, # +(x) is right in meters/second
+			'velY':0, # +(y) is right in meters/second
+			'velZ':0, # -(z) is right in meters/second
+
+			# Angular velocity of the pose in axis-angle 
+			# representation. The direction is the angle of
+			# rotation and the magnitude is the angle around
+			# that axis in radians/second.
+			'angVelX':0,
+			'angVelY':0,
+			'angVelZ':0,
 		}
 
 		self.poseControllerR = {
-			'x':0.5,	# left/right in meters
-			'y':1,	# up/down in meters
-			'z':-1,	# forwards/backwards in meters
+			# location in meters and orientation in quaternion
+			'x':0.5,	# +(x) is right in meters
+			'y':1,	# +(y) is up in meters
+			'z':-1,	# -(z) is forward in meters
 			'rW':1,	# from 0 to 1
 			'rX':0,	# from -1 to 1
 			'rY':0,	# from -1 to 1
 			'rZ':0,	# from -1 to 1
+
+			# velocity in meters/second
+			'velX':0, # +(x) is right in meters/second
+			'velY':0, # +(y) is right in meters/second
+			'velZ':0, # -(z) is right in meters/second
+
+			# Angular velocity of the pose in axis-angle 
+			# representation. The direction is the angle of
+			# rotation and the magnitude is the angle around
+			# that axis in radians/second.
+			'angVelX':0,
+			'angVelY':0,
+			'angVelZ':0,
+
+			# inputs
 			'grip':0,	# 0 or 1
 			'system':0,	# 0 or 1
 			'menu':0,	# 0 or 1
@@ -48,13 +78,29 @@ class Poser:
 		}
 
 		self.poseControllerL = {
-			'x':0.5,	# left/right in meters
-			'y':1.1,	# up/down in meters
-			'z':-1,	# forwards/backwards in meters
+			# location in meters and orientation in quaternion
+			'x':0.5,	# +(x) is right in meters
+			'y':1.1,	# +(y) is up in meters
+			'z':-1,	# -(z) is forward in meters
 			'rW':1,	# from 0 to 1
 			'rX':0,	# from -1 to 1
 			'rY':0,	# from -1 to 1
 			'rZ':0,	# from -1 to 1
+
+			# velocity in meters/second
+			'velX':0, # +(x) is right in meters/second
+			'velY':0, # +(y) is right in meters/second
+			'velZ':0, # -(z) is right in meters/second
+
+			# Angular velocity of the pose in axis-angle 
+			# representation. The direction is the angle of
+			# rotation and the magnitude is the angle around
+			# that axis in radians/second.
+			'angVelX':0,
+			'angVelY':0,
+			'angVelZ':0,
+
+			# inputs
 			'grip':0,	# 0 or 1
 			'system':0,	# 0 or 1
 			'menu':0,	# 0 or 1
@@ -110,7 +156,6 @@ class Poser:
 		# disconnect from the server
 		self.writer.write(u.convv('CLOSE'))
 		self.writer.close()
-		self.t1.close()
 
 	async def send(self):
 		# send thread
@@ -169,6 +214,6 @@ class Poser:
 			)
 
 
-t = Poser('local within the network address of the machine with the server script running on it')
+t = Poser()
 
 asyncio.run(t.main()) # runs the threads in async mode
