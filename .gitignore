@@ -1,4 +1,3 @@
-*.txt
 *.json
 !CMakeLists.txt
 x64
