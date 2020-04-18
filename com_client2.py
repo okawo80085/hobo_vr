@@ -1,5 +1,5 @@
 import asyncio
-import py_vr.utilz as u
+import pyVr.utilz as u
 
 addrs = ('127.0.0.1', 6969)
 
