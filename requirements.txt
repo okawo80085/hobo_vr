@@ -1,0 +1,6 @@
+keyboard
+opencv-python
+numpy
+pykalman
+pyserial
+imutils
