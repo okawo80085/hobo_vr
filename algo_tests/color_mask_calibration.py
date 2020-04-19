@@ -6,8 +6,8 @@ from imutils.video import VideoStream
 import math as m
 
 hc, hr = 68, 15
-sc, sr = 73, 53
-vc, vr = 250, 50
+sc, sr = 135, 53
+vc, vr = 255, 50
 
 orangeHigh = [hc+hr, sc+sr, vc+vr]
 orangeLow = [hc-hr, sc-sr, vc-vr]

@@ -26,6 +26,9 @@ async def newRead(reader):
 
 	return ''.join(data)
 
+def angle2rad(angle):
+	return angle * m.pi/180
+
 def rotateZ(points, angle):
 	sin = np.sin(angle)
 	cos = np.cos(angle)

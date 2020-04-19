@@ -110,13 +110,29 @@ class Poser:
 		}
 
 		self.tempPose = {
-			'x':0,	# left/right
-			'y':1,	# up/down
-			'z':0,	# forwards/backwards
-			'rW':1,
-			'rX':0,
-			'rY':0,
-			'rZ':0,
+			# location in meters and orientation in quaternion
+			'x':0.5,	# +(x) is right in meters
+			'y':1.1,	# +(y) is up in meters
+			'z':-1,	# -(z) is forward in meters
+			'rW':1,	# from 0 to 1
+			'rX':0,	# from -1 to 1
+			'rY':0,	# from -1 to 1
+			'rZ':0,	# from -1 to 1
+
+			# velocity in meters/second
+			'velX':0, # +(x) is right in meters/second
+			'velY':0, # +(y) is right in meters/second
+			'velZ':0, # -(z) is right in meters/second
+
+			# Angular velocity of the pose in axis-angle 
+			# representation. The direction is the angle of
+			# rotation and the magnitude is the angle around
+			# that axis in radians/second.
+			'angVelX':0,
+			'angVelY':0,
+			'angVelZ':0,
+
+			# inputs
 			'grip':0,	# 0 or 1
 			'system':0,	# 0 or 1
 			'menu':0,	# 0 or 1
@@ -124,8 +140,8 @@ class Poser:
 			'triggerValue':0,	# from 0 to 1
 			'trackpadX':0,	# from -1 to 1
 			'trackpadY':0,	# from -1 to 1
-			'trackpadTouch':0,
-			'triggerClick':0,
+			'trackpadTouch':0,	# 0 or 1
+			'triggerClick':0,	# 0 or 1
 		}
 
 		self.incomingData_readonly = ''
@@ -154,13 +170,13 @@ class Poser:
 			self.t1.markerMasks = {
 				'blue':{
 					'h':(98, 10),
-					's':(230, 55),
+					's':(240, 55),
 					'v':(250, 32)
 						},
 				'green':{
-					'h':(73, 15),
-					's':(156, 53),
-					'v':(250, 50)
+					'h':(68, 15),
+					's':(135, 53),
+					'v':(255, 50)
 					}
 				}
 
@@ -229,6 +245,11 @@ class Poser:
 				temp['y'] = self.tempPose['y']
 				temp['z'] = self.tempPose['z']
 
+				temp['velX'] = self.tempPose['velX']
+				temp['velY'] = self.tempPose['velY']
+				temp['velZ'] = self.tempPose['velZ']
+
+
 				temp['rW'] = self.tempPose['rW']
 				temp['rX'] = self.tempPose['rX']
 				temp['rY'] = self.tempPose['rY']
@@ -259,7 +280,6 @@ class Poser:
 				u.rotateX(self.t1.poses, 0.6981317007977318)
 				# u.rotateY(self.t1.poses, -1.0471975511965976)
 
-
 				self.tempPose['x'] = round(-self.t1.poses['green']['x'], 6)
 				self.tempPose['y'] = round(self.t1.poses['green']['y'] + 1, 6)
 				self.tempPose['z'] = round(self.t1.poses['green']['z'], 6)
@@ -289,6 +309,9 @@ class Poser:
 		print (f'{self.getLocation.__name__} stop')
 
 	def serialListener2(self):
+		pastVelocity = [0, 0, 0]
+		velocityUntilReset = 0
+		tempForOffz = {'x':0, 'y':0, 'z':0}
 		while self._retrySerial:
 			try:
 				yawOffset = 0
@@ -305,7 +328,29 @@ class Poser:
 
 							gg = u.decodeSerial(respB)
 							if len(gg) > 0:
-								y, p, r, trgr, grp, util, sys, menu, padClk, padY, padX = gg
+								y, p, r, az, ax, ay, trgr, grp, util, sys, menu, padClk, padY, padX = gg
+
+								if velocityUntilReset < 60:
+
+									u.rotateY({'':tempForOffz}, u.angle2rad(-yawOffset))
+									pastVelocity = [tempForOffz['x'], tempForOffz['y'], tempForOffz['z']]
+									tempForOffz['x'] = round(pastVelocity[0] - ax*self._serialListenDelay * 0.01, 4)
+									tempForOffz['y'] = round(pastVelocity[1] - ay*self._serialListenDelay * 0.01, 4)
+									tempForOffz['z'] = round(pastVelocity[2] - az*self._serialListenDelay * 0.01, 4)
+									u.rotateY({'':tempForOffz}, u.angle2rad(yawOffset))
+
+									self.tempPose['velX'] = tempForOffz['x']
+									self.tempPose['velY'] = tempForOffz['y']
+									self.tempPose['velZ'] = tempForOffz['z']
+
+									velocityUntilReset += 1
+
+								else:
+									velocityUntilReset = 0
+									tempForOffz = {'x':0, 'y':0, 'z':0}
+									self.tempPose['velX'] = 0
+									self.tempPose['velY'] = 0
+									self.tempPose['velZ'] = 0
 
 								yaw = y
 								w, x, y, z = sq.euler2quat(y + yawOffset, p, r, degrees=True)
