@@ -13,7 +13,7 @@ class NullPoser(templates.PoserTemplate):
 	async def example_thread1(self):
 		while self.coro_keepAlive['example_thread1'][0]:
 			try:
-				self.pose['x'] += 0.0001
+				self.pose['x'] += 0.001
 
 				await asyncio.sleep(self.coro_keepAlive['example_thread1'][1])
 
@@ -22,11 +22,11 @@ class NullPoser(templates.PoserTemplate):
 				self.coro_keepAlive['example_thread1'][0] = False
 				break
 
-	@templates.thread_register(0.1, runInDefaultExecutor=True)
+	@templates.thread_register(1/30, runInDefaultExecutor=True)
 	def example_thread2(self):
 		while self.coro_keepAlive['example_thread2'][0]:
 			try:
-				self.pose['z'] -= 0.01
+				self.pose['y'] += 0.001
 
 				time.sleep(self.coro_keepAlive['example_thread2'][1])
 
