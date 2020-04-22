@@ -1,5 +1,5 @@
 import asyncio
-import pyVr.utilz as u
+import virtualreality.utilz as u
 import time
 # from win32 import winxpgui
 import math as m
@@ -170,7 +170,7 @@ class Poser:
 			self.t1.markerMasks = {
 				'blue':{
 					'h':(98, 10),
-					's':(240, 55),
+					's':(200, 55),
 					'v':(250, 32)
 						},
 				'green':{

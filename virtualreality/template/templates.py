@@ -1,23 +1,26 @@
-'''
-this is a template of a poser script
-
-modify the Poser class to your needs, except:
-1. don't modify the keys in self.pose, self.poseControllerR, self.poseControllerL
-2. stay within the value ranges for the keys in self.pose, self.poseControllerR, self.poseControllerL
-3. don't modify send() and _socketInit() methods
-4. it is not recommended to modify recv() method if you don't know what you're doing
-6. to make sure that self.incomingData_readonly could be accessed by any thread at any time it is meant to be read only, if you need to modify self.incomingData_readonly make a copy
-5. all values in self.pose, self.poseControllerR and self.poseControllerL need to be numeric
-
-'''
-
-import asyncio
-import virtualreality.utilz as u
 import time
-import keyboard
+import asyncio
+import random
+from .. import utilz as u
 
-class Poser:
-	def __init__(self, addr='127.0.0.1', port=6969):
+
+class PoserTemplate:
+	def __init__(self, addr='127.0.0.1', port=6969, sendDelay=1/60, recvDelay=1/1000):
+		self.addr = addr
+		self.port = port
+
+
+		_reserved = ['main']
+
+		self.coro_list = [method_name for method_name in dir(self)
+				if callable(getattr(self, method_name)) and method_name[0] != '_' and method_name not in _reserved]
+
+		self.coro_keepAlive = {
+			'close':[True, 0.1],
+			'send':[True, sendDelay],
+			'recv':[True, recvDelay],
+		}
+
 		self.pose = {
 			# location in meters and orientation in quaternion
 			'x':0,	# +(x) is right in meters
@@ -112,108 +115,94 @@ class Poser:
 			'triggerClick':0,	# 0 or 1
 		}
 
-		self.incomingData_readonly = '' # used to access recently read data from the server
+		self.lastRead = ''
 
-		self._send = True
-		self._recv = True
-		self._exampleThread = True # keep alive for the example thread
-
-		self._recvDelay = 1/1000 # frequency at which other messages from the server are received
-		self._sendDelay = 1/60 # frequency at which the commands are sent out to the driver, default is 60 fps
-		self._exampleThreadDelay = 1/50 # delay for the example thread, the delay is in seconds
-
-		self.addr = addr
-		self.port = port
-
-	async def _socketInit(self):
-		# not a thread
-
+	async def _socket_init(self):
+		print (f'connecting to the server at "{self.addr}:{self.port}"')
 		# connect to the server
-		self.reader, self.writer = await asyncio.open_connection(self.addr, self.port,
-												   loop=asyncio.get_event_loop())
+		self.reader, self.writer = await asyncio.open_connection(self.addr, self.port,												   loop=asyncio.get_event_loop())
 		# send poser id message
 		self.writer.write(u.convv('poser here'))
 
-	async def close(self):
-		# wait to stop thread
-		while 1:	# a waiting loop
-			await asyncio.sleep(2)
-			try:
-				if keyboard.is_pressed('q'):	# hold 'q' for 2 seconds to stop the poser
-					break
-
-			except:
-				break
-
-		print ('closing...')
-		# kill all threads
-		self._send = False
-		self._recv = False
-		self._exampleThread = False
-
-		await asyncio.sleep(1)
-
-		# disconnect from the server
-		self.writer.write(u.convv('CLOSE'))
-		self.writer.close()
 
 	async def send(self):
-		# send thread
-		while self._send:
+		while self.coro_keepAlive['send'][0]:
 			try:
 				msg = u.convv(' '.join([str(i) for _, i in self.pose.items()] + [str(i) for _, i in self.poseControllerR.items()] + [str(i) for _, i in self.poseControllerL.items()]))
 
 				self.writer.write(msg)
 
-				await asyncio.sleep(self._sendDelay)
-
-			except:
-				# kill the thread if it breaks
-				self._send = False
+				await asyncio.sleep(self.coro_keepAlive['send'][1])
+			except Exception as e:
+				print (f'send failed: {e}')
+				self.coro_keepAlive['send'][0] = False
 				break
-		print (f'{self.send.__name__} stop')
+
 
 	async def recv(self):
-		# receive thread
-		while self._recv:
+		while self.coro_keepAlive['recv'][0]:
 			try:
 				data = await u.newRead(self.reader)
-				self.incomingData_readonly = data
-				print ([self.incomingData_readonly])
+				self.lastRead = data
+				print ([self.lastRead])
 
-				await asyncio.sleep(self._recvDelay)
-
-			except:
-				# kill the thread if it breaks
-				self._recv = False
+				await asyncio.sleep(self.coro_keepAlive['recv'][1])
+			except Exception as e:
+				print (f'recv failed: {e}')
+				self.coro_keepAlive['recv'][0] = False
 				break
-		print (f'{self.recv.__name__} stop')
 
-	async def exampleThread(self):
-		# example thread
-		while self._exampleThread:
-			try:
+	async def close(self):
+		try:
+			import keyboard
 
-				# do some work here
+			while self.coro_keepAlive['close'][0]:
+				if keyboard.is_pressed('q'):
+					self.coro_keepAlive['close'][0] = False
+					break
 
-				await asyncio.sleep(self._exampleThreadDelay) # thread sleep, every thread needs to have sleep in its loop to allow other threads to execute
+				await asyncio.sleep(self.coro_keepAlive['close'][1])
 
-			except:
-				self._exampleThread = False
-				break
-		print (f'{self.exampleThread.__name__} stop')
+		except ImportError as e:
+			print (f'failed to import keyboard, poser will close in 10 seconds: {e}')
+			await asyncio.sleep(10)
+
+		print ('closing...')
+		for key in self.coro_keepAlive:
+			self.coro_keepAlive[key][0] = False
+			print (f'{key} stop sent...')
+
+		await asyncio.sleep(1)
+
+		self.writer.write(u.convv('CLOSE'))
+		self.writer.close()
+
+		print ('done')
+
 
 	async def main(self):
-		await self._socketInit()
+		await self._socket_init()
 
 		await asyncio.gather(
-				self.send(),	# don't modify this
-				self.recv(),	# don't modify this
-				self.close(),	# don't modify this
-				self.exampleThread(),	# example thread
+				*[getattr(self, coro_name)() for coro_name in self.coro_list]
 			)
 
 
-t = Poser()
+def thread_register(sleepDelay, runInDefaultExecutor=False):
+	def _thread_reg(func):
+		def _thread_reg_wrapper(self, *args, **kwargs):
+			if func.__name__ not in self.coro_keepAlive and func.__name__ in self.coro_list:
+				self.coro_keepAlive[func.__name__] = [True, sleepDelay]
+			# print (self.coro_list)
+			# print (self.coro_keepAlive)
 
-asyncio.run(t.main()) # runs the threads in async mode
+			if runInDefaultExecutor:
+				loop = asyncio.get_running_loop()
+
+				return loop.run_in_executor(None, func, self, *args, **kwargs)
+
+			return func(self, *args, **kwargs)
+
+		return _thread_reg_wrapper
+
+	return _thread_reg
