@@ -144,7 +144,7 @@ class PoserTemplate:
 			try:
 				data = await u.newRead(self.reader)
 				self.lastRead = data
-				print (repr(self.lastRead))
+				# print (repr(self.lastRead))
 
 				await asyncio.sleep(self.coro_keepAlive['recv'][1])
 			except Exception as e:

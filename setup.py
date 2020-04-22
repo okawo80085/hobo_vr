@@ -43,6 +43,6 @@ setup(
         'image': ['imutils']
     },
     entry_points={
-        'console_scripts': ['vrserver=pyVr.server.server:run_til_dead']
+        'console_scripts': ['vrserver=virtualreality.server.server:run_til_dead']
     }
 )

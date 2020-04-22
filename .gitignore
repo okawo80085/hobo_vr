@@ -24,3 +24,5 @@ tLOL
 !images/*.svg
 *.drawio
 *.egg-info
+build
+dist
