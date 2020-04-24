@@ -5,7 +5,69 @@ from .. import utilz as u
 
 
 class PoserTemplate:
-	def __init__(self, addr='127.0.0.1', port=6969, sendDelay=1/60, recvDelay=1/1000):
+	"""Poser base class.
+
+	__ini__(*, addr='127.0.0.1', port=6969, sendDelay=1/60, recvDelay=1/1000, **kwargs)
+
+	addr - is the address of the server to connect to, stored in self.addr
+	port - is the port of the server to connect to, stored in self.port
+	sendDelay - sleep delay for the self.send thread(in seconds)
+	recvDelay - sleep delay for the self.recv thread(in seconds)
+
+	self._socket_init() - connects to the server using self.addr and self.port and sends the id message, stores socket reader and writer in self.reader and self.writer, it is not recommended you override this method
+
+	self.main() - main async method which gathers all threads, it is not recommended you override this method
+
+	supplies 3 tracked device pose dicts:
+		self.pose - hmd pose, position, orientation, velocity and angular velocity only
+		self.poseControllerR - same as hmd pose +controller inputs for controller 1
+		self.poseControllerL - same as hmd pose +controller inputs for controller 2
+	
+	more info on poses/message format:
+		https://github.com/okawo80085/hobo_vr/wiki/poser-message-format
+
+	supplies a last message from server buffer:
+		self.lastRead - string containing the last message from the server
+
+	supplies threading vars:
+		self.coro_list - list of all methods recognized as threads
+		self.coro_keepAlive - dict of all registered threads, containing self.coro_keepAlive['threadMetohdName'] = [KeepAliveBool, SleepDelay], the dict is populated at self.main() call
+
+	this base class also has 3 built in threads, it is not recommended you override any of them:
+		self.send - sends all pose data to the server
+		self.recv - receives messages from the server, the last message is stored in self.lastRead
+		self.close - closes the connection to the server and ends all threads that where registered by thread_register
+
+	this base class will assume that every
+	child method without '_' as a first character
+	in the name is a thread
+
+	every child class also needs to register it's thread
+	methods with the thread_register decorator
+
+	example:
+
+		class MyPoser(PoserTemplate):
+			def __init__(self, *args, **kwargs):
+				super().__init(**kwargs)
+
+			@thread_register(0.5)
+			async def example_thread(self):
+				while self.coro_keepAlive['example_thread'][0]:
+					self.pose['x'] += 0.04
+
+					await asyncio.sleep(self.coro_keepAlive['example_thread'][1])
+
+		poser = MyPoser()
+
+		asyncio.run(poser.main())
+
+	more examples:
+		https://github.com/okawo80085/hobo_vr/blob/master/poseTracker.py
+		https://github.com/okawo80085/hobo_vr/blob/master/examples/poserTemplate.py
+
+	"""
+	def __init__(self, *, addr='127.0.0.1', port=6969, sendDelay=1/60, recvDelay=1/1000, **kwargs):
 		self.addr = addr
 		self.port = port
 
@@ -118,7 +180,15 @@ class PoserTemplate:
 		self.lastRead = ''
 
 	async def _socket_init(self):
-		print (f'connecting to the server at "{self.addr}:{self.port}"')
+		'''
+		connect to the server using self.addr and self.port
+
+		store reader and writer in self.reader and self.writer
+
+		send id message
+		more on id messages: https://github.com/okawo80085/hobo_vr/wiki/server-id-messages
+		'''
+		print (f'connecting to the server at "{self.addr}:{self.port}"...')
 		# connect to the server
 		self.reader, self.writer = await asyncio.open_connection(self.addr, self.port,												   loop=asyncio.get_event_loop())
 		# send poser id message
@@ -126,6 +196,9 @@ class PoserTemplate:
 
 
 	async def send(self):
+		'''
+		send all poses thread
+		'''
 		while self.coro_keepAlive['send'][0]:
 			try:
 				msg = u.convv(' '.join([str(i) for _, i in self.pose.items()] + [str(i) for _, i in self.poseControllerR.items()] + [str(i) for _, i in self.poseControllerL.items()]))
@@ -140,11 +213,13 @@ class PoserTemplate:
 
 
 	async def recv(self):
+		'''
+		receive messages thread
+		'''
 		while self.coro_keepAlive['recv'][0]:
 			try:
 				data = await u.newRead(self.reader)
 				self.lastRead = data
-				# print (repr(self.lastRead))
 
 				await asyncio.sleep(self.coro_keepAlive['recv'][1])
 			except Exception as e:
@@ -153,6 +228,9 @@ class PoserTemplate:
 				break
 
 	async def close(self):
+		'''
+		await close thread, press "q" to kill all registered threads
+		'''
 		try:
 			import keyboard
 
@@ -181,6 +259,9 @@ class PoserTemplate:
 
 
 	async def main(self):
+		'''
+		main asyncio method, gathers all recognized threads and runs them
+		'''
 		await self._socket_init()
 
 		await asyncio.gather(
@@ -189,12 +270,16 @@ class PoserTemplate:
 
 
 def thread_register(sleepDelay, runInDefaultExecutor=False):
+	'''
+	registers thread for PoserTemplate base class
+
+	sleepDelay - sleep delay in seconds
+	runInDefaultExecutor - bool, set True if you want the function to be executed in asyncio's default pool executor
+	'''
 	def _thread_reg(func):
 		def _thread_reg_wrapper(self, *args, **kwargs):
 			if func.__name__ not in self.coro_keepAlive and func.__name__ in self.coro_list:
 				self.coro_keepAlive[func.__name__] = [True, sleepDelay]
-			# print (self.coro_list)
-			# print (self.coro_keepAlive)
 
 			if runInDefaultExecutor:
 				loop = asyncio.get_running_loop()

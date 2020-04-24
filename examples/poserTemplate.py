@@ -1,3 +1,14 @@
+"""
+this is an example of using virtualreality.templates
+
+for detailed overview of virtualreality.templates.PoserTemplate run in your python interpreter:
+	help(virtualreality.templates.PoserTemplate)
+
+more examples/references:
+	https://github.com/okawo80085/hobo_vr/blob/master/poseTracker.py
+
+"""
+
 import asyncio
 import time
 
