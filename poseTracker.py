@@ -283,6 +283,6 @@ class Poser(template.PoserTemplate):
 
 			await asyncio.sleep(1)
 
-t = Poser('192.168.31.60')
+t = Poser(addr='192.168.31.60')
 
 asyncio.run(t.main())
