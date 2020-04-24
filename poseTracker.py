@@ -55,7 +55,7 @@ class Poser(template.PoserTemplate):
 			'triggerClick':0,	# 0 or 1
 		}
 
-		self.serialPaths = {'blue':'/dev/ttyUSB1', 'green': '/dev/ttyUSB0'}
+		self.serialPaths = {'green':'/dev/ttyUSB1', 'blue': '/dev/ttyUSB0'}
 
 		self.mode = 0
 		self._serialResetYaw = False
@@ -106,7 +106,7 @@ class Poser(template.PoserTemplate):
 
 		while self.coro_keepAlive['getLocation'][0]:
 			try:
-				# a = time.time()
+				a = time.time()
 				self.t1.getFrame()
 				self.t1.solvePose()
 
@@ -128,12 +128,12 @@ class Poser(template.PoserTemplate):
 				# self.pose['y'] = round(self.t1.poses['red']['y'] + 1, 6)
 				# self.pose['z'] = round(self.t1.poses['red']['z'], 6)
 
-				# slepDel = self._trackDelay - time.time()
+				elapsed = time.time() - a
 
-				# if slepDel < 0.0001:
-					# slepDel = 0.0001
+				slepDel = self.coro_keepAlive['getLocation'][1]
+				slepDel = slepDel - elapsed if (slepDel - elapsed) > 0 else 0
 
-				await asyncio.sleep(self.coro_keepAlive['getLocation'][1])
+				await asyncio.sleep(slepDel)
 
 			except Exception as e:
 				print ('stopping getLocation:', e)
@@ -151,7 +151,7 @@ class Poser(template.PoserTemplate):
 		while self.coro_keepAlive['serialListener2'][0]:
 			try:
 				yawOffset = 0
-				with serial.Serial(self.serialPaths['blue'], 115200, timeout=1/4) as ser:
+				with serial.Serial(self.serialPaths['green'], 115200, timeout=1/4) as ser:
 					with serial.threaded.ReaderThread(ser, u.SerialReaderFactory) as protocol:
 						for _ in range(10):
 							protocol.write_line('nut')
@@ -243,8 +243,8 @@ class Poser(template.PoserTemplate):
 	async def serialListener(self):
 		while self.coro_keepAlive['serialListener'][0]:
 			try:
-				with serial.Serial(self.serialPaths['green'], 115200, timeout=1/5) as ser2:
-					with serial.threaded.ReaderThread(ser2, u.SerialReaderFactory) as protocol:
+				with serial.Serial(self.serialPaths['blue'], 115200, timeout=1/5) as ser:
+					with serial.threaded.ReaderThread(ser, u.SerialReaderFactory) as protocol:
 						yawOffset = 0
 						for _ in range(10):
 							protocol.write_line('nut')
