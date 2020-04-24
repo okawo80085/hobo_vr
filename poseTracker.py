@@ -164,13 +164,13 @@ class Poser(template.PoserTemplate):
 								if len(gg) > 0:
 									y, p, r, az, ax, ay, trgr, grp, util, sys, menu, padClk, padY, padX = gg
 
-									if velocityUntilReset < 60:
+									if velocityUntilReset < 20:
 
 										u.rotateY({'':tempForOffz}, u.angle2rad(-yawOffset))
 										pastVelocity = [tempForOffz['x'], tempForOffz['y'], tempForOffz['z']]
-										tempForOffz['x'] = round(pastVelocity[0] - ax*self.coro_keepAlive['serialListener2'][1] * 0.01, 4)
-										tempForOffz['y'] = round(pastVelocity[1] - ay*self.coro_keepAlive['serialListener2'][1] * 0.01, 4)
-										tempForOffz['z'] = round(pastVelocity[2] - az*self.coro_keepAlive['serialListener2'][1] * 0.01, 4)
+										tempForOffz['x'] = round(pastVelocity[0] - ax*self.coro_keepAlive['serialListener2'][1] * 0.005, 4)
+										tempForOffz['y'] = round(pastVelocity[1] - ay*self.coro_keepAlive['serialListener2'][1] * 0.005, 4)
+										tempForOffz['z'] = round(pastVelocity[2] - az*self.coro_keepAlive['serialListener2'][1] * 0.005, 4)
 										u.rotateY({'':tempForOffz}, u.angle2rad(yawOffset))
 
 										self.tempPose['velX'] = tempForOffz['x']
