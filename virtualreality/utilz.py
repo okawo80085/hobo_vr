@@ -5,6 +5,8 @@ import numpy as np
 import math as m
 
 from pykalman import KalmanFilter
+import serial
+import serial.threaded
 
 
 def convv(sss):
@@ -84,18 +86,15 @@ def hasCharsInString(str1, str2):
 
 	return False
 
-def decodeSerial(binaryString):
+def decodeSerial(text):
 	try:
-		decoded = binaryString.decode()
-		decoded = decoded.strip('\n').strip('\r')
-
-		if hasCharsInString(decoded.lower(), 'qwertyuiopsasdfghjklzxcvbnm><*[]{}()') or len(decoded) == 0:
+		if hasCharsInString(text.lower(), 'qwertyuiopsasdfghjklzxcvbnm><*[]{}()') or len(text) == 0:
 			return []
 
-		return [float(i) for i in decoded.split('\t')]
+		return [float(i) for i in text.split('\t')]
 
 	except Exception as e:
-		print (f'decodeSerial: {e} "{binaryString}"')
+		print (f'decodeSerial: {e} {repr(text)}')
 
 		return []
 
@@ -105,6 +104,22 @@ def hasNanInPose(pose):
 			return True
 
 	return False
+
+class SerialReaderFactory(serial.threaded.LineReader):
+	def __init__(self):
+		self.buffer = bytearray()
+		self.transport = None
+		self.lastRead = ''
+
+	def connection_made(self, transport):
+		super(SerialReaderFactory, self).connection_made(transport)
+
+	def handle_line(self, data):
+		self.lastRead = data
+		# print (f'cSerialReader: data received: {repr(data)}')
+
+	def connection_lost(self, exc):
+		print (f'SerialReaderFactory: port closed {repr(exc)}')
 
 # a positional tracker, can work on any camera(but it's settings need to be fixed)
 # you will also need to adjust the color masks

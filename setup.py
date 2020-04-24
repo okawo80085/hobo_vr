@@ -37,9 +37,9 @@ setup(
         'opencv-python',
         'numpy',
         'pykalman',
+        'pyserial',
     ],
     extras_require={
-        'serial': ['pyserial'],
         'image': ['imutils']
     },
     entry_points={
