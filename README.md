@@ -30,8 +30,8 @@ openvr
 
 how it works:
 ```python
-python -m pyVr.server # the server, more info: https://github.com/okawo80085/hobo_vr/wiki/server
-poserTemplate.py # a poser template, more info: https://github.com/okawo80085/hobo_vr/wiki/poser-script
+python -m virtualreality.server # the server, more info: https://github.com/okawo80085/hobo_vr/wiki/server
+examples/poserTemplate.py # a poser template, more info: https://github.com/okawo80085/hobo_vr/wiki/poser-script
 
 sample/ # steamvr driver, mroe info: https://github.com/okawo80085/hobo_vr/wiki/driver
 ```
