@@ -65,10 +65,10 @@ class Poser(template.PoserTemplate):
 		while self.coro_keepAlive['modeSwitcher'][0]:
 			try:
 				if self.mode == 1:
-					self.poseControllerR = self.tempPose
+					self.poseControllerR = self.tempPose.copy()
 
 				else:
-					self.poseControllerL = self.tempPose
+					self.poseControllerL = self.tempPose.copy()
 
 				await asyncio.sleep(self.coro_keepAlive['modeSwitcher'][1])
 
@@ -131,7 +131,7 @@ class Poser(template.PoserTemplate):
 				elapsed = time.time() - a
 
 				slepDel = self.coro_keepAlive['getLocation'][1]
-				slepDel = slepDel - elapsed if (slepDel - elapsed) > 0 else 0
+				slepDel = slepDel - elapsed if (slepDel - elapsed) > 0.001 else 0.001
 
 				await asyncio.sleep(slepDel)
 
@@ -243,8 +243,8 @@ class Poser(template.PoserTemplate):
 	async def serialListener(self):
 		while self.coro_keepAlive['serialListener'][0]:
 			try:
-				with serial.Serial(self.serialPaths['blue'], 115200, timeout=1/5) as ser:
-					with serial.threaded.ReaderThread(ser, u.SerialReaderFactory) as protocol:
+				with serial.Serial(self.serialPaths['blue'], 115200, timeout=1/5) as ser2:
+					with serial.threaded.ReaderThread(ser2, u.SerialReaderFactory) as protocol:
 						yawOffset = 0
 						for _ in range(10):
 							protocol.write_line('nut')

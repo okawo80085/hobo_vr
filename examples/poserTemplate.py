@@ -46,6 +46,6 @@ class NullPoser(templates.PoserTemplate):
 				self.coro_keepAlive['example_thread2'][0] = False
 				break
 
-poser = NullPoser()
+poser = NullPoser(addr='192.168.31.60')
 
 asyncio.run(poser.main())
