@@ -1,6 +1,8 @@
 import time
 import asyncio
 import random
+import warnings
+
 from .. import utilz as u
 
 
@@ -31,7 +33,7 @@ class PoserTemplate:
 
 	supplies threading vars:
 		self.coro_list - list of all methods recognized as threads
-		self.coro_keepAlive - dict of all registered threads, containing self.coro_keepAlive['threadMetohdName'] = [KeepAliveBool, SleepDelay], the dict is populated at self.main() call
+		self.coro_keepAlive - dict of all registered threads, containing self.coro_keepAlive['threadMethodName'] = [KeepAliveBool, SleepDelay], the dict is populated at self.main() call
 
 	this base class also has 3 built in threads, it is not recommended you override any of them:
 		self.send - sends all pose data to the server
@@ -40,7 +42,7 @@ class PoserTemplate:
 
 	this base class will assume that every
 	child method without '_' as a first character
-	in the name is a thread
+	in the name is a thread, unless the name of that method has been added to self._coro_name_exceptions
 
 	every child class also needs to register it's thread
 	methods with the thread_register decorator
@@ -71,11 +73,10 @@ class PoserTemplate:
 		self.addr = addr
 		self.port = port
 
-
-		_reserved = ['main']
+		self._coro_name_exceptions = ['main']
 
 		self.coro_list = [method_name for method_name in dir(self)
-				if callable(getattr(self, method_name)) and method_name[0] != '_' and method_name not in _reserved]
+				if callable(getattr(self, method_name)) and method_name[0] != '_' and method_name not in self._coro_name_exceptions]
 
 		self.coro_keepAlive = {
 			'close':[True, 0.1],
@@ -242,7 +243,7 @@ class PoserTemplate:
 				await asyncio.sleep(self.coro_keepAlive['close'][1])
 
 		except ImportError as e:
-			print (f'failed to import keyboard, poser will close in 10 seconds: {e}')
+			print (f'close: failed to import keyboard, poser will close in 10 seconds: {e}')
 			await asyncio.sleep(10)
 
 		print ('closing...')
@@ -265,7 +266,7 @@ class PoserTemplate:
 		await self._socket_init()
 
 		await asyncio.gather(
-				*[getattr(self, coro_name)() for coro_name in self.coro_list]
+				*[getattr(self, coro_name)() for coro_name in self.coro_list if coro_name not in self._coro_name_exceptions]
 			)
 
 
@@ -278,8 +279,16 @@ def thread_register(sleepDelay, runInDefaultExecutor=False):
 	'''
 	def _thread_reg(func):
 		def _thread_reg_wrapper(self, *args, **kwargs):
+			setattr(_thread_reg_wrapper, '__name__', func.__name__)
+
+			if not asyncio.iscoroutinefunction(func) and not runInDefaultExecutor:
+				raise ValueError(f'{repr(func)} is not a coroutine function and runInDefaultExecutor is set to False')
+
 			if func.__name__ not in self.coro_keepAlive and func.__name__ in self.coro_list:
 				self.coro_keepAlive[func.__name__] = [True, sleepDelay]
+
+			else:
+				warnings.warn('thread register ignored, thread already been registered')
 
 			if runInDefaultExecutor:
 				loop = asyncio.get_running_loop()
@@ -291,3 +300,37 @@ def thread_register(sleepDelay, runInDefaultExecutor=False):
 		return _thread_reg_wrapper
 
 	return _thread_reg
+
+class PoserClient(PoserTemplate):
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self._coro_name_exceptions.append('thread_register')
+
+	def thread_register(self, sleepDelay, runInDefaultExecutor=False):
+		def _thread_register(coro):
+			if not asyncio.iscoroutinefunction(coro) and not runInDefaultExecutor:
+				raise ValueError(f'{repr(coro)} is not a coroutine function and runInDefaultExecutor is set to False')
+
+			if coro.__name__ not in self.coro_keepAlive and coro.__name__ not in self.coro_list:
+				self.coro_keepAlive[coro.__name__] = [True, sleepDelay]
+				self.coro_list.append(coro.__name__)
+
+				if runInDefaultExecutor:
+					def _wrapper(*args, **kwargs):
+						setattr(_wrapper, '__name__', coro.__name__)
+						loop = asyncio.get_running_loop()
+
+						return loop.run_in_executor(None, coro, *args, **kwargs)
+
+					setattr(self, coro.__name__, _wrapper)
+					return _wrapper
+
+				else:
+					setattr(self, coro.__name__, coro)
+
+
+			else:
+				raise NameError(f'trying to register already existing thread, thread with name {repr(coro.__name__)} already exists')
+
+			return coro
+		return _thread_register

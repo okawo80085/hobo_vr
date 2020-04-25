@@ -105,7 +105,32 @@ def hasNanInPose(pose):
 
 	return False
 
+def named_print_decorator(func):
+	def wr(*args, **kwargs):
+		setattr(wr, '__name__', func.__name__)
+		global print
+		oldPrint = print
+
+		def print_f(*args, **kwargs):
+			oldPrint(f'{func.__name__}:', *args, **kwargs)
+
+		print = print_f
+		res = func(*args, **kwargs)
+		print = oldPrint
+
+		return res
+
+	return wr
+
 class SerialReaderFactory(serial.threaded.LineReader):
+	'''
+	this is a protocol factory for serial.threaded.ReaderThread
+
+	usage:
+		with serial.threaded.ReaderThread(serial_instance, SerialReaderFactory) as protocol:
+			protocol.lastRead # contains the last incoming message from serial
+			protocol.write_line(single_line_text) # used to write a single line to serial
+	'''
 	def __init__(self):
 		self.buffer = bytearray()
 		self.transport = None
