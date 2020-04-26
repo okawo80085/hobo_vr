@@ -108,6 +108,8 @@ class SerialReaderFactory(serial.threaded.LineReader):
 	'''
 	this is a protocol factory for serial.threaded.ReaderThread
 
+	self.lastRead should be read only, if you need to modify it make a copy
+
 	usage:
 		with serial.threaded.ReaderThread(serial_instance, SerialReaderFactory) as protocol:
 			protocol.lastRead # contains the last incoming message from serial
