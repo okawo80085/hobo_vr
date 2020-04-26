@@ -288,7 +288,7 @@ def thread_register(sleepDelay, runInDefaultExecutor=False):
 				self.coro_keepAlive[func.__name__] = [True, sleepDelay]
 
 			else:
-				warnings.warn('thread register ignored, thread already been registered')
+				warnings.warn('thread register ignored, thread already exists')
 
 			if runInDefaultExecutor:
 				loop = asyncio.get_running_loop()
@@ -302,6 +302,9 @@ def thread_register(sleepDelay, runInDefaultExecutor=False):
 	return _thread_reg
 
 class PoserClient(PoserTemplate):
+	"""
+	Poser Client 
+	"""
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self._coro_name_exceptions.append('thread_register')
@@ -330,7 +333,7 @@ class PoserClient(PoserTemplate):
 
 
 			else:
-				raise NameError(f'trying to register already existing thread, thread with name {repr(coro.__name__)} already exists')
+				raise NameError(f'trying to register existing thread, thread with name {repr(coro.__name__)} already exists')
 
 			return coro
 		return _thread_register
