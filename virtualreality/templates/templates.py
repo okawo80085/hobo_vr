@@ -279,7 +279,6 @@ def thread_register(sleepDelay, runInDefaultExecutor=False):
 	'''
 	def _thread_reg(func):
 		def _thread_reg_wrapper(self, *args, **kwargs):
-			setattr(_thread_reg_wrapper, '__name__', func.__name__)
 
 			if not asyncio.iscoroutinefunction(func) and not runInDefaultExecutor:
 				raise ValueError(f'{repr(func)} is not a coroutine function and runInDefaultExecutor is set to False')
@@ -288,7 +287,7 @@ def thread_register(sleepDelay, runInDefaultExecutor=False):
 				self.coro_keepAlive[func.__name__] = [True, sleepDelay]
 
 			else:
-				warnings.warn('thread register ignored, thread already exists')
+				warnings.warn('thread register ignored, thread already exists', RuntimeWarning)
 
 			if runInDefaultExecutor:
 				loop = asyncio.get_running_loop()
@@ -296,20 +295,40 @@ def thread_register(sleepDelay, runInDefaultExecutor=False):
 				return loop.run_in_executor(None, func, self, *args, **kwargs)
 
 			return func(self, *args, **kwargs)
+		setattr(_thread_reg_wrapper, '__name__', func.__name__)
 
 		return _thread_reg_wrapper
 
 	return _thread_reg
 
 class PoserClient(PoserTemplate):
-	"""
-	Poser Client 
-	"""
+	'''
+	PoserClient
+
+	example usage:
+		poser = PoserClient()
+
+		@poser.thread_register(1, True)
+		async def lol():
+			while poser.coro_keepAlive['lol'][0]:
+				poser.pose['x'] += 0.2
+
+				await asyncio.sleep(poser.coro_keepAlive['lol'][1])
+
+		asyncio.run(poser.main())
+	'''
+
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		self._coro_name_exceptions.append('thread_register')
 
 	def thread_register(self, sleepDelay, runInDefaultExecutor=False):
+		'''
+		registers threads for PoserClient
+
+		sleepDelay - sleep delay in seconds
+		runInDefaultExecutor - bool, set True if you want the function to be executed in asyncio's default pool executor
+		'''
 		def _thread_register(coro):
 			if not asyncio.iscoroutinefunction(coro) and not runInDefaultExecutor:
 				raise ValueError(f'{repr(coro)} is not a coroutine function and runInDefaultExecutor is set to False')
@@ -320,11 +339,12 @@ class PoserClient(PoserTemplate):
 
 				if runInDefaultExecutor:
 					def _wrapper(*args, **kwargs):
-						setattr(_wrapper, '__name__', coro.__name__)
+						setattr(_wrapper, '__name__', f'{coro.__name__} _decorated')
 						loop = asyncio.get_running_loop()
 
 						return loop.run_in_executor(None, coro, *args, **kwargs)
 
+					setattr(_wrapper, '__name__', coro.__name__)
 					setattr(self, coro.__name__, _wrapper)
 					return _wrapper
 

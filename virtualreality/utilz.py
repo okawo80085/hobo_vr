@@ -8,7 +8,6 @@ from pykalman import KalmanFilter
 import serial
 import serial.threaded
 
-
 def convv(sss):
 	if len(sss) < 1:
 		return ''.encode('utf-8')
@@ -105,23 +104,6 @@ def hasNanInPose(pose):
 
 	return False
 
-def named_print_decorator(func):
-	def wr(*args, **kwargs):
-		setattr(wr, '__name__', func.__name__)
-		global print
-		oldPrint = print
-
-		def print_f(*args, **kwargs):
-			oldPrint(f'{func.__name__}:', *args, **kwargs)
-
-		print = print_f
-		res = func(*args, **kwargs)
-		print = oldPrint
-
-		return res
-
-	return wr
-
 class SerialReaderFactory(serial.threaded.LineReader):
 	'''
 	this is a protocol factory for serial.threaded.ReaderThread
@@ -150,15 +132,13 @@ class SerialReaderFactory(serial.threaded.LineReader):
 # you will also need to adjust the color masks
 # this tracking method is made to track color eluminated spheres in 3D space
 class Tracker:
-	def __init__(self, cam_index=4, focal_length_px=490, ball_size_cm=2): #, offsets={'translation':[0, 0, 0], 'rotation':[0, 0, 0]}):
+	def __init__(self, cam_index=4, focal_length_px=490, ball_size_cm=2):
 		# self.transform_offsets = offsets
 
 		self.vs = cv2.VideoCapture(cam_index)
 
 		self.camera_focal_length = focal_length_px
 		self.BALL_RADIUS_CM = ball_size_cm
-
-		time.sleep(2)
 
 		self.can_track, frame = self.vs.read()
 
@@ -216,7 +196,11 @@ class Tracker:
 			self.kalmanTrainBatch2[i] = []
 			self.kalmanWasInited2[i] = False
 
-	def _reinit(self):
+	def _reinit(self, focal_length_px=490, ball_size_cm=2):
+
+		self.camera_focal_length = focal_length_px
+		self.BALL_RADIUS_CM = ball_size_cm
+
 		self.can_track, frame = self.vs.read()
 
 		if not self.can_track:
@@ -328,10 +312,6 @@ class Tracker:
 
 			self.xywForKalman2[key] = self.kalmanStateUpdate2[key]['x_now']
 
-	# def _translate(self):
-	# 	rotate(self.poses, self.transform_offsets['rotation'])
-	# 	translate(self.poses, self.transform_offsets['translation'])
-
 	def getFrame(self):
 		self.can_track, frame = self.vs.read()
 
@@ -428,3 +408,10 @@ class Tracker:
 			self.vs.release()
 
 		cv2.destroyAllWindows()
+
+	def __enter__(self, focal_length_px=490, ball_size_cm=2):
+		self._reinit(focal_length_px, ball_size_cm)
+		return self
+
+	def __exit__(self, *exc):
+		self.close()

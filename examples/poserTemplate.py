@@ -1,7 +1,7 @@
 """
 this is an example of using virtualreality.templates
 
-for detailed overview of virtualreality.templates.PoserTemplate run in your python interpreter:
+to get detailed overview of virtualreality.templates.PoserTemplate run this in your python interpreter:
 	help(virtualreality.templates.PoserTemplate)
 
 more examples/references:
@@ -46,6 +46,6 @@ class NullPoser(templates.PoserTemplate):
 				self.coro_keepAlive['example_thread2'][0] = False
 				break
 
-poser = NullPoser(addr='192.168.31.60')
+poser = NullPoser()
 
 asyncio.run(poser.main())
