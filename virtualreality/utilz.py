@@ -239,10 +239,7 @@ class BlobTracker(threading.Thread):
 			self.can_track, _ = self._vs.read()
 
 			if not self.can_track:
-				self.alive = False
-				self._vs.release()
-				self._vs = None
-				return
+				raise RuntimeError('video source already expired')
 
 		except Exception as e:
 			print (f'failed to start thread, video source expired?: {repr(r)}')
