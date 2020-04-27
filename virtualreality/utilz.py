@@ -7,6 +7,8 @@ import math as m
 from pykalman import KalmanFilter
 import serial
 import serial.threaded
+import threading
+import queue
 
 def convv(sss):
 	if len(sss) < 1:
@@ -66,9 +68,14 @@ def rotateY(points, angle):
 def rotate(points, angles):
 	x, y, z = angles
 
-	rotateX(points, x)
-	rotateY(points, y)
-	rotateZ(points, z)
+	if x != 0:
+		rotateX(points, x)
+
+	if y != 0:
+		rotateY(points, y)
+
+	if z != 0:
+		rotateZ(points, z)
 
 def translate(points, offsets):
 	x, y, z = offsets
@@ -130,86 +137,60 @@ class SerialReaderFactory(serial.threaded.LineReader):
 	def connection_lost(self, exc):
 		print (f'SerialReaderFactory: port closed {repr(exc)}')
 
-# a positional tracker, can work on any camera(but it's settings need to be fixed)
-# you will also need to adjust the color masks
-# this tracking method is made to track color eluminated spheres in 3D space
-class Tracker:
-	def __init__(self, cam_index=4, focal_length_px=490, ball_size_cm=2):
-		# self.transform_offsets = offsets
 
-		self.vs = cv2.VideoCapture(cam_index)
+class BlobTracker(threading.Thread):
+	'''
+	tracks color blobs in 3D space
 
-		self.camera_focal_length = focal_length_px
-		self.BALL_RADIUS_CM = ball_size_cm
+	color_masks - color mask parameters, in opencv hsv color space, for color detection
+	offsets - rotational offsets, in radians, applied to the 3D coordinates of the blobs
 
-		self.can_track, frame = self.vs.read()
+	all tracking is done in a separate thread, so use this class in context manager
 
-		if not self.can_track:
-			self.vs.release()
+	self.start() - starts tracking thread
+	self.close() - stops tracking thread
 
-		self.frame_height, self.frame_width, _ = frame.shape if self.can_track else (0, 0, 0)
+	self.getPoses() - gets latest tracker poses
 
-
-		self.markerMasks = {
-		'blue':{
-			'h':(97, 10),
-			's':(256, 55),
-			'v':(250, 32)
+	example usage:
+		tracker = BlobTracker(color_masks={
+				'tracker1':{
+					'h':(98, 10),
+					's':(200, 55),
+					'v':(250, 32)
 				},
-		'red':{
-			'h':(18, 24),
-			's':(210, 65),
-			'v':(200, 62)
-			},
-		'green':{
-			'h':(69, 20),
-			's':(140, 55),
-			'v':(230, 50)
-			}
-		}
+		})
 
-		self.poses = {}
-		self.blobs = {}
+		with tracker:
+			for _ in range(300):
+				poses = tracker.getPoses() # gets latest poses for the trackers
+				print (poses)
 
-		self.kalmanTrainSize = 15
+				time.sleep(1/60) # some  delay, doesn't affect the tracking
 
-		self.kalmanFilterz = {}
-		self.kalmanTrainBatch = {}
-		self.kalmanWasInited = {}
-		self.kalmanStateUpdate = {}
+	'''
 
-		self.kalmanFilterz2 = {}
-		self.kalmanTrainBatch2 = {}
-		self.kalmanWasInited2 = {}
-		self.kalmanStateUpdate2 = {}
-		self.xywForKalman2 = {}
+	def __init__(self, cam_index=0, *, focal_length_px=490, ball_radius_cm=2, offsets=[0, 0, 0], color_masks={}):
+		super().__init__()
+		self._vs = cv2.VideoCapture(cam_index)
 
-		for i in self.markerMasks:
-			self.poses[i] = {'x':0, 'y':0, 'z':0}
-			self.blobs[i] = None
-
-			self.kalmanFilterz[i] = None
-			self.kalmanStateUpdate[i] = None
-			self.kalmanTrainBatch[i] = []
-			self.kalmanWasInited[i] = False
-
-			self.kalmanFilterz2[i] = None
-			self.kalmanStateUpdate2[i] = None
-			self.kalmanTrainBatch2[i] = []
-			self.kalmanWasInited2[i] = False
-
-	def _reinit(self, focal_length_px=490, ball_size_cm=2):
+		time.sleep(2)
 
 		self.camera_focal_length = focal_length_px
-		self.BALL_RADIUS_CM = ball_size_cm
+		self.BALL_RADIUS_CM = ball_radius_cm
+		self.offsets = offsets
 
-		self.can_track, frame = self.vs.read()
+		self.can_track, frame = self._vs.read()
 
 		if not self.can_track:
-			self.vs.release()
+			self._vs.release()
+			self._vs = None
 
 		self.frame_height, self.frame_width, _ = frame.shape if self.can_track else (0, 0, 0)
 
+
+		self.markerMasks = color_masks
+
 		self.poses = {}
 		self.blobs = {}
 
@@ -239,6 +220,63 @@ class Tracker:
 			self.kalmanStateUpdate2[i] = None
 			self.kalmanTrainBatch2[i] = []
 			self.kalmanWasInited2[i] = False
+
+		# -------------------threading related------------------------
+
+		self.alive = True
+		self._lock = threading.Lock()
+		self.daemon = False
+		self.poseQue = queue.Queue()
+
+
+	def stop(self):
+		self.alive = False
+		self.can_track = False
+		self.join(4)
+
+	def run(self):
+		try:
+			self.can_track, _ = self._vs.read()
+
+			if not self.can_track:
+				self.alive = False
+				self._vs.release()
+				self._vs = None
+				return
+
+		except Exception as e:
+			print (f'failed to start thread, video source expired?: {repr(r)}')
+			self.alive = False
+			return
+
+		while self.alive and self.can_track:
+			try:
+				self.getFrame()
+				self.solvePose()
+				rotate(self.poses, self.offsets)
+
+				if not self.can_track:
+					break
+
+				if not self.poseQue.empty():
+					try:
+						self.poseQue.get_nowait()
+
+					except queue.Empty:
+						pass
+
+				self.poseQue.put(self.poses.copy())
+
+
+			except Exception as e:
+				print (f'tracking failed: {repr(e)}')
+				break
+
+		self.alive = False
+		self.can_track = False
+
+	def getPoses(self):
+		return self.poseQue.get()
 
 	def _initKalman(self, key):
 		self.kalmanTrainBatch[key] = np.array(self.kalmanTrainBatch[key])
@@ -315,7 +353,8 @@ class Tracker:
 			self.xywForKalman2[key] = self.kalmanStateUpdate2[key]['x_now']
 
 	def getFrame(self):
-		self.can_track, frame = self.vs.read()
+		if self.alive:
+			self.can_track, frame = self._vs.read()
 
 		for key, maskRange in self.markerMasks.items():
 			hc, hr = maskRange['h']
@@ -406,13 +445,18 @@ class Tracker:
 
 
 	def close(self):
-		if self.can_track:
-			self.vs.release()
+		with self._lock:
+			self.stop()
 
-		cv2.destroyAllWindows()
+			if self._vs is not None:
+				self._vs.release()
+				self._vs = None
 
-	def __enter__(self, focal_length_px=490, ball_size_cm=2):
-		self._reinit(focal_length_px, ball_size_cm)
+	def __enter__(self):
+		self.start()
+		if not self.alive:
+			raise RuntimeError('video source already expired')
+
 		return self
 
 	def __exit__(self, *exc):

@@ -80,9 +80,7 @@ class Poser(template.PoserTemplate):
 	@template.thread_register(1/60)
 	async def getLocation(self):
 		try:
-			self.t1 = u.Tracker()#offsets={'translation':[0, 0, 0], 'rotation':[0.6981317007977318, 0, 0]})
-
-			self.t1.markerMasks = {
+			t1 = u.BlobTracker(4, offsets=[0.6981317007977318, 0, 0], color_masks={
 				'blue':{
 					'h':(98, 10),
 					's':(200, 55),
@@ -93,55 +91,31 @@ class Poser(template.PoserTemplate):
 					's':(135, 53),
 					'v':(255, 50)
 					}
-				}
+				})
 
-			self.t1._reinit()
+		except Exception as e:
+			print (f'failed to init location tracker: {repr(e)}')
+			return
 
-		except:
-			print ('failed to init location tracker')
-			self.t1 = None
-  
-		if self.t1 is None:
-			self.coro_keepAlive['getLocation'][0] = False
+		with t1:
+			while self.coro_keepAlive['getLocation'][0]:
+				try:
+					poses = t1.getPoses()
 
-		while self.coro_keepAlive['getLocation'][0]:
-			try:
-				a = time.time()
-				self.t1.getFrame()
-				self.t1.solvePose()
-
-				u.rotateX(self.t1.poses, 0.6981317007977318)
-				# u.rotateY(self.t1.poses, -1.0471975511965976)
-
-				self.tempPose['x'] = round(-self.t1.poses['green']['x'], 6)
-				self.tempPose['y'] = round(self.t1.poses['green']['y'] + 1, 6)
-				self.tempPose['z'] = round(self.t1.poses['green']['z'], 6)
+					self.tempPose['x'] = round(-poses['green']['x'], 6)
+					self.tempPose['y'] = round(poses['green']['y'] + 1, 6)
+					self.tempPose['z'] = round(poses['green']['z'], 6)
 
 
-				self.pose['x'] = round(-self.t1.poses['blue']['x'] - 0.01, 6)
-				self.pose['y'] = round(self.t1.poses['blue']['y'] + 1 - 0.07, 6)
-				self.pose['z'] = round(self.t1.poses['blue']['z'] - 0.03, 6)
+					self.pose['x'] = round(-poses['blue']['x'] - 0.01, 6)
+					self.pose['y'] = round(poses['blue']['y'] + 1 - 0.07, 6)
+					self.pose['z'] = round(poses['blue']['z'] - 0.03, 6)
 
-				# print (f'{time.time() - a}s/{self._trackDelay}')
+					await asyncio.sleep(self.coro_keepAlive['getLocation'][1])
 
-				# self.pose['x'] = round(-self.t1.poses['red']['x'], 6)
-				# self.pose['y'] = round(self.t1.poses['red']['y'] + 1, 6)
-				# self.pose['z'] = round(self.t1.poses['red']['z'], 6)
-
-				elapsed = time.time() - a
-
-				slepDel = self.coro_keepAlive['getLocation'][1]
-				slepDel = slepDel - elapsed if (slepDel - elapsed) > 0.001 else 0.001
-
-				await asyncio.sleep(slepDel)
-
-			except Exception as e:
-				print ('stopping getLocation:', e)
-				self.coro_keepAlive['getLocation'][0] = False
-				break
-
-		if self.t1 is not None:
-			self.t1.close()
+				except Exception as e:
+					print ('stopping getLocation:', e)
+					break
 
 	@template.thread_register(1/100)
 	async def serialListener2(self):
