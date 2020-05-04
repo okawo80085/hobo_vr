@@ -288,7 +288,7 @@ class BlobTracker(threading.Thread):
             return self.poseQue.get()
 
         else:
-            raise RuntimeError('tracking loop already finished')
+            raise RuntimeError("tracking loop already finished")
 
     def _initKalman(self, key):
         self.kalmanTrainBatch[key] = np.array(self.kalmanTrainBatch[key])
