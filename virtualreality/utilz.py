@@ -7,6 +7,7 @@ import math as m
 from pykalman import KalmanFilter
 import serial
 import serial.threaded
+
 import threading
 import queue
 
@@ -21,11 +22,11 @@ def convv(sss):
     return sss.encode("utf-8")
 
 
-async def newRead(reader):
+async def newRead(reader, readLen=20):
     data = []
-    temp = None
-    while temp != "\n" and temp != "":
-        temp = await reader.read(1)
+    temp = " "
+    while temp[-1] != "\n" and temp != "":
+        temp = await reader.read(readLen)
         temp = temp.decode("utf-8")
         data.append(temp)
 
@@ -41,11 +42,8 @@ def rotateZ(points, angle):
     cos = np.cos(angle)
 
     for key, p in points.items():
-        x = p["x"] * cos - p["y"] * sin
-        y = p["y"] * cos + p["x"] * sin
-
-        points[key]["x"] = x
-        points[key]["y"] = y
+        points[key]["x"] = p["x"] * cos - p["y"] * sin
+        points[key]["y"] = p["y"] * cos + p["x"] * sin
 
 
 def rotateX(points, angle):
@@ -53,11 +51,8 @@ def rotateX(points, angle):
     cos = np.cos(angle)
 
     for key, p in points.items():
-        y = p["y"] * cos - p["z"] * sin
-        z = p["z"] * cos + p["y"] * sin
-
-        points[key]["y"] = y
-        points[key]["z"] = z
+        points[key]["y"] = p["y"] * cos - p["z"] * sin
+        points[key]["z"] = p["z"] * cos + p["y"] * sin
 
 
 def rotateY(points, angle):
@@ -65,33 +60,26 @@ def rotateY(points, angle):
     cos = np.cos(angle)
 
     for key, p in points.items():
-        x = p["x"] * cos - p["z"] * sin
-        z = p["z"] * cos + p["x"] * sin
-
-        points[key]["x"] = x
-        points[key]["z"] = z
+        points[key]["x"] = p["x"] * cos - p["z"] * sin
+        points[key]["z"] = p["z"] * cos + p["x"] * sin
 
 
 def rotate(points, angles):
-    x, y, z = angles
+    if angles[0] != 0:
+        rotateX(points, angles[0])
 
-    if x != 0:
-        rotateX(points, x)
+    if angles[1] != 0:
+        rotateY(points, angles[1])
 
-    if y != 0:
-        rotateY(points, y)
-
-    if z != 0:
-        rotateZ(points, z)
+    if angles[2] != 0:
+        rotateZ(points, angles[2])
 
 
 def translate(points, offsets):
-    x, y, z = offsets
-
     for key, p in points.items():
-        points[key]["x"] += x
-        points[key]["y"] += y
-        points[key]["z"] += z
+        points[key]["x"] += offsets[0]
+        points[key]["y"] += offsets[1]
+        points[key]["z"] += offsets[2]
 
 
 def hasCharsInString(str1, str2):
@@ -128,15 +116,15 @@ def hasNanInPose(pose):
 
 class SerialReaderFactory(serial.threaded.LineReader):
     """
-	this is a protocol factory for serial.threaded.ReaderThread
+    this is a protocol factory for serial.threaded.ReaderThread
 
-	self.lastRead should be read only, if you need to modify it make a copy
+    self.lastRead should be read only, if you need to modify it make a copy
 
-	usage:
-		with serial.threaded.ReaderThread(serial_instance, SerialReaderFactory) as protocol:
-			protocol.lastRead # contains the last incoming message from serial
-			protocol.write_line(single_line_text) # used to write a single line to serial
-	"""
+    usage:
+        with serial.threaded.ReaderThread(serial_instance, SerialReaderFactory) as protocol:
+            protocol.lastRead # contains the last incoming message from serial
+            protocol.write_line(single_line_text) # used to write a single line to serial
+    """
 
     def __init__(self):
         self.buffer = bytearray()
@@ -156,35 +144,35 @@ class SerialReaderFactory(serial.threaded.LineReader):
 
 class BlobTracker(threading.Thread):
     """
-	tracks color blobs in 3D space
+    tracks color blobs in 3D space
 
-	color_masks - color mask parameters, in opencv hsv color space, for color detection
-	offsets - rotational offsets, in radians, applied to the 3D coordinates of the blobs
+    color_masks - color mask parameters, in opencv hsv color space, for color detection
+    offsets - rotational offsets, in radians, applied to the 3D coordinates of the blobs
 
-	all tracking is done in a separate thread, so use this class in context manager
+    all tracking is done in a separate thread, so use this class in context manager
 
-	self.start() - starts tracking thread
-	self.close() - stops tracking thread
+    self.start() - starts tracking thread
+    self.close() - stops tracking thread
 
-	self.getPoses() - gets latest tracker poses
+    self.getPoses() - gets latest tracker poses
 
-	example usage:
-		tracker = BlobTracker(color_masks={
-				'tracker1':{
-					'h':(98, 10),
-					's':(200, 55),
-					'v':(250, 32)
-				},
-		})
+    example usage:
+        tracker = BlobTracker(color_masks={
+                'tracker1':{
+                    'h':(98, 10),
+                    's':(200, 55),
+                    'v':(250, 32)
+                },
+        })
 
-		with tracker:
-			for _ in range(300):
-				poses = tracker.getPoses() # gets latest poses for the trackers
-				print (poses)
+        with tracker:
+            for _ in range(300):
+                poses = tracker.getPoses() # gets latest poses for the trackers
+                print (poses)
 
-				time.sleep(1/60) # some  delay, doesn't affect the tracking
+                time.sleep(1/60) # some  delay, doesn't affect the tracking
 
-	"""
+    """
 
     def __init__(
         self,
@@ -276,9 +264,6 @@ class BlobTracker(threading.Thread):
                 self.solvePose()
                 rotate(self.poses, self.offsets)
 
-                if not self.can_track:
-                    break
-
                 if not self.poseQue.empty():
                     try:
                         self.poseQue.get_nowait()
@@ -288,6 +273,9 @@ class BlobTracker(threading.Thread):
 
                 self.poseQue.put(self.poses.copy())
 
+                if not self.can_track:
+                    break
+
             except Exception as e:
                 print(f"tracking failed: {repr(e)}")
                 break
@@ -296,7 +284,11 @@ class BlobTracker(threading.Thread):
         self.can_track = False
 
     def getPoses(self):
-        return self.poseQue.get()
+        if self.can_track and self.alive:
+            return self.poseQue.get()
+
+        else:
+            raise RuntimeError('tracking loop already finished')
 
     def _initKalman(self, key):
         self.kalmanTrainBatch[key] = np.array(self.kalmanTrainBatch[key])

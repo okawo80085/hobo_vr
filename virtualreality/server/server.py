@@ -22,9 +22,9 @@ async def send2all(everyone, data, me, VIP):
 async def handle_echo(reader, writer):
     while 1:
         try:
-            data = await u.newRead(reader)
-
             addr = writer.get_extra_info("peername")
+
+            data = await u.newRead(reader)
             if addr not in conz:
                 print("New connection from {}".format(addr))
                 isDriver = False
@@ -47,7 +47,7 @@ async def handle_echo(reader, writer):
             sendOK = await send2all(conz, data, addr, conz[addr][2])
             print(sendOK)
 
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.00001)
 
         except Exception as e:
             print("Losing connection to {}, reason: {}".format(addr, e))

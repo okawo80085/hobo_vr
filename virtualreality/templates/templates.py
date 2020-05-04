@@ -9,66 +9,66 @@ from .. import utilz as u
 class PoserTemplate:
     """Poser base class.
 
-	__ini__(*, addr='127.0.0.1', port=6969, sendDelay=1/60, recvDelay=1/1000, **kwargs)
+    __ini__(*, addr='127.0.0.1', port=6969, sendDelay=1/60, recvDelay=1/1000, **kwargs)
 
-	addr - is the address of the server to connect to, stored in self.addr
-	port - is the port of the server to connect to, stored in self.port
-	sendDelay - sleep delay for the self.send thread(in seconds)
-	recvDelay - sleep delay for the self.recv thread(in seconds)
+    addr - is the address of the server to connect to, stored in self.addr
+    port - is the port of the server to connect to, stored in self.port
+    sendDelay - sleep delay for the self.send thread(in seconds)
+    recvDelay - sleep delay for the self.recv thread(in seconds)
 
-	self._socket_init() - connects to the server using self.addr and self.port and sends the id message, stores socket reader and writer in self.reader and self.writer, it is not recommended you override this method
+    self._socket_init() - connects to the server using self.addr and self.port and sends the id message, stores socket reader and writer in self.reader and self.writer, it is not recommended you override this method
 
-	self.main() - main async method which gathers all threads, it is not recommended you override this method
+    self.main() - main async method which gathers all threads, it is not recommended you override this method
 
-	supplies 3 tracked device pose dicts:
-		self.pose - hmd pose, position, orientation, velocity and angular velocity only
-		self.poseControllerR - same as hmd pose +controller inputs for controller 1
-		self.poseControllerL - same as hmd pose +controller inputs for controller 2
-	
-	more info on poses/message format:
-		https://github.com/okawo80085/hobo_vr/wiki/poser-message-format
+    supplies 3 tracked device pose dicts:
+        self.pose - hmd pose, position, orientation, velocity and angular velocity only
+        self.poseControllerR - same as hmd pose +controller inputs for controller 1
+        self.poseControllerL - same as hmd pose +controller inputs for controller 2
+    
+    more info on poses/message format:
+        https://github.com/okawo80085/hobo_vr/wiki/poser-message-format
 
-	supplies a last message from server buffer:
-		self.lastRead - string containing the last message from the server
+    supplies a last message from server buffer:
+        self.lastRead - string containing the last message from the server
 
-	supplies threading vars:
-		self.coro_list - list of all methods recognized as threads
-		self.coro_keepAlive - dict of all registered threads, containing self.coro_keepAlive['threadMethodName'] = [KeepAliveBool, SleepDelay], the dict is populated at self.main() call
+    supplies threading vars:
+        self.coro_list - list of all methods recognized as threads
+        self.coro_keepAlive - dict of all registered threads, containing self.coro_keepAlive['threadMethodName'] = [KeepAliveBool, SleepDelay], the dict is populated at self.main() call
 
-	this base class also has 3 built in threads, it is not recommended you override any of them:
-		self.send - sends all pose data to the server
-		self.recv - receives messages from the server, the last message is stored in self.lastRead
-		self.close - closes the connection to the server and ends all threads that where registered by thread_register
+    this base class also has 3 built in threads, it is not recommended you override any of them:
+        self.send - sends all pose data to the server
+        self.recv - receives messages from the server, the last message is stored in self.lastRead
+        self.close - closes the connection to the server and ends all threads that where registered by thread_register
 
-	this base class will assume that every
-	child method without '_' as a first character
-	in the name is a thread, unless the name of that method has been added to self._coro_name_exceptions
+    this base class will assume that every
+    child method without '_' as a first character
+    in the name is a thread, unless the name of that method has been added to self._coro_name_exceptions
 
-	every child class also needs to register it's thread
-	methods with the thread_register decorator
+    every child class also needs to register it's thread
+    methods with the thread_register decorator
 
-	example:
+    example:
 
-		class MyPoser(PoserTemplate):
-			def __init__(self, *args, **kwargs):
-				super().__init(**kwargs)
+        class MyPoser(PoserTemplate):
+            def __init__(self, *args, **kwargs):
+                super().__init(**kwargs)
 
-			@thread_register(0.5)
-			async def example_thread(self):
-				while self.coro_keepAlive['example_thread'][0]:
-					self.pose['x'] += 0.04
+            @thread_register(0.5)
+            async def example_thread(self):
+                while self.coro_keepAlive['example_thread'][0]:
+                    self.pose['x'] += 0.04
 
-					await asyncio.sleep(self.coro_keepAlive['example_thread'][1])
+                    await asyncio.sleep(self.coro_keepAlive['example_thread'][1])
 
-		poser = MyPoser()
+        poser = MyPoser()
 
-		asyncio.run(poser.main())
+        asyncio.run(poser.main())
 
-	more examples:
-		https://github.com/okawo80085/hobo_vr/blob/master/poseTracker.py
-		https://github.com/okawo80085/hobo_vr/blob/master/examples/poserTemplate.py
+    more examples:
+        https://github.com/okawo80085/hobo_vr/blob/master/poseTracker.py
+        https://github.com/okawo80085/hobo_vr/blob/master/examples/poserTemplate.py
 
-	"""
+    """
 
     def __init__(
         self,
@@ -188,13 +188,13 @@ class PoserTemplate:
 
     async def _socket_init(self):
         """
-		connect to the server using self.addr and self.port
+        connect to the server using self.addr and self.port
 
-		store reader and writer in self.reader and self.writer
+        store reader and writer in self.reader and self.writer
 
-		send id message
-		more on id messages: https://github.com/okawo80085/hobo_vr/wiki/server-id-messages
-		"""
+        send id message
+        more on id messages: https://github.com/okawo80085/hobo_vr/wiki/server-id-messages
+        """
         print(f'connecting to the server at "{self.addr}:{self.port}"...')
         # connect to the server
         self.reader, self.writer = await asyncio.open_connection(
@@ -205,8 +205,8 @@ class PoserTemplate:
 
     async def send(self):
         """
-		send all poses thread
-		"""
+        send all poses thread
+        """
         while self.coro_keepAlive["send"][0]:
             try:
                 msg = u.convv(
@@ -227,8 +227,8 @@ class PoserTemplate:
 
     async def recv(self):
         """
-		receive messages thread
-		"""
+        receive messages thread
+        """
         while self.coro_keepAlive["recv"][0]:
             try:
                 data = await u.newRead(self.reader)
@@ -242,8 +242,8 @@ class PoserTemplate:
 
     async def close(self):
         """
-		await close thread, press "q" to kill all registered threads
-		"""
+        await close thread, press "q" to kill all registered threads
+        """
         try:
             import keyboard
 
@@ -274,8 +274,8 @@ class PoserTemplate:
 
     async def main(self):
         """
-		main asyncio method, gathers all recognized threads and runs them
-		"""
+        main asyncio method, gathers all recognized threads and runs them
+        """
         await self._socket_init()
 
         await asyncio.gather(
@@ -289,11 +289,11 @@ class PoserTemplate:
 
 def thread_register(sleepDelay, runInDefaultExecutor=False):
     """
-	registers thread for PoserTemplate base class
+    registers thread for PoserTemplate base class
 
-	sleepDelay - sleep delay in seconds
-	runInDefaultExecutor - bool, set True if you want the function to be executed in asyncio's default pool executor
-	"""
+    sleepDelay - sleep delay in seconds
+    runInDefaultExecutor - bool, set True if you want the function to be executed in asyncio's default pool executor
+    """
 
     def _thread_reg(func):
         def _thread_reg_wrapper(self, *args, **kwargs):
@@ -330,20 +330,20 @@ def thread_register(sleepDelay, runInDefaultExecutor=False):
 
 class PoserClient(PoserTemplate):
     """
-	PoserClient
+    PoserClient
 
-	example usage:
-		poser = PoserClient()
+    example usage:
+        poser = PoserClient()
 
-		@poser.thread_register(1, True)
-		async def lol():
-			while poser.coro_keepAlive['lol'][0]:
-				poser.pose['x'] += 0.2
+        @poser.thread_register(1)
+        async def lol():
+            while poser.coro_keepAlive['lol'][0]:
+                poser.pose['x'] += 0.2
 
-				await asyncio.sleep(poser.coro_keepAlive['lol'][1])
+                await asyncio.sleep(poser.coro_keepAlive['lol'][1])
 
-		asyncio.run(poser.main())
-	"""
+        asyncio.run(poser.main())
+    """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -351,11 +351,11 @@ class PoserClient(PoserTemplate):
 
     def thread_register(self, sleepDelay, runInDefaultExecutor=False):
         """
-		registers threads for PoserClient
+        registers threads for PoserClient
 
-		sleepDelay - sleep delay in seconds
-		runInDefaultExecutor - bool, set True if you want the function to be executed in asyncio's default pool executor
-		"""
+        sleepDelay - sleep delay in seconds
+        runInDefaultExecutor - bool, set True if you want the function to be executed in asyncio's default pool executor
+        """
 
         def _thread_register(coro):
             if not asyncio.iscoroutinefunction(coro) and not runInDefaultExecutor:
