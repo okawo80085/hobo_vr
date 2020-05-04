@@ -20,18 +20,21 @@ from virtualreality import templates
 
 poser = templates.PoserClient()
 
+
 @poser.thread_register(1.1)
 async def example_thread():
-	while poser.coro_keepAlive['example_thread'][0]:
-		poser.pose['y'] += 0.2
+    while poser.coro_keepAlive["example_thread"][0]:
+        poser.pose["y"] += 0.2
 
-		await asyncio.sleep(poser.coro_keepAlive['example_thread'][1])
+        await asyncio.sleep(poser.coro_keepAlive["example_thread"][1])
+
 
 @poser.thread_register(1, runInDefaultExecutor=True)
 def example_thread2():
-	while poser.coro_keepAlive['example_thread2'][0]:
-		poser.pose['x'] += 0.2
+    while poser.coro_keepAlive["example_thread2"][0]:
+        poser.pose["x"] += 0.2
 
-		time.sleep(poser.coro_keepAlive['example_thread2'][1])
+        time.sleep(poser.coro_keepAlive["example_thread2"][1])
+
 
 asyncio.run(poser.main())

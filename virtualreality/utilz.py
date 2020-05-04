@@ -10,109 +10,124 @@ import serial.threaded
 import threading
 import queue
 
+
 def convv(sss):
-	if len(sss) < 1:
-		return ''.encode('utf-8')
+    if len(sss) < 1:
+        return "".encode("utf-8")
 
-	if sss[-1] != '\n':
-		return (sss + '\n').encode('utf-8')
+    if sss[-1] != "\n":
+        return (sss + "\n").encode("utf-8")
 
-	return sss.encode('utf-8')
+    return sss.encode("utf-8")
+
 
 async def newRead(reader):
-	data = []
-	temp = None
-	while temp != '\n' and temp != '':
-		temp = await reader.read(1)
-		temp = temp.decode('utf-8')
-		data.append(temp)
+    data = []
+    temp = None
+    while temp != "\n" and temp != "":
+        temp = await reader.read(1)
+        temp = temp.decode("utf-8")
+        data.append(temp)
 
-	return ''.join(data)
+    return "".join(data)
+
 
 def angle2rad(angle):
-	return angle * m.pi/180
+    return angle * m.pi / 180
+
 
 def rotateZ(points, angle):
-	sin = np.sin(angle)
-	cos = np.cos(angle)
+    sin = np.sin(angle)
+    cos = np.cos(angle)
 
-	for key, p in points.items():
-		x = p['x']*cos - p['y']*sin
-		y = p['y']*cos + p['x']*sin
+    for key, p in points.items():
+        x = p["x"] * cos - p["y"] * sin
+        y = p["y"] * cos + p["x"] * sin
 
-		points[key]['x'] = x
-		points[key]['y'] = y
+        points[key]["x"] = x
+        points[key]["y"] = y
+
 
 def rotateX(points, angle):
-	sin = np.sin(angle)
-	cos = np.cos(angle)
+    sin = np.sin(angle)
+    cos = np.cos(angle)
 
-	for key, p in points.items():
-		y = p['y']*cos - p['z']*sin
-		z = p['z']*cos + p['y']*sin
+    for key, p in points.items():
+        y = p["y"] * cos - p["z"] * sin
+        z = p["z"] * cos + p["y"] * sin
 
-		points[key]['y'] = y
-		points[key]['z'] = z
+        points[key]["y"] = y
+        points[key]["z"] = z
+
 
 def rotateY(points, angle):
-	sin = np.sin(angle)
-	cos = np.cos(angle)
+    sin = np.sin(angle)
+    cos = np.cos(angle)
 
-	for key, p in points.items():
-		x = p['x']*cos - p['z']*sin
-		z = p['z']*cos + p['x']*sin
+    for key, p in points.items():
+        x = p["x"] * cos - p["z"] * sin
+        z = p["z"] * cos + p["x"] * sin
 
-		points[key]['x'] = x
-		points[key]['z'] = z
+        points[key]["x"] = x
+        points[key]["z"] = z
+
 
 def rotate(points, angles):
-	x, y, z = angles
+    x, y, z = angles
 
-	if x != 0:
-		rotateX(points, x)
+    if x != 0:
+        rotateX(points, x)
 
-	if y != 0:
-		rotateY(points, y)
+    if y != 0:
+        rotateY(points, y)
 
-	if z != 0:
-		rotateZ(points, z)
+    if z != 0:
+        rotateZ(points, z)
+
 
 def translate(points, offsets):
-	x, y, z = offsets
+    x, y, z = offsets
 
-	for key, p in points.items():
-		points[key]['x'] += x
-		points[key]['y'] += y
-		points[key]['z'] += z
+    for key, p in points.items():
+        points[key]["x"] += x
+        points[key]["y"] += y
+        points[key]["z"] += z
+
 
 def hasCharsInString(str1, str2):
-	for i in str1:
-		if i in str2:
-			return True
+    for i in str1:
+        if i in str2:
+            return True
 
-	return False
+    return False
+
 
 def decodeSerial(text):
-	try:
-		if hasCharsInString(text.lower(), 'qwertyuiopsasdfghjklzxcvbnm><*[]{}()') or len(text) == 0:
-			return []
+    try:
+        if (
+            hasCharsInString(text.lower(), "qwertyuiopsasdfghjklzxcvbnm><*[]{}()")
+            or len(text) == 0
+        ):
+            return []
 
-		return [float(i) for i in text.split('\t')]
+        return [float(i) for i in text.split("\t")]
 
-	except Exception as e:
-		print (f'decodeSerial: {e} {repr(text)}')
+    except Exception as e:
+        print(f"decodeSerial: {e} {repr(text)}")
 
-		return []
+        return []
+
 
 def hasNanInPose(pose):
-	for key in ['x', 'y', 'z']:
-		if np.isnan(pose[key]) or np.isinf(pose[key]):
-			return True
+    for key in ["x", "y", "z"]:
+        if np.isnan(pose[key]) or np.isinf(pose[key]):
+            return True
 
-	return False
+    return False
+
 
 class SerialReaderFactory(serial.threaded.LineReader):
-	'''
+    """
 	this is a protocol factory for serial.threaded.ReaderThread
 
 	self.lastRead should be read only, if you need to modify it make a copy
@@ -121,25 +136,26 @@ class SerialReaderFactory(serial.threaded.LineReader):
 		with serial.threaded.ReaderThread(serial_instance, SerialReaderFactory) as protocol:
 			protocol.lastRead # contains the last incoming message from serial
 			protocol.write_line(single_line_text) # used to write a single line to serial
-	'''
-	def __init__(self):
-		self.buffer = bytearray()
-		self.transport = None
-		self.lastRead = ''
+	"""
 
-	def connection_made(self, transport):
-		super(SerialReaderFactory, self).connection_made(transport)
+    def __init__(self):
+        self.buffer = bytearray()
+        self.transport = None
+        self.lastRead = ""
 
-	def handle_line(self, data):
-		self.lastRead = data
-		# print (f'cSerialReader: data received: {repr(data)}')
+    def connection_made(self, transport):
+        super(SerialReaderFactory, self).connection_made(transport)
 
-	def connection_lost(self, exc):
-		print (f'SerialReaderFactory: port closed {repr(exc)}')
+    def handle_line(self, data):
+        self.lastRead = data
+        # print (f'cSerialReader: data received: {repr(data)}')
+
+    def connection_lost(self, exc):
+        print(f"SerialReaderFactory: port closed {repr(exc)}")
 
 
 class BlobTracker(threading.Thread):
-	'''
+    """
 	tracks color blobs in 3D space
 
 	color_masks - color mask parameters, in opencv hsv color space, for color detection
@@ -168,293 +184,330 @@ class BlobTracker(threading.Thread):
 
 				time.sleep(1/60) # some  delay, doesn't affect the tracking
 
-	'''
+	"""
+
+    def __init__(
+        self,
+        cam_index=0,
+        *,
+        focal_length_px=490,
+        ball_radius_cm=2,
+        offsets=[0, 0, 0],
+        color_masks={},
+    ):
+        super().__init__()
+        self._vs = cv2.VideoCapture(cam_index)
+
+        time.sleep(2)
 
-	def __init__(self, cam_index=0, *, focal_length_px=490, ball_radius_cm=2, offsets=[0, 0, 0], color_masks={}):
-		super().__init__()
-		self._vs = cv2.VideoCapture(cam_index)
+        self.camera_focal_length = focal_length_px
+        self.BALL_RADIUS_CM = ball_radius_cm
+        self.offsets = offsets
 
-		time.sleep(2)
+        self.can_track, frame = self._vs.read()
 
-		self.camera_focal_length = focal_length_px
-		self.BALL_RADIUS_CM = ball_radius_cm
-		self.offsets = offsets
+        if not self.can_track:
+            self._vs.release()
+            self._vs = None
 
-		self.can_track, frame = self._vs.read()
+        self.frame_height, self.frame_width, _ = (
+            frame.shape if self.can_track else (0, 0, 0)
+        )
 
-		if not self.can_track:
-			self._vs.release()
-			self._vs = None
+        self.markerMasks = color_masks
 
-		self.frame_height, self.frame_width, _ = frame.shape if self.can_track else (0, 0, 0)
+        self.poses = {}
+        self.blobs = {}
 
+        self.kalmanTrainSize = 15
 
-		self.markerMasks = color_masks
+        self.kalmanFilterz = {}
+        self.kalmanTrainBatch = {}
+        self.kalmanWasInited = {}
+        self.kalmanStateUpdate = {}
 
-		self.poses = {}
-		self.blobs = {}
+        self.kalmanFilterz2 = {}
+        self.kalmanTrainBatch2 = {}
+        self.kalmanWasInited2 = {}
+        self.kalmanStateUpdate2 = {}
+        self.xywForKalman2 = {}
 
-		self.kalmanTrainSize = 15
+        for i in self.markerMasks:
+            self.poses[i] = {"x": 0, "y": 0, "z": 0}
+            self.blobs[i] = None
 
-		self.kalmanFilterz = {}
-		self.kalmanTrainBatch = {}
-		self.kalmanWasInited = {}
-		self.kalmanStateUpdate = {}
+            self.kalmanFilterz[i] = None
+            self.kalmanStateUpdate[i] = None
+            self.kalmanTrainBatch[i] = []
+            self.kalmanWasInited[i] = False
 
-		self.kalmanFilterz2 = {}
-		self.kalmanTrainBatch2 = {}
-		self.kalmanWasInited2 = {}
-		self.kalmanStateUpdate2 = {}
-		self.xywForKalman2 = {}
+            self.kalmanFilterz2[i] = None
+            self.kalmanStateUpdate2[i] = None
+            self.kalmanTrainBatch2[i] = []
+            self.kalmanWasInited2[i] = False
 
-		for i in self.markerMasks:
-			self.poses[i] = {'x':0, 'y':0, 'z':0}
-			self.blobs[i] = None
+        # -------------------threading related------------------------
 
-			self.kalmanFilterz[i] = None
-			self.kalmanStateUpdate[i] = None
-			self.kalmanTrainBatch[i] = []
-			self.kalmanWasInited[i] = False
+        self.alive = True
+        self._lock = threading.Lock()
+        self.daemon = False
+        self.poseQue = queue.Queue()
 
-			self.kalmanFilterz2[i] = None
-			self.kalmanStateUpdate2[i] = None
-			self.kalmanTrainBatch2[i] = []
-			self.kalmanWasInited2[i] = False
+    def stop(self):
+        self.alive = False
+        self.can_track = False
+        self.join(4)
 
-		# -------------------threading related------------------------
+    def run(self):
+        try:
+            self.can_track, _ = self._vs.read()
 
-		self.alive = True
-		self._lock = threading.Lock()
-		self.daemon = False
-		self.poseQue = queue.Queue()
+            if not self.can_track:
+                raise RuntimeError("video source already expired")
 
+        except Exception as e:
+            print(f"failed to start thread, video source expired?: {repr(r)}")
+            self.alive = False
+            return
 
-	def stop(self):
-		self.alive = False
-		self.can_track = False
-		self.join(4)
+        while self.alive and self.can_track:
+            try:
+                self.getFrame()
+                self.solvePose()
+                rotate(self.poses, self.offsets)
 
-	def run(self):
-		try:
-			self.can_track, _ = self._vs.read()
+                if not self.can_track:
+                    break
 
-			if not self.can_track:
-				raise RuntimeError('video source already expired')
+                if not self.poseQue.empty():
+                    try:
+                        self.poseQue.get_nowait()
+
+                    except queue.Empty:
+                        pass
+
+                self.poseQue.put(self.poses.copy())
 
-		except Exception as e:
-			print (f'failed to start thread, video source expired?: {repr(r)}')
-			self.alive = False
-			return
+            except Exception as e:
+                print(f"tracking failed: {repr(e)}")
+                break
 
-		while self.alive and self.can_track:
-			try:
-				self.getFrame()
-				self.solvePose()
-				rotate(self.poses, self.offsets)
+        self.alive = False
+        self.can_track = False
 
-				if not self.can_track:
-					break
+    def getPoses(self):
+        return self.poseQue.get()
 
-				if not self.poseQue.empty():
-					try:
-						self.poseQue.get_nowait()
+    def _initKalman(self, key):
+        self.kalmanTrainBatch[key] = np.array(self.kalmanTrainBatch[key])
 
-					except queue.Empty:
-						pass
+        initState = [*self.kalmanTrainBatch[key][0]]
 
-				self.poseQue.put(self.poses.copy())
+        transition_matrix = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
 
+        observation_matrix = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
 
-			except Exception as e:
-				print (f'tracking failed: {repr(e)}')
-				break
+        self.kalmanFilterz[key] = KalmanFilter(
+            transition_matrices=transition_matrix,
+            observation_matrices=observation_matrix,
+            initial_state_mean=initState,
+        )
 
-		self.alive = False
-		self.can_track = False
+        print(f'initializing Kalman filter for mask "{key}"...')
 
-	def getPoses(self):
-		return self.poseQue.get()
+        tStart = time.time()
+        self.kalmanFilterz[key] = self.kalmanFilterz[key].em(
+            self.kalmanTrainBatch[key], n_iter=5
+        )
+        print(f"took: {time.time() - tStart}s")
 
-	def _initKalman(self, key):
-		self.kalmanTrainBatch[key] = np.array(self.kalmanTrainBatch[key])
+        fMeans, fCovars = self.kalmanFilterz[key].filter(self.kalmanTrainBatch[key])
+        self.kalmanStateUpdate[key] = {"x_now": fMeans[-1, :], "p_now": fCovars[-1, :]}
 
-		initState = [*self.kalmanTrainBatch[key][0]]
+        self.kalmanWasInited[key] = True
 
-		transition_matrix = [[1, 0, 0],
-							 [0, 1, 0],
-							 [0, 0, 1]]
+    def _initKalman2(self, key):
+        self.kalmanTrainBatch2[key] = np.array(self.kalmanTrainBatch2[key])
 
-		observation_matrix = [[1, 0, 0],
-							  [0, 1, 0],
-							  [0, 0, 1]]
+        initState = [*self.kalmanTrainBatch2[key][0]]
 
-		self.kalmanFilterz[key] = KalmanFilter(transition_matrices = transition_matrix,
-										 observation_matrices = observation_matrix,
-										 initial_state_mean = initState)
+        transition_matrix = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
 
-		print (f'initializing Kalman filter for mask "{key}"...')
+        observation_matrix = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
 
-		tStart = time.time()
-		self.kalmanFilterz[key] = self.kalmanFilterz[key].em(self.kalmanTrainBatch[key], n_iter=5)
-		print (f'took: {time.time() - tStart}s')
+        self.kalmanFilterz2[key] = KalmanFilter(
+            transition_matrices=transition_matrix,
+            observation_matrices=observation_matrix,
+            initial_state_mean=initState,
+        )
 
-		fMeans, fCovars = self.kalmanFilterz[key].filter(self.kalmanTrainBatch[key])
-		self.kalmanStateUpdate[key] = {'x_now':fMeans[-1, :], 'p_now':fCovars[-1, :]}
+        print(f'initializing second Kalman filter for mask "{key}"...')
 
-		self.kalmanWasInited[key] = True
+        tStart = time.time()
+        self.kalmanFilterz2[key] = self.kalmanFilterz2[key].em(
+            self.kalmanTrainBatch2[key], n_iter=5
+        )
+        print(f"took: {time.time() - tStart}s")
 
-	def _initKalman2(self, key):
-		self.kalmanTrainBatch2[key] = np.array(self.kalmanTrainBatch2[key])
+        fMeans, fCovars = self.kalmanFilterz2[key].filter(self.kalmanTrainBatch2[key])
+        self.kalmanStateUpdate2[key] = {"x_now": fMeans[-1, :], "p_now": fCovars[-1, :]}
 
-		initState = [*self.kalmanTrainBatch2[key][0]]
+        self.kalmanWasInited2[key] = True
 
-		transition_matrix = [[1, 0, 0],
-							 [0, 1, 0],
-							 [0, 0, 1]]
+    def _applyKalman(self, key):
+        obz = np.array(
+            [self.poses[key]["x"], self.poses[key]["y"], self.poses[key]["z"]]
+        )
+        if self.kalmanFilterz[key] is not None:
+            (
+                self.kalmanStateUpdate[key]["x_now"],
+                self.kalmanStateUpdate[key]["p_now"],
+            ) = self.kalmanFilterz[key].filter_update(
+                filtered_state_mean=self.kalmanStateUpdate[key]["x_now"],
+                filtered_state_covariance=self.kalmanStateUpdate[key]["p_now"],
+                observation=obz,
+            )
 
-		observation_matrix = [[1, 0, 0],
-							  [0, 1, 0],
-							  [0, 0, 1]]
+            (
+                self.poses[key]["x"],
+                self.poses[key]["y"],
+                self.poses[key]["z"],
+            ) = self.kalmanStateUpdate[key]["x_now"]
 
-		self.kalmanFilterz2[key] = KalmanFilter(transition_matrices = transition_matrix,
-										 observation_matrices = observation_matrix,
-										 initial_state_mean = initState)
+    def _applyKalman2(self, key):
+        obz = np.array(self.xywForKalman2[key])
+        if self.kalmanFilterz2[key] is not None:
+            (
+                self.kalmanStateUpdate2[key]["x_now"],
+                self.kalmanStateUpdate2[key]["p_now"],
+            ) = self.kalmanFilterz2[key].filter_update(
+                filtered_state_mean=self.kalmanStateUpdate2[key]["x_now"],
+                filtered_state_covariance=self.kalmanStateUpdate2[key]["p_now"],
+                observation=obz,
+            )
 
-		print (f'initializing second Kalman filter for mask "{key}"...')
+            self.xywForKalman2[key] = self.kalmanStateUpdate2[key]["x_now"]
 
-		tStart = time.time()
-		self.kalmanFilterz2[key] = self.kalmanFilterz2[key].em(self.kalmanTrainBatch2[key], n_iter=5)
-		print (f'took: {time.time() - tStart}s')
+    def getFrame(self):
+        if self.alive:
+            self.can_track, frame = self._vs.read()
 
-		fMeans, fCovars = self.kalmanFilterz2[key].filter(self.kalmanTrainBatch2[key])
-		self.kalmanStateUpdate2[key] = {'x_now':fMeans[-1, :], 'p_now':fCovars[-1, :]}
+        for key, maskRange in self.markerMasks.items():
+            hc, hr = maskRange["h"]
 
-		self.kalmanWasInited2[key] = True
+            sc, sr = maskRange["s"]
 
-	def _applyKalman(self, key):
-		obz = np.array([self.poses[key]['x'], self.poses[key]['y'], self.poses[key]['z']])
-		if self.kalmanFilterz[key] is not None:
-			self.kalmanStateUpdate[key]['x_now'], self.kalmanStateUpdate[key]['p_now'] = self.kalmanFilterz[key].filter_update(filtered_state_mean = self.kalmanStateUpdate[key]['x_now'],
-																															 filtered_state_covariance = self.kalmanStateUpdate[key]['p_now'],
-																															 observation = obz)
+            vc, vr = maskRange["v"]
 
-			self.poses[key]['x'], self.poses[key]['y'], self.poses[key]['z'] = self.kalmanStateUpdate[key]['x_now']
+            colorHigh = [hc + hr, sc + sr, vc + vr]
+            colorLow = [hc - hr, sc - sr, vc - vr]
 
-	def _applyKalman2(self, key):
-		obz = np.array(self.xywForKalman2[key])
-		if self.kalmanFilterz2[key] is not None:
-			self.kalmanStateUpdate2[key]['x_now'], self.kalmanStateUpdate2[key]['p_now'] = self.kalmanFilterz2[key].filter_update(filtered_state_mean = self.kalmanStateUpdate2[key]['x_now'],
-																															 filtered_state_covariance = self.kalmanStateUpdate2[key]['p_now'],
-																															 observation = obz)
+            if self.can_track:
+                blurred = cv2.GaussianBlur(frame, (3, 3), 0)
 
-			self.xywForKalman2[key] = self.kalmanStateUpdate2[key]['x_now']
+                hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
-	def getFrame(self):
-		if self.alive:
-			self.can_track, frame = self._vs.read()
+                mask = cv2.inRange(hsv, tuple(colorLow), tuple(colorHigh))
 
-		for key, maskRange in self.markerMasks.items():
-			hc, hr = maskRange['h']
+                _, cnts, hr = cv2.findContours(
+                    mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+                )
 
-			sc, sr = maskRange['s']
+                if len(cnts) > 0:
+                    c = max(cnts, key=cv2.contourArea)
+                    self.blobs[key] = (
+                        c if len(c) >= 5 and cv2.contourArea(c) > 10 else None
+                    )
 
-			vc, vr = maskRange['v']
+    def solvePose(self):
+        for key, blob in self.blobs.items():
+            if blob is not None:
+                elip = cv2.fitEllipse(blob)
 
-			colorHigh = [hc+hr, sc+sr, vc+vr]
-			colorLow = [hc-hr, sc-sr, vc-vr]
+                x, y = elip[0]
+                w, h = elip[1]
 
-			if self.can_track:
-				blurred = cv2.GaussianBlur(frame, (3, 3), 0)
+                self.xywForKalman2[key] = [x, y, w]
 
-				hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
+                if len(self.kalmanTrainBatch2[key]) < self.kalmanTrainSize:
+                    self.kalmanTrainBatch2[key].append([x, y, w])
 
-				mask = cv2.inRange(hsv, tuple(colorLow), tuple(colorHigh))
+                elif (
+                    len(self.kalmanTrainBatch2[key]) >= self.kalmanTrainSize
+                    and not self.kalmanWasInited2[key]
+                ):
+                    self._initKalman2(key)
 
-				_, cnts, hr = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL,
-					cv2.CHAIN_APPROX_SIMPLE)
+                else:
+                    self._applyKalman2(key)
+                    x, y, w = self.xywForKalman2[key]
 
-				if len(cnts) > 0:
-					c = max(cnts, key=cv2.contourArea)
-					self.blobs[key] = c if len(c) >= 5 and cv2.contourArea(c) > 10 else None
+                f_px = self.camera_focal_length
+                X_px = x
+                Y_px = y
+                A_px = w / 2
 
-	def solvePose(self):
-		for key, blob in self.blobs.items():
-			if blob is not None:
-				elip = cv2.fitEllipse(blob)
+                X_px -= self.frame_width / 2
+                Y_px = self.frame_height / 2 - Y_px
 
-				x, y = elip[0]
-				w, h = elip[1]
+                L_px = np.sqrt(X_px ** 2 + Y_px ** 2)
 
-				self.xywForKalman2[key] = [x, y, w]
+                k = L_px / f_px
 
-				if len(self.kalmanTrainBatch2[key]) < self.kalmanTrainSize:
-					self.kalmanTrainBatch2[key].append([x, y, w])
+                j = (L_px + A_px) / f_px
 
-				elif len(self.kalmanTrainBatch2[key]) >= self.kalmanTrainSize and not self.kalmanWasInited2[key]:
-					self._initKalman2(key)
+                l = (j - k) / (1 + j * k)
 
-				else:
-					self._applyKalman2(key)
-					x, y, w = self.xywForKalman2[key]
+                D_cm = self.BALL_RADIUS_CM * np.sqrt(1 + l ** 2) / l
 
-				f_px = self.camera_focal_length
-				X_px = x
-				Y_px = y
-				A_px = w/2
+                fl = f_px / L_px
 
-				X_px -= self.frame_width/2
-				Y_px = self.frame_height/2 - Y_px
+                Z_cm = D_cm * fl / np.sqrt(1 + fl ** 2)
 
-				L_px = np.sqrt(X_px**2 + Y_px**2)
+                L_cm = Z_cm * k
 
-				k = L_px / f_px
+                X_cm = L_cm * X_px / L_px
+                Y_cm = L_cm * Y_px / L_px
 
-				j = (L_px + A_px) / f_px
+                self.poses[key]["x"] = X_cm / 100
+                self.poses[key]["y"] = Y_cm / 100
+                self.poses[key]["z"] = Z_cm / 100
 
-				l = (j - k) / (1+j*k)
+                # self._translate()
 
-				D_cm = self.BALL_RADIUS_CM * np.sqrt(1+l**2)/l
+                if len(self.kalmanTrainBatch[key]) < self.kalmanTrainSize:
+                    self.kalmanTrainBatch[key].append(
+                        [
+                            self.poses[key]["x"],
+                            self.poses[key]["y"],
+                            self.poses[key]["z"],
+                        ]
+                    )
 
-				fl = f_px/L_px
+                elif (
+                    len(self.kalmanTrainBatch[key]) >= self.kalmanTrainSize
+                    and not self.kalmanWasInited[key]
+                ):
+                    self._initKalman(key)
 
-				Z_cm = D_cm * fl/np.sqrt(1+fl**2)
+                else:
+                    if not hasNanInPose(self.poses[key]):
+                        self._applyKalman(key)
 
-				L_cm = Z_cm*k
+    def close(self):
+        with self._lock:
+            self.stop()
 
-				X_cm = L_cm * X_px/L_px
-				Y_cm = L_cm * Y_px/L_px
+            if self._vs is not None:
+                self._vs.release()
+                self._vs = None
 
-				self.poses[key]['x'] = X_cm/100
-				self.poses[key]['y'] = Y_cm/100
-				self.poses[key]['z'] = Z_cm/100
+    def __enter__(self):
+        self.start()
+        if not self.alive:
+            raise RuntimeError("video source already expired")
 
-				# self._translate()
+        return self
 
-				if len(self.kalmanTrainBatch[key]) < self.kalmanTrainSize:
-					self.kalmanTrainBatch[key].append([self.poses[key]['x'], self.poses[key]['y'], self.poses[key]['z']])
-
-				elif len(self.kalmanTrainBatch[key]) >= self.kalmanTrainSize and not self.kalmanWasInited[key]:
-					self._initKalman(key)
-
-				else:
-					if not hasNanInPose(self.poses[key]):
-						self._applyKalman(key)
-
-
-	def close(self):
-		with self._lock:
-			self.stop()
-
-			if self._vs is not None:
-				self._vs.release()
-				self._vs = None
-
-	def __enter__(self):
-		self.start()
-		if not self.alive:
-			raise RuntimeError('video source already expired')
-
-		return self
-
-	def __exit__(self, *exc):
-		self.close()
+    def __exit__(self, *exc):
+        self.close()
