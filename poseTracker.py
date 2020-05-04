@@ -58,15 +58,18 @@ class Poser(template.PoserTemplate):
 
         self.mode = 0
         self._serialResetYaw = False
+        self.useVelocity = True
 
     @template.thread_register(1 / 90)
     async def modeSwitcher(self):
         while self.coro_keepAlive["modeSwitcher"][0]:
             try:
                 if self.mode == 1:
+                    self.poseControllerL['trackpadTouch'] = 0
                     self.poseControllerR = self.tempPose.copy()
 
                 else:
+                    self.poseControllerR['trackpadTouch'] = 0
                     self.poseControllerL = self.tempPose.copy()
 
                 await asyncio.sleep(self.coro_keepAlive["modeSwitcher"][1])
@@ -186,9 +189,10 @@ class Poser(template.PoserTemplate):
                                             {"": tempForOffz}, u.angle2rad(yawOffset)
                                         )
 
-                                        self.tempPose["velX"] = tempForOffz["x"]
-                                        self.tempPose["velY"] = tempForOffz["y"]
-                                        self.tempPose["velZ"] = tempForOffz["z"]
+                                        if self.useVelocity:
+                                            self.tempPose["velX"] = tempForOffz["x"]
+                                            self.tempPose["velY"] = tempForOffz["y"]
+                                            self.tempPose["velZ"] = tempForOffz["z"]
 
                                         velocityUntilReset += 1
 
@@ -230,6 +234,12 @@ class Poser(template.PoserTemplate):
 
                                     elif self.tempPose["trackpadX"] < -0.6 and tempMode:
                                         self.mode = 0
+
+                                    elif self.tempPose['trackpadY'] < -0.6 and tempMode:
+                                        self.useVelocity = False
+
+                                    elif self.tempPose['trackpadY'] > 0.6 and tempMode:
+                                        self.useVelocity = True
 
                                     elif tempMode:
                                         yawOffset = 0 - yaw
