@@ -75,7 +75,7 @@ class PoserTemplate:
         *,
         addr="127.0.0.1",
         port=6969,
-        sendDelay=1 / 60,
+        sendDelay=1 / 100,
         recvDelay=1 / 1000,
         **kwargs,
     ):

@@ -1,6 +1,6 @@
 import asyncio
 import virtualreality.utilz as u
-from virtualreality import templates as template
+from virtualreality import templates
 
 import time
 
@@ -18,7 +18,7 @@ import serial.threaded
 import squaternion as sq
 
 
-class Poser(template.PoserTemplate):
+class Poser(templates.PoserTemplate):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -58,18 +58,22 @@ class Poser(template.PoserTemplate):
 
         self.mode = 0
         self._serialResetYaw = False
-        self.useVelocity = True
+        self.useVelocity = False
 
-    @template.thread_register(1 / 90)
+    @templates.thread_register(1 / 90)
     async def modeSwitcher(self):
         while self.coro_keepAlive["modeSwitcher"][0]:
             try:
                 if self.mode == 1:
                     self.poseControllerL["trackpadTouch"] = 0
+                    self.poseControllerL["trackpadX"] = 0
+                    self.poseControllerL["trackpadY"] = 0
                     self.poseControllerR = self.tempPose.copy()
 
                 else:
                     self.poseControllerR["trackpadTouch"] = 0
+                    self.poseControllerR["trackpadY"] = 0
+                    self.poseControllerR["trackpadX"] = 0
                     self.poseControllerL = self.tempPose.copy()
 
                 await asyncio.sleep(self.coro_keepAlive["modeSwitcher"][1])
@@ -79,7 +83,7 @@ class Poser(template.PoserTemplate):
                 self.coro_keepAlive["modeSwitcher"][0] = False
                 break
 
-    @template.thread_register(1 / 60)
+    @templates.thread_register(1 / 60)
     async def getLocation(self):
         try:
             t1 = u.BlobTracker(
@@ -114,7 +118,7 @@ class Poser(template.PoserTemplate):
                     print("stopping getLocation:", e)
                     break
 
-    @template.thread_register(1 / 100)
+    @templates.thread_register(1 / 100)
     async def serialListener2(self):
         pastVelocity = [0, 0, 0]
         velocityUntilReset = 0
@@ -273,7 +277,7 @@ class Poser(template.PoserTemplate):
 
             await asyncio.sleep(1)
 
-    @template.thread_register(1 / 100)
+    @templates.thread_register(1 / 100)
     async def serialListener(self):
         while self.coro_keepAlive["serialListener"][0]:
             try:
