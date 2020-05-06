@@ -448,7 +448,7 @@ public:
 
     if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
       vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
-          m_unObjectId, GetPose(), sizeof(DriverPose_t));
+          m_unObjectId, pose, sizeof(DriverPose_t));
     }
   }
 
@@ -674,7 +674,7 @@ public:
 
     if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
       vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
-          m_unObjectId, GetPose(), sizeof(DriverPose_t));
+          m_unObjectId, poseController, sizeof(DriverPose_t));
     }
   }
 
@@ -840,7 +840,7 @@ void CServerDriver_Sample::myTrackingThread() {
       }
     }
 
-    std::this_thread::sleep_for(std::chrono::microseconds(1000));
+    std::this_thread::sleep_for(std::chrono::microseconds(100));
   }
 }
 

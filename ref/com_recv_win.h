@@ -26,7 +26,7 @@ namespace SP {
 
 class socketPoser {
 public:
-  double *convert2ss(char *buffer, int *len);
+  void convert2ss(char *buffer, int *len);
   void cleanCharList(char *buffer, int *len);
   int socSend(const char *buf, int len);
   int socRecv();
@@ -47,6 +47,9 @@ public:
     ptr = NULL;
     returnStatus = 0;
     readyForOutput = false;
+    newPose = new double[expectedPoseSize];
+    std::fill_n(newPose, expectedPoseSize, 0.0);
+
 
     // Initialize Winsock
     iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -128,37 +131,32 @@ int socketPoser::socSend(const char *buff, int len) {
     if (iResult == SOCKET_ERROR) {
       DriverLog("send failed with error: %d\n", WSAGetLastError());
       socClose();
-      returnStatus = iResult;
+    }else{
+      DriverLog("Bytes Sent: %ld\n", iResult);
     }
-    DriverLog("Bytes Sent: %ld\n", iResult);
   }
 
   return returnStatus;
 }
 
 int socketPoser::socRecv() {
-  readyForOutput = false;
   if (returnStatus == 0) {
     iResult = recv(ConnectSocket, recvbuf, recvbuflen, 0);
     bufLen = iResult;
     if (iResult > 0) {
       // DriverLog("Bytes received: %d\n", iResult);
       cleanCharList(recvbuf, &bufLen);
-      newPose = convert2ss(recvbuf, &bufLen);
+      convert2ss(recvbuf, &bufLen);
       if (bufLen != expectedPoseSize) {
         DriverLog("received pose packet size mismatch, %d expected but got %d, "
                   "returning null",
                   expectedPoseSize, bufLen);
 
         if (bufLen < expectedPoseSize) {
-          delete[] newPose;
-
-          newPose = new double[expectedPoseSize];
-          for (int i = 0; i < expectedPoseSize; i++) {
-            newPose[i] = 0;
-          }
+          std::fill_n(newPose, expectedPoseSize, 0.0);
         }
       }
+
     } else if (iResult == 0) {
       DriverLog("Connection closed\n");
       returnStatus = -1;
@@ -167,7 +165,6 @@ int socketPoser::socRecv() {
       DriverLog("recv failed with error: %d\n", returnStatus);
     }
   }
-  readyForOutput = true;
 
   return returnStatus;
 }
@@ -199,39 +196,27 @@ void socketPoser::cleanCharList(char *buffer, int *len) {
   *len = i - 1;
 }
 
-double *socketPoser::convert2ss(char *buffer, int *len) {
+void socketPoser::convert2ss(char *buffer, int *len) {
   // auto buffer2 = cleanCharList(buffer, len);
-  int spacesCount = 0;
+  int spaceCount = 0;
   for (int i = 0; i < *len; i++) {
     if (buffer[i] == ' ') {
-      spacesCount++;
+      spaceCount++;
     }
   }
-  spacesCount++;
-
-  std::string *numbers = new std::string[spacesCount];
-  for (int i = 0; i < spacesCount; i++) {
-    numbers[i] = "";
-  }
-  int index = 0;
-
-  for (int i = 0; i < *len; i++) {
-    if (buffer[i] == ' ') {
-      index++;
-    } else {
-      numbers[index] += buffer[i];
-    }
+  spaceCount++;
+  *len = spaceCount;
+  if (spaceCount > expectedPoseSize){
+    spaceCount = expectedPoseSize;
   }
 
-  double *numz = new double[spacesCount];
-  for (int i = 0; i < spacesCount; i++) {
-    std::stringstream yeet(numbers[i]);
-    yeet >> numz[i];
+  std::stringstream ss;
+
+  ss << buffer;
+
+  for (int i=0; i<spaceCount; i++){
+    ss >> newPose[i];
   }
-  delete[] numbers;
-  numbers = nullptr;
-  *len = spacesCount;
-  return numz;
 }
 
 ////////////////////////////////////////////////////////////////////////////

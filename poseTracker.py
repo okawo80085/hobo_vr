@@ -65,11 +65,11 @@ class Poser(template.PoserTemplate):
         while self.coro_keepAlive["modeSwitcher"][0]:
             try:
                 if self.mode == 1:
-                    self.poseControllerL['trackpadTouch'] = 0
+                    self.poseControllerL["trackpadTouch"] = 0
                     self.poseControllerR = self.tempPose.copy()
 
                 else:
-                    self.poseControllerR['trackpadTouch'] = 0
+                    self.poseControllerR["trackpadTouch"] = 0
                     self.poseControllerL = self.tempPose.copy()
 
                 await asyncio.sleep(self.coro_keepAlive["modeSwitcher"][1])
@@ -235,10 +235,10 @@ class Poser(template.PoserTemplate):
                                     elif self.tempPose["trackpadX"] < -0.6 and tempMode:
                                         self.mode = 0
 
-                                    elif self.tempPose['trackpadY'] < -0.6 and tempMode:
+                                    elif self.tempPose["trackpadY"] < -0.6 and tempMode:
                                         self.useVelocity = False
 
-                                    elif self.tempPose['trackpadY'] > 0.6 and tempMode:
+                                    elif self.tempPose["trackpadY"] > 0.6 and tempMode:
                                         self.useVelocity = True
 
                                     elif tempMode:
