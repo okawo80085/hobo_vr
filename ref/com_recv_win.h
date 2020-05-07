@@ -1,11 +1,14 @@
-#ifndef COM_REC_H
-#define COM_REC_H
+#ifndef COM_RECV_WIN_H
+#define COM_RECV_WIN_H
 #endif
 
 #include <cstdio>
 #include <cstring>
 #include <iostream>
 #include <sstream>
+#include <vector>
+#include <queue>
+#include <thread>
 
 #include <Ws2tcpip.h>
 #include <winsock2.h>
@@ -26,19 +29,139 @@ namespace SP {
 
 class socketPoser {
 public:
-  void convert2ss(char *buffer, int *len);
-  void cleanCharList(char *buffer, int *len);
-  int socSend(const char *buf, int len);
-  int socRecv();
-  int socClose();
-
-  double *newPose;
+  std::vector<double> newPose;
   int returnStatus;
   int bufLen;
   int expectedPoseSize;
-  bool readyForOutput;
+
+  void convert2ss(char *buffer, int *len) {
+    // auto buffer2 = cleanCharList(buffer, len);
+    int spaceCount = 0;
+    for (int i = 0; i < *len; i++) {
+      if (buffer[i] == ' ') {
+        spaceCount++;
+      }
+    }
+    spaceCount++;
+    *len = spaceCount;
+    if (spaceCount > expectedPoseSize){
+      spaceCount = expectedPoseSize;
+    }
+
+    std::stringstream ss;
+
+    ss.precision(10);
+
+    ss << buffer;
+
+    double temp;
+    newPose.clear();
+    for (int i=0; i<spaceCount; i++){
+      ss >> temp;
+      newPose.push_back(temp);
+    }
+  }
+
+  void cleanCharList(char *buffer, int *len) {
+    int i;
+    for (i = 0; i < *len && buffer[i] != '\0'; i++) {
+      if (buffer[i] == '\n') {
+        buffer[i] = ' ';
+      }
+    }
+    *len = i - 1;
+  }
+
+  int socSend(const char *buff, int len) {
+    if (returnStatus == 0) {
+      // Send an initial buffer
+      iResult = send(ConnectSocket, buff, len, 0);
+      if (iResult == SOCKET_ERROR) {
+        DriverLog("send failed with error: %d\n", WSAGetLastError());
+        socClose();
+      }else{
+        DriverLog("Bytes Sent: %ld\n", iResult);
+      }
+    }
+
+    return returnStatus;
+  }
+
+  int socRecv() {
+    if (returnStatus == 0) {
+      iResult = recv(ConnectSocket, recvbuf, recvbuflen, 0);
+      bufLen = iResult;
+      if (iResult > 0) {
+        // DriverLog("Bytes received: %d\n", iResult);
+        cleanCharList(recvbuf, &bufLen);
+        convert2ss(recvbuf, &bufLen);
+        if (bufLen != expectedPoseSize) {
+          DriverLog("received pose packet size mismatch, %d expected but got %d, "
+                    "returning null",
+                    expectedPoseSize, bufLen);
+          // std::cout << "expected pose size " << expectedPoseSize << ", but got " << bufLen << std::endl;
+
+          if (bufLen < expectedPoseSize) {
+            newPose.clear();
+            for (int i=0; i<expectedPoseSize; i++){
+              newPose.push_back(0.0);
+            }
+          }
+        }
+
+      } else if (iResult == 0) {
+        DriverLog("Connection closed\n");
+        returnStatus = -1;
+      } else {
+        returnStatus = WSAGetLastError();
+        DriverLog("recv failed with error: %d\n", returnStatus);
+      }
+    }
+
+    return returnStatus;
+  }
+
+  int socClose() {
+    // cleanup
+    // shutdown the connection since no more data will be sent
+    iResult = shutdown(ConnectSocket, SD_SEND);
+    if (iResult == SOCKET_ERROR) {
+      DriverLog("shutdown failed with error: %d\n", WSAGetLastError());
+      closesocket(ConnectSocket);
+      WSACleanup();
+      returnStatus = iResult;
+    }
+
+    closesocket(ConnectSocket);
+    WSACleanup();
+
+    return returnStatus;
+  }
+
+  void start() {
+    m_bMyThreadKeepAlive = true;
+    socSend("hello\n", 6);
+    m_pMyTread = new std::thread(threadEnter, this);
+
+    if (!m_pMyTread) {
+      DriverLog("failed to start listening thread\n");
+      returnStatus = -1;
+    }
+  }
+
+  std::vector<double> getPose() {
+    std::vector<double> v;
+    if (!qq.empty() && m_bMyThreadKeepAlive){
+      v = qq.front();
+      qq.pop();
+    }
+    return v;
+  }
 
   socketPoser(int i_expectedPoseSize) {
+    m_bMyThreadKeepAlive = false;
+    m_pMyTread = nullptr;
+
     expectedPoseSize = i_expectedPoseSize;
     recvbuflen = DEFAULT_BUFLEN;
     bufLen = recvbuflen;
@@ -46,9 +169,10 @@ public:
     result = NULL;
     ptr = NULL;
     returnStatus = 0;
-    readyForOutput = false;
-    newPose = new double[expectedPoseSize];
-    std::fill_n(newPose, expectedPoseSize, 0.0);
+    newPose.clear();
+    for (int i=0; i<expectedPoseSize; i++){
+      newPose.push_back(0.0);
+    }
 
 
     // Initialize Winsock
@@ -106,12 +230,20 @@ public:
 
         // iResult = ioctlsocket(ConnectSocket, FIONBIO, &iMode);
         // if (iResult != NO_ERROR)
-        // 	DriverLog("ioctlsocket failed with error: %ld\n", iResult);
+        //  DriverLog("ioctlsocket failed with error: %ld\n", iResult);
       }
     }
   }
 
-  ~socketPoser() { socClose(); }
+  ~socketPoser() {
+    m_bMyThreadKeepAlive = false;
+    if (m_pMyTread) {
+      m_pMyTread->join();
+      delete m_pMyTread;
+      m_pMyTread = nullptr;
+    }
+    socClose();
+  }
 
 private:
   WSADATA wsaData;
@@ -122,102 +254,25 @@ private:
   int iResult;
   int recvbuflen;
   char recvbuf[DEFAULT_BUFLEN];
-};
 
-int socketPoser::socSend(const char *buff, int len) {
-  if (returnStatus == 0) {
-    // Send an initial buffer
-    iResult = send(ConnectSocket, buff, len, 0);
-    if (iResult == SOCKET_ERROR) {
-      DriverLog("send failed with error: %d\n", WSAGetLastError());
-      socClose();
-    }else{
-      DriverLog("Bytes Sent: %ld\n", iResult);
-    }
+  bool m_bMyThreadKeepAlive;
+  std::thread *m_pMyTread;
+  std::queue<std::vector<double>> qq;
+
+  static void threadEnter(socketPoser* t) {
+    t->listenThread();
   }
+  void listenThread() {
+    while (m_bMyThreadKeepAlive) {
+      socRecv();
 
-  return returnStatus;
-}
-
-int socketPoser::socRecv() {
-  if (returnStatus == 0) {
-    iResult = recv(ConnectSocket, recvbuf, recvbuflen, 0);
-    bufLen = iResult;
-    if (iResult > 0) {
-      // DriverLog("Bytes received: %d\n", iResult);
-      cleanCharList(recvbuf, &bufLen);
-      convert2ss(recvbuf, &bufLen);
-      if (bufLen != expectedPoseSize) {
-        DriverLog("received pose packet size mismatch, %d expected but got %d, "
-                  "returning null",
-                  expectedPoseSize, bufLen);
-
-        if (bufLen < expectedPoseSize) {
-          std::fill_n(newPose, expectedPoseSize, 0.0);
-        }
+      if (!qq.empty()) {
+        qq.pop();
       }
-
-    } else if (iResult == 0) {
-      DriverLog("Connection closed\n");
-      returnStatus = -1;
-    } else {
-      returnStatus = WSAGetLastError();
-      DriverLog("recv failed with error: %d\n", returnStatus);
+      qq.push(newPose);
     }
   }
-
-  return returnStatus;
-}
-
-int socketPoser::socClose() {
-  // cleanup
-  // shutdown the connection since no more data will be sent
-  iResult = shutdown(ConnectSocket, SD_SEND);
-  if (iResult == SOCKET_ERROR) {
-    DriverLog("shutdown failed with error: %d\n", WSAGetLastError());
-    closesocket(ConnectSocket);
-    WSACleanup();
-    returnStatus = iResult;
-  }
-
-  closesocket(ConnectSocket);
-  WSACleanup();
-
-  return returnStatus;
-}
-
-void socketPoser::cleanCharList(char *buffer, int *len) {
-  int i;
-  for (i = 0; i < *len && buffer[i] != '\0'; i++) {
-    if (buffer[i] == '\n') {
-      buffer[i] = ' ';
-    }
-  }
-  *len = i - 1;
-}
-
-void socketPoser::convert2ss(char *buffer, int *len) {
-  // auto buffer2 = cleanCharList(buffer, len);
-  int spaceCount = 0;
-  for (int i = 0; i < *len; i++) {
-    if (buffer[i] == ' ') {
-      spaceCount++;
-    }
-  }
-  spaceCount++;
-  *len = spaceCount;
-  if (spaceCount > expectedPoseSize){
-    spaceCount = expectedPoseSize;
-  }
-
-  std::stringstream ss;
-
-  ss << buffer;
-
-  for (int i=0; i<spaceCount; i++){
-    ss >> newPose[i];
-  }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////
 } // namespace SP
