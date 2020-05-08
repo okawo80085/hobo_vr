@@ -1,43 +1,43 @@
-import asyncio
+"""Various VR utilities."""
+
+import queue
+import threading
 import time
+from asyncio.streams import StreamReader
+from typing import Sequence, Dict
+
 import cv2
 import numpy as np
-import math as m
-
-from pykalman import KalmanFilter
-import serial
 import serial.threaded
-
-import threading
-import queue
+from pykalman import KalmanFilter
 
 
-def convv(sss):
-    if len(sss) < 1:
+def format_str_for_write(input_str: str) -> bytes:
+    """Format a string for writing to SteamVR's stream."""
+    if len(input_str) < 1:
         return "".encode("utf-8")
 
-    if sss[-1] != "\n":
-        return (sss + "\n").encode("utf-8")
+    if input_str[-1] != "\n":
+        return (input_str + "\n").encode("utf-8")
 
-    return sss.encode("utf-8")
+    return input_str.encode("utf-8")
 
 
-async def newRead(reader, readLen=20):
+async def read(reader: StreamReader, read_len: int = 20) -> str:
+    """Read one line from reader asynchronously."""
     data = []
     temp = " "
     while temp[-1] != "\n" and temp != "":
-        temp = await reader.read(readLen)
+        temp = await reader.read(read_len)
         temp = temp.decode("utf-8")
         data.append(temp)
+        time.sleep(0)  # allows thread switching
 
     return "".join(data)
 
 
-def angle2rad(angle):
-    return angle * m.pi / 180
-
-
-def rotateZ(points, angle):
+def rotate_z(points: Dict[str, Dict[str, float]], angle: float):
+    """Rotate a set of points around the z axis."""
     sin = np.sin(angle)
     cos = np.cos(angle)
 
@@ -46,7 +46,8 @@ def rotateZ(points, angle):
         points[key]["y"] = p["y"] * cos + p["x"] * sin
 
 
-def rotateX(points, angle):
+def rotate_x(points: Dict[str, Dict[str, float]], angle: float):
+    """Rotate a set of points around the x axis."""
     sin = np.sin(angle)
     cos = np.cos(angle)
 
@@ -55,7 +56,8 @@ def rotateX(points, angle):
         points[key]["z"] = p["z"] * cos + p["y"] * sin
 
 
-def rotateY(points, angle):
+def rotate_y(points: Dict[str, Dict[str, float]], angle: float):
+    """Rotate a set of points around the y axis."""
     sin = np.sin(angle)
     cos = np.cos(angle)
 
@@ -64,25 +66,38 @@ def rotateY(points, angle):
         points[key]["z"] = p["z"] * cos + p["x"] * sin
 
 
-def rotate(points, angles):
+def rotate(points: Dict[str, Dict[str, float]], angles: Sequence[float]) -> None:
+    """
+    Rotate a set of points around the x, y, then z axes.
+
+    :param points: a point dictionary, such as: `{"marker 1" : {"x": 0, "y": 0, "z": 0}}`
+    :param angles: the degrees to rotate on the x, y, and z axes
+    """
     if angles[0] != 0:
-        rotateX(points, angles[0])
+        rotate_x(points, angles[0])
 
     if angles[1] != 0:
-        rotateY(points, angles[1])
+        rotate_y(points, angles[1])
 
     if angles[2] != 0:
-        rotateZ(points, angles[2])
+        rotate_z(points, angles[2])
 
 
-def translate(points, offsets):
+def translate(points: Dict[str, Dict[str, float]], offsets: Sequence[float]) -> None:
+    """
+    Translate a set of points along the x, y, then z axes.
+
+    :param points: a point dictionary, such as: `{"marker 1" : {"x": 0, "y": 0, "z": 0}}`
+    :param offsets: the distance to translate on the x, y, and z axes
+    """
     for key, p in points.items():
         points[key]["x"] += offsets[0]
         points[key]["y"] += offsets[1]
         points[key]["z"] += offsets[2]
 
 
-def hasCharsInString(str1, str2):
+def strings_share_characters(str1: str, str2: str) -> bool:
+    """Determine if two strings share any characters."""
     for i in str1:
         if i in str2:
             return True
@@ -90,23 +105,22 @@ def hasCharsInString(str1, str2):
     return False
 
 
-def decodeSerial(text):
+def get_numbers_from_text(text):
+    """Get a list of number from a string of numbers seperated by tabs."""
     try:
-        if (
-            hasCharsInString(text.lower(), "qwertyuiopsasdfghjklzxcvbnm><*[]{}()")
-            or len(text) == 0
-        ):
+        if strings_share_characters(text.lower(), "qwertyuiopsasdfghjklzxcvbnm><*[]{}()") or len(text) == 0:
             return []
 
         return [float(i) for i in text.split("\t")]
 
     except Exception as e:
-        print(f"decodeSerial: {e} {repr(text)}")
+        print(f"get_numbers_from_text: {e} {repr(text)}")
 
         return []
 
 
-def hasNanInPose(pose):
+def has_nan_in_pose(pose):
+    """Determine if any numbers in pose are invalid."""
     for key in ["x", "y", "z"]:
         if np.isnan(pose[key]) or np.isinf(pose[key]):
             return True
@@ -116,7 +130,7 @@ def hasNanInPose(pose):
 
 class SerialReaderFactory(serial.threaded.LineReader):
     """
-    this is a protocol factory for serial.threaded.ReaderThread
+    A protocol factory for serial.threaded.ReaderThread.
 
     self.lastRead should be read only, if you need to modify it make a copy
 
@@ -127,64 +141,70 @@ class SerialReaderFactory(serial.threaded.LineReader):
     """
 
     def __init__(self):
-        self.buffer = bytearray()
-        self.transport = None
-        self.lastRead = ""
+        """Create the SerialReaderFactory."""
+        super().__init__()
+        self._last_read = ""
 
-    def connection_made(self, transport):
-        super(SerialReaderFactory, self).connection_made(transport)
+    @property
+    def last_read(self):
+        """Get the readonly last read."""
+        return self.last_read
 
     def handle_line(self, data):
-        self.lastRead = data
+        """Store the latest line in last_read."""
+        self._last_read = data
         # print (f'cSerialReader: data received: {repr(data)}')
 
     def connection_lost(self, exc):
+        """Notify the user that the connection was lost."""
         print(f"SerialReaderFactory: port closed {repr(exc)}")
 
 
 class BlobTracker(threading.Thread):
     """
-    tracks color blobs in 3D space
-
-    color_masks - color mask parameters, in opencv hsv color space, for color detection
-    offsets - rotational offsets, in radians, applied to the 3D coordinates of the blobs
+    Tracks color blobs in 3D space.
 
     all tracking is done in a separate thread, so use this class in context manager
 
     self.start() - starts tracking thread
     self.close() - stops tracking thread
 
-    self.getPoses() - gets latest tracker poses
-
-    example usage:
-        tracker = BlobTracker(color_masks={
-                'tracker1':{
-                    'h':(98, 10),
-                    's':(200, 55),
-                    'v':(250, 32)
-                },
-        })
-
-        with tracker:
-            for _ in range(300):
-                poses = tracker.getPoses() # gets latest poses for the trackers
-                print (poses)
-
-                time.sleep(1/60) # some  delay, doesn't affect the tracking
-
+    self.get_poses() - gets latest tracker poses
     """
 
     def __init__(
-        self,
-        cam_index=0,
-        *,
-        focal_length_px=490,
-        ball_radius_cm=2,
-        offsets=[0, 0, 0],
-        color_masks={},
+            self, cam_index=0, *, focal_length_px=490, ball_radius_cm=2, offsets=[0, 0, 0], color_masks={},
     ):
+        """
+        Create a blob tracker.
+
+        example usage:
+        >>> tracker = BlobTracker(color_masks={
+        ...         'tracker1':{
+        ...             'h':(98, 10),
+        ...             's':(200, 55),
+        ...             'v':(250, 32)
+        ...         },
+        ... })
+
+        >>> with tracker:
+        ...     for _ in range(3):
+        ...         poses = tracker.get_poses() # gets latest poses for the trackers
+        ...         print (poses)
+        ...         time.sleep(1/60) # some delay, doesn't affect the tracking
+        {'tracker1': {'x': 0, 'y': 0, 'z': 0}}
+        {'tracker1': {'x': 0, 'y': 0, 'z': 0}}
+        {'tracker1': {'x': 0, 'y': 0, 'z': 0}}
+
+        :param cam_index: index of the camera that will be used to track the blobs
+        :param focal_length_px: focal length in pixels
+        :param ball_radius_cm: the radius of the ball to be tracked in cm
+        :param offsets: rotational offsets, in radians, applied to the 3D coordinates of the blobs
+        :param color_masks: color mask parameters, in opencv hsv color space, for color detection
+        """
         super().__init__()
         self._vs = cv2.VideoCapture(cam_index)
+        self._vs.set(cv2.CAP_PROP_FOURCC, cv2.CAP_OPENCV_MJPEG)  # high speed capture
 
         time.sleep(2)
 
@@ -198,9 +218,7 @@ class BlobTracker(threading.Thread):
             self._vs.release()
             self._vs = None
 
-        self.frame_height, self.frame_width, _ = (
-            frame.shape if self.can_track else (0, 0, 0)
-        )
+        self.frame_height, self.frame_width, _ = frame.shape if self.can_track else (0, 0, 0)
 
         self.markerMasks = color_masks
 
@@ -209,12 +227,12 @@ class BlobTracker(threading.Thread):
 
         self.kalmanTrainSize = 15
 
-        self.kalmanFilterz = {}
+        self.kalmanFilterz: Dict[str, KalmanFilter] = {}
         self.kalmanTrainBatch = {}
         self.kalmanWasInited = {}
         self.kalmanStateUpdate = {}
 
-        self.kalmanFilterz2 = {}
+        self.kalmanFilterz2: Dict[str, KalmanFilter] = {}
         self.kalmanTrainBatch2 = {}
         self.kalmanWasInited2 = {}
         self.kalmanStateUpdate2 = {}
@@ -239,14 +257,16 @@ class BlobTracker(threading.Thread):
         self.alive = True
         self._lock = threading.Lock()
         self.daemon = False
-        self.poseQue = queue.Queue()
+        self.pose_que = queue.Queue()
 
     def stop(self):
+        """Stop the blob tracking thread."""
         self.alive = False
         self.can_track = False
         self.join(4)
 
     def run(self):
+        """Run the main blob tracking thread."""
         try:
             self.can_track, _ = self._vs.read()
 
@@ -254,24 +274,24 @@ class BlobTracker(threading.Thread):
                 raise RuntimeError("video source already expired")
 
         except Exception as e:
-            print(f"failed to start thread, video source expired?: {repr(r)}")
+            print(f"failed to start thread, video source expired?: {repr(e)}")
             self.alive = False
             return
 
         while self.alive and self.can_track:
             try:
-                self.getFrame()
-                self.solvePose()
+                self.find_blobs_in_frame()
+                self.solve_blob_poses()
                 rotate(self.poses, self.offsets)
 
-                if not self.poseQue.empty():
+                if not self.pose_que.empty():
                     try:
-                        self.poseQue.get_nowait()
+                        self.pose_que.get_nowait()
 
                     except queue.Empty:
                         pass
 
-                self.poseQue.put(self.poses.copy())
+                self.pose_que.put(self.poses.copy())
 
                 if not self.can_track:
                     break
@@ -283,17 +303,18 @@ class BlobTracker(threading.Thread):
         self.alive = False
         self.can_track = False
 
-    def getPoses(self):
+    def get_poses(self) -> Dict[str, Dict[str, float]]:
+        """Get the least recent set of poses."""
         if self.can_track and self.alive:
-            return self.poseQue.get()
+            return self.pose_que.get()
 
         else:
             raise RuntimeError("tracking loop already finished")
 
-    def _initKalman(self, key):
+    def _init_kalman(self, key: str) -> None:
         self.kalmanTrainBatch[key] = np.array(self.kalmanTrainBatch[key])
 
-        initState = [*self.kalmanTrainBatch[key][0]]
+        init_state = [*self.kalmanTrainBatch[key][0]]
 
         transition_matrix = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
 
@@ -302,26 +323,24 @@ class BlobTracker(threading.Thread):
         self.kalmanFilterz[key] = KalmanFilter(
             transition_matrices=transition_matrix,
             observation_matrices=observation_matrix,
-            initial_state_mean=initState,
+            initial_state_mean=init_state,
         )
 
         print(f'initializing Kalman filter for mask "{key}"...')
 
-        tStart = time.time()
-        self.kalmanFilterz[key] = self.kalmanFilterz[key].em(
-            self.kalmanTrainBatch[key], n_iter=5
-        )
-        print(f"took: {time.time() - tStart}s")
+        t_start = time.time()
+        self.kalmanFilterz[key] = self.kalmanFilterz[key].em(self.kalmanTrainBatch[key], n_iter=5)
+        print(f"took: {time.time() - t_start}s")
 
-        fMeans, fCovars = self.kalmanFilterz[key].filter(self.kalmanTrainBatch[key])
-        self.kalmanStateUpdate[key] = {"x_now": fMeans[-1, :], "p_now": fCovars[-1, :]}
+        f_means, f_covars = self.kalmanFilterz[key].filter(self.kalmanTrainBatch[key])
+        self.kalmanStateUpdate[key] = {"x_now": f_means[-1, :], "p_now": f_covars[-1, :]}
 
         self.kalmanWasInited[key] = True
 
-    def _initKalman2(self, key):
+    def _init_kalman_2(self, key):
         self.kalmanTrainBatch2[key] = np.array(self.kalmanTrainBatch2[key])
 
-        initState = [*self.kalmanTrainBatch2[key][0]]
+        init_state = [*self.kalmanTrainBatch2[key][0]]
 
         transition_matrix = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
 
@@ -330,49 +349,39 @@ class BlobTracker(threading.Thread):
         self.kalmanFilterz2[key] = KalmanFilter(
             transition_matrices=transition_matrix,
             observation_matrices=observation_matrix,
-            initial_state_mean=initState,
+            initial_state_mean=init_state,
         )
 
         print(f'initializing second Kalman filter for mask "{key}"...')
 
-        tStart = time.time()
-        self.kalmanFilterz2[key] = self.kalmanFilterz2[key].em(
-            self.kalmanTrainBatch2[key], n_iter=5
-        )
-        print(f"took: {time.time() - tStart}s")
+        t_start = time.time()
+        self.kalmanFilterz2[key] = self.kalmanFilterz2[key].em(self.kalmanTrainBatch2[key], n_iter=5)
+        print(f"took: {time.time() - t_start}s")
 
-        fMeans, fCovars = self.kalmanFilterz2[key].filter(self.kalmanTrainBatch2[key])
-        self.kalmanStateUpdate2[key] = {"x_now": fMeans[-1, :], "p_now": fCovars[-1, :]}
+        f_means, f_covars = self.kalmanFilterz2[key].filter(self.kalmanTrainBatch2[key])
+        self.kalmanStateUpdate2[key] = {"x_now": f_means[-1, :], "p_now": f_covars[-1, :]}
 
         self.kalmanWasInited2[key] = True
 
     def _applyKalman(self, key):
-        obz = np.array(
-            [self.poses[key]["x"], self.poses[key]["y"], self.poses[key]["z"]]
-        )
+        obz = np.array([self.poses[key]["x"], self.poses[key]["y"], self.poses[key]["z"]])
         if self.kalmanFilterz[key] is not None:
-            (
-                self.kalmanStateUpdate[key]["x_now"],
-                self.kalmanStateUpdate[key]["p_now"],
-            ) = self.kalmanFilterz[key].filter_update(
+            (self.kalmanStateUpdate[key]["x_now"], self.kalmanStateUpdate[key]["p_now"],) = self.kalmanFilterz[
+                key
+            ].filter_update(
                 filtered_state_mean=self.kalmanStateUpdate[key]["x_now"],
                 filtered_state_covariance=self.kalmanStateUpdate[key]["p_now"],
                 observation=obz,
             )
 
-            (
-                self.poses[key]["x"],
-                self.poses[key]["y"],
-                self.poses[key]["z"],
-            ) = self.kalmanStateUpdate[key]["x_now"]
+            (self.poses[key]["x"], self.poses[key]["y"], self.poses[key]["z"],) = self.kalmanStateUpdate[key]["x_now"]
 
     def _applyKalman2(self, key):
         obz = np.array(self.xywForKalman2[key])
         if self.kalmanFilterz2[key] is not None:
-            (
-                self.kalmanStateUpdate2[key]["x_now"],
-                self.kalmanStateUpdate2[key]["p_now"],
-            ) = self.kalmanFilterz2[key].filter_update(
+            (self.kalmanStateUpdate2[key]["x_now"], self.kalmanStateUpdate2[key]["p_now"],) = self.kalmanFilterz2[
+                key
+            ].filter_update(
                 filtered_state_mean=self.kalmanStateUpdate2[key]["x_now"],
                 filtered_state_covariance=self.kalmanStateUpdate2[key]["p_now"],
                 observation=obz,
@@ -380,38 +389,36 @@ class BlobTracker(threading.Thread):
 
             self.xywForKalman2[key] = self.kalmanStateUpdate2[key]["x_now"]
 
-    def getFrame(self):
+    def find_blobs_in_frame(self):
+        """Get a frame from the camera and find all the blobs in it."""
         if self.alive:
             self.can_track, frame = self._vs.read()
 
-        for key, maskRange in self.markerMasks.items():
-            hc, hr = maskRange["h"]
+            for key, mask_range in self.markerMasks.items():
+                hc, hr = mask_range["h"]
 
-            sc, sr = maskRange["s"]
+                sc, sr = mask_range["s"]
 
-            vc, vr = maskRange["v"]
+                vc, vr = mask_range["v"]
 
-            colorHigh = [hc + hr, sc + sr, vc + vr]
-            colorLow = [hc - hr, sc - sr, vc - vr]
+                color_high = [hc + hr, sc + sr, vc + vr]
+                color_low = [hc - hr, sc - sr, vc - vr]
 
-            if self.can_track:
-                blurred = cv2.GaussianBlur(frame, (3, 3), 0)
+                if self.can_track:
+                    blurred = cv2.GaussianBlur(frame, (3, 3), 0)
 
-                hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
+                    hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
-                mask = cv2.inRange(hsv, tuple(colorLow), tuple(colorHigh))
+                    mask = cv2.inRange(hsv, tuple(color_low), tuple(color_high))
 
-                _, cnts, hr = cv2.findContours(
-                    mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-                )
+                    _, cnts, hr = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-                if len(cnts) > 0:
-                    c = max(cnts, key=cv2.contourArea)
-                    self.blobs[key] = (
-                        c if len(c) >= 5 and cv2.contourArea(c) > 10 else None
-                    )
+                    if len(cnts) > 0:
+                        c = max(cnts, key=cv2.contourArea)
+                        self.blobs[key] = c if len(c) >= 5 and cv2.contourArea(c) > 10 else None
 
-    def solvePose(self):
+    def solve_blob_poses(self):
+        """Solve for and set the poses of all blobs visible by the camera."""
         for key, blob in self.blobs.items():
             if blob is not None:
                 elip = cv2.fitEllipse(blob)
@@ -424,69 +431,60 @@ class BlobTracker(threading.Thread):
                 if len(self.kalmanTrainBatch2[key]) < self.kalmanTrainSize:
                     self.kalmanTrainBatch2[key].append([x, y, w])
 
-                elif (
-                    len(self.kalmanTrainBatch2[key]) >= self.kalmanTrainSize
-                    and not self.kalmanWasInited2[key]
-                ):
-                    self._initKalman2(key)
+                elif len(self.kalmanTrainBatch2[key]) >= self.kalmanTrainSize and not self.kalmanWasInited2[key]:
+                    self._init_kalman_2(key)
 
                 else:
                     self._applyKalman2(key)
                     x, y, w = self.xywForKalman2[key]
 
                 f_px = self.camera_focal_length
-                X_px = x
-                Y_px = y
-                A_px = w / 2
+                x_px = x
+                y_px = y
+                a_px = w / 2
 
-                X_px -= self.frame_width / 2
-                Y_px = self.frame_height / 2 - Y_px
+                x_px -= self.frame_width / 2
+                y_px = self.frame_height / 2 - y_px
 
-                L_px = np.sqrt(X_px ** 2 + Y_px ** 2)
+                l_px = np.sqrt(x_px ** 2 + y_px ** 2)
 
-                k = L_px / f_px
+                k = l_px / f_px
 
-                j = (L_px + A_px) / f_px
+                j = (l_px + a_px) / f_px
 
                 l = (j - k) / (1 + j * k)
 
-                D_cm = self.BALL_RADIUS_CM * np.sqrt(1 + l ** 2) / l
+                d_cm = self.BALL_RADIUS_CM * np.sqrt(1 + l ** 2) / l
 
-                fl = f_px / L_px
+                fl = f_px / l_px
 
-                Z_cm = D_cm * fl / np.sqrt(1 + fl ** 2)
+                z_cm = d_cm * fl / np.sqrt(1 + fl ** 2)
 
-                L_cm = Z_cm * k
+                l_cm = z_cm * k
 
-                X_cm = L_cm * X_px / L_px
-                Y_cm = L_cm * Y_px / L_px
+                x_cm = l_cm * x_px / l_px
+                y_cm = l_cm * y_px / l_px
 
-                self.poses[key]["x"] = X_cm / 100
-                self.poses[key]["y"] = Y_cm / 100
-                self.poses[key]["z"] = Z_cm / 100
+                self.poses[key]["x"] = x_cm / 100
+                self.poses[key]["y"] = y_cm / 100
+                self.poses[key]["z"] = z_cm / 100
 
                 # self._translate()
 
                 if len(self.kalmanTrainBatch[key]) < self.kalmanTrainSize:
                     self.kalmanTrainBatch[key].append(
-                        [
-                            self.poses[key]["x"],
-                            self.poses[key]["y"],
-                            self.poses[key]["z"],
-                        ]
+                        [self.poses[key]["x"], self.poses[key]["y"], self.poses[key]["z"], ]
                     )
 
-                elif (
-                    len(self.kalmanTrainBatch[key]) >= self.kalmanTrainSize
-                    and not self.kalmanWasInited[key]
-                ):
-                    self._initKalman(key)
+                elif len(self.kalmanTrainBatch[key]) >= self.kalmanTrainSize and not self.kalmanWasInited[key]:
+                    self._init_kalman(key)
 
                 else:
-                    if not hasNanInPose(self.poses[key]):
+                    if not has_nan_in_pose(self.poses[key]):
                         self._applyKalman(key)
 
     def close(self):
+        """Clocse the blob tracker thread."""
         with self._lock:
             self.stop()
 

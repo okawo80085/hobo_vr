@@ -34,7 +34,5 @@ setup(
     ],
     install_requires=["keyboard", "opencv-python", "numpy", "pykalman", "pyserial"],
     extras_require={"image": ["imutils"]},
-    entry_points={
-        "console_scripts": ["vrserver=virtualreality.server.server:run_til_dead"]
-    },
+    entry_points={"console_scripts": ["vrserver=virtualreality.server.server:run_til_dead"]},
 )

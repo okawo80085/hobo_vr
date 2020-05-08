@@ -71,13 +71,7 @@ class PoserTemplate:
     """
 
     def __init__(
-        self,
-        *,
-        addr="127.0.0.1",
-        port=6969,
-        sendDelay=1 / 100,
-        recvDelay=1 / 1000,
-        **kwargs,
+        self, *, addr="127.0.0.1", port=6969, sendDelay=1 / 100, recvDelay=1 / 1000, **kwargs,
     ):
         self.addr = addr
         self.port = port
@@ -197,11 +191,9 @@ class PoserTemplate:
         """
         print(f'connecting to the server at "{self.addr}:{self.port}"...')
         # connect to the server
-        self.reader, self.writer = await asyncio.open_connection(
-            self.addr, self.port, loop=asyncio.get_event_loop()
-        )
+        self.reader, self.writer = await asyncio.open_connection(self.addr, self.port, loop=asyncio.get_event_loop())
         # send poser id message
-        self.writer.write(u.convv("poser here"))
+        self.writer.write(u.format_str_for_write("poser here"))
 
     async def send(self):
         """
@@ -209,7 +201,7 @@ class PoserTemplate:
         """
         while self.coro_keepAlive["send"][0]:
             try:
-                msg = u.convv(
+                msg = u.format_str_for_write(
                     " ".join(
                         [str(i) for _, i in self.pose.items()]
                         + [str(i) for _, i in self.poseControllerR.items()]
@@ -231,7 +223,7 @@ class PoserTemplate:
         """
         while self.coro_keepAlive["recv"][0]:
             try:
-                data = await u.newRead(self.reader)
+                data = await u.read(self.reader)
                 self.lastRead = data
 
                 await asyncio.sleep(self.coro_keepAlive["recv"][1])
@@ -255,9 +247,7 @@ class PoserTemplate:
                 await asyncio.sleep(self.coro_keepAlive["close"][1])
 
         except ImportError as e:
-            print(
-                f"close: failed to import keyboard, poser will close in 10 seconds: {e}"
-            )
+            print(f"close: failed to import keyboard, poser will close in 10 seconds: {e}")
             await asyncio.sleep(10)
 
         print("closing...")
@@ -267,7 +257,7 @@ class PoserTemplate:
 
         await asyncio.sleep(1)
 
-        self.writer.write(u.convv("CLOSE"))
+        self.writer.write(u.format_str_for_write("CLOSE"))
         self.writer.close()
 
         print("done")
@@ -279,11 +269,7 @@ class PoserTemplate:
         await self._socket_init()
 
         await asyncio.gather(
-            *[
-                getattr(self, coro_name)()
-                for coro_name in self.coro_list
-                if coro_name not in self._coro_name_exceptions
-            ]
+            *[getattr(self, coro_name)() for coro_name in self.coro_list if coro_name not in self._coro_name_exceptions]
         )
 
 
@@ -299,20 +285,13 @@ def thread_register(sleepDelay, runInDefaultExecutor=False):
         def _thread_reg_wrapper(self, *args, **kwargs):
 
             if not asyncio.iscoroutinefunction(func) and not runInDefaultExecutor:
-                raise ValueError(
-                    f"{repr(func)} is not a coroutine function and runInDefaultExecutor is set to False"
-                )
+                raise ValueError(f"{repr(func)} is not a coroutine function and runInDefaultExecutor is set to False")
 
-            if (
-                func.__name__ not in self.coro_keepAlive
-                and func.__name__ in self.coro_list
-            ):
+            if func.__name__ not in self.coro_keepAlive and func.__name__ in self.coro_list:
                 self.coro_keepAlive[func.__name__] = [True, sleepDelay]
 
             else:
-                warnings.warn(
-                    "thread register ignored, thread already exists", RuntimeWarning
-                )
+                warnings.warn("thread register ignored, thread already exists", RuntimeWarning)
 
             if runInDefaultExecutor:
                 loop = asyncio.get_running_loop()
@@ -359,14 +338,9 @@ class PoserClient(PoserTemplate):
 
         def _thread_register(coro):
             if not asyncio.iscoroutinefunction(coro) and not runInDefaultExecutor:
-                raise ValueError(
-                    f"{repr(coro)} is not a coroutine function and runInDefaultExecutor is set to False"
-                )
+                raise ValueError(f"{repr(coro)} is not a coroutine function and runInDefaultExecutor is set to False")
 
-            if (
-                coro.__name__ not in self.coro_keepAlive
-                and coro.__name__ not in self.coro_list
-            ):
+            if coro.__name__ not in self.coro_keepAlive and coro.__name__ not in self.coro_list:
                 self.coro_keepAlive[coro.__name__] = [True, sleepDelay]
                 self.coro_list.append(coro.__name__)
 

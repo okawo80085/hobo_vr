@@ -17,7 +17,25 @@ frame_width, frame_height = 640, 480
 
 BALL_RADIUS_CM = 2
 
-vs = cv2.VideoCapture(4)
+def list_supported_capture_properties(cap: cv2.VideoCapture):
+    """ List the properties supported by the capture device.
+    """
+    # thanks: https://stackoverflow.com/q/47935846/782170
+    supported = list()
+    for attr in dir(cv2):
+        if attr.startswith('CAP_PROP'):
+            if cap.get(getattr(cv2, attr)) != -1:
+                print(attr)
+                supported.append(attr)
+    return supported
+
+vs = cv2.VideoCapture(0)
+list_supported_capture_properties(vs)
+vs.set(cv2.CAP_PROP_FOURCC, cv2.CAP_OPENCV_MJPEG)
+vs.set(cv2.CAP_PROP_EXPOSURE, -7)
+
+
+
 
 time.sleep(2)
 
@@ -48,17 +66,15 @@ while 1:
 
     # frame = imutils.resize(frame, width=600)
 
-    blurred = cv2.GaussianBlur(frame, (3, 3), 0)
+    #blurred = cv2.GaussianBlur(frame, (3, 3), 0)
 
-    hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
+    #hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
-    mask = cv2.inRange(hsv, tuple(orangeLow), tuple(orangeHigh))
+    #mask = cv2.inRange(hsv, tuple(orangeLow), tuple(orangeHigh))
     # mask = cv2.erode(mask, None, iterations=1)
     # mask = cv2.dilate(mask, None, iterations=3)
 
-    _, cnts, hr = cv2.findContours(
-        mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-    )
+    #_, cnts, hr = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     # cnts = imutils.grab_contours(cnts)
 
     # if len(cnts) > 0:
@@ -108,13 +124,13 @@ while 1:
     # frame[:, :, 1] *= mask
     # frame[:, :, 2] *= mask
 
-    cv2.imshow("hentai", hsv)
-    cv2.imshow("hentai2", mask)
+    #cv2.imshow("hentai", hsv)
+    #cv2.imshow("hentai2", mask)
     cv2.imshow("hentai3", frame)
 
-    k = cv2.waitKey(10) & 0xFF
+    k = cv2.waitKey(1) & 0xFF
 
-    print(hsv[iY, iX, :])
+    #print(hsv[iY, iX, :])
 
     # if k == ord('i'):
     # 	orangeHigh[0] += 1

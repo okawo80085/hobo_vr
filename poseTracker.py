@@ -1,7 +1,7 @@
 import asyncio
 import virtualreality.utilz as u
 from virtualreality import templates
-
+import math
 import time
 
 # from win32 import winxpgui
@@ -102,7 +102,7 @@ class Poser(templates.PoserTemplate):
         with t1:
             while self.coro_keepAlive["getLocation"][0]:
                 try:
-                    poses = t1.getPoses()
+                    poses = t1.get_poses()
 
                     self.tempPose["x"] = round(-poses["green"]["x"], 6)
                     self.tempPose["y"] = round(poses["green"]["y"] + 1, 6)
@@ -126,72 +126,37 @@ class Poser(templates.PoserTemplate):
         while self.coro_keepAlive["serialListener2"][0]:
             try:
                 yawOffset = 0
-                with serial.Serial(
-                    self.serialPaths["green"], 115200, timeout=1 / 4
-                ) as ser:
-                    with serial.threaded.ReaderThread(
-                        ser, u.SerialReaderFactory
-                    ) as protocol:
+                with serial.Serial(self.serialPaths["green"], 115200, timeout=1 / 4) as ser:
+                    with serial.threaded.ReaderThread(ser, u.SerialReaderFactory) as protocol:
                         for _ in range(10):
                             protocol.write_line("nut")
                             await asyncio.sleep(1)
 
                         while self.coro_keepAlive["serialListener2"][0]:
                             try:
-                                gg = u.decodeSerial(protocol.lastRead)
+                                gg = u.get_numbers_from_text(protocol.lastRead)
 
                                 if len(gg) > 0:
-                                    (
-                                        y,
-                                        p,
-                                        r,
-                                        az,
-                                        ax,
-                                        ay,
-                                        trgr,
-                                        grp,
-                                        util,
-                                        sys,
-                                        menu,
-                                        padClk,
-                                        padY,
-                                        padX,
-                                    ) = gg
+                                    (y, p, r, az, ax, ay, trgr, grp, util, sys, menu, padClk, padY, padX,) = gg
 
                                     if velocityUntilReset < 20:
 
-                                        u.rotateY(
-                                            {"": tempForOffz}, u.angle2rad(-yawOffset)
-                                        )
+                                        u.rotate_y({"": tempForOffz}, math.radians(-yawOffset))
                                         pastVelocity = [
                                             tempForOffz["x"],
                                             tempForOffz["y"],
                                             tempForOffz["z"],
                                         ]
                                         tempForOffz["x"] = round(
-                                            pastVelocity[0]
-                                            - ax
-                                            * self.coro_keepAlive["serialListener2"][1]
-                                            * 0.005,
-                                            4,
+                                            pastVelocity[0] - ax * self.coro_keepAlive["serialListener2"][1] * 0.005, 4,
                                         )
                                         tempForOffz["y"] = round(
-                                            pastVelocity[1]
-                                            - ay
-                                            * self.coro_keepAlive["serialListener2"][1]
-                                            * 0.005,
-                                            4,
+                                            pastVelocity[1] - ay * self.coro_keepAlive["serialListener2"][1] * 0.005, 4,
                                         )
                                         tempForOffz["z"] = round(
-                                            pastVelocity[2]
-                                            - az
-                                            * self.coro_keepAlive["serialListener2"][1]
-                                            * 0.005,
-                                            4,
+                                            pastVelocity[2] - az * self.coro_keepAlive["serialListener2"][1] * 0.005, 4,
                                         )
-                                        u.rotateY(
-                                            {"": tempForOffz}, u.angle2rad(yawOffset)
-                                        )
+                                        u.rotate_y({"": tempForOffz}, math.radians(yawOffset))
 
                                         if self.useVelocity:
                                             self.tempPose["velX"] = tempForOffz["x"]
@@ -208,9 +173,7 @@ class Poser(templates.PoserTemplate):
                                         self.tempPose["velZ"] = 0
 
                                     yaw = y
-                                    w, x, y, z = sq.euler2quat(
-                                        y + yawOffset, p, r, degrees=True
-                                    )
+                                    w, x, y, z = sq.euler2quat(y + yawOffset, p, r, degrees=True)
 
                                     self.tempPose["rW"] = round(w, 4)
                                     self.tempPose["rX"] = round(y, 4)
@@ -223,12 +186,8 @@ class Poser(templates.PoserTemplate):
                                     self.tempPose["system"] = abs(sys - 1)
                                     self.tempPose["trackpadClick"] = abs(padClk - 1)
 
-                                    self.tempPose["trackpadX"] = round(
-                                        (padX - 524) / 530, 3
-                                    ) * (-1)
-                                    self.tempPose["trackpadY"] = round(
-                                        (padY - 506) / 512, 3
-                                    ) * (-1)
+                                    self.tempPose["trackpadX"] = round((padX - 524) / 530, 3) * (-1)
+                                    self.tempPose["trackpadY"] = round((padY - 506) / 512, 3) * (-1)
 
                                     tempMode = abs(util - 1)
 
@@ -249,10 +208,7 @@ class Poser(templates.PoserTemplate):
                                         yawOffset = 0 - yaw
                                         self._serialResetYaw = True
 
-                                if (
-                                    abs(self.tempPose["trackpadX"]) > 0.07
-                                    or abs(self.tempPose["trackpadY"]) > 0.07
-                                ):
+                                if abs(self.tempPose["trackpadX"]) > 0.07 or abs(self.tempPose["trackpadY"]) > 0.07:
                                     self.tempPose["trackpadTouch"] = 1
 
                                 else:
@@ -264,9 +220,7 @@ class Poser(templates.PoserTemplate):
                                 else:
                                     self.tempPose["triggerClick"] = 0
 
-                                await asyncio.sleep(
-                                    self.coro_keepAlive["serialListener2"][1]
-                                )
+                                await asyncio.sleep(self.coro_keepAlive["serialListener2"][1])
 
                             except Exception as e:
                                 print(f"{self.serialListener2.__name__}: {e}")
@@ -281,12 +235,8 @@ class Poser(templates.PoserTemplate):
     async def serialListener(self):
         while self.coro_keepAlive["serialListener"][0]:
             try:
-                with serial.Serial(
-                    self.serialPaths["blue"], 115200, timeout=1 / 5
-                ) as ser2:
-                    with serial.threaded.ReaderThread(
-                        ser2, u.SerialReaderFactory
-                    ) as protocol:
+                with serial.Serial(self.serialPaths["blue"], 115200, timeout=1 / 5) as ser2:
+                    with serial.threaded.ReaderThread(ser2, u.SerialReaderFactory) as protocol:
                         yawOffset = 0
                         for _ in range(10):
                             protocol.write_line("nut")
@@ -294,14 +244,12 @@ class Poser(templates.PoserTemplate):
 
                         while self.coro_keepAlive["serialListener"][0]:
                             try:
-                                gg = u.decodeSerial(protocol.lastRead)
+                                gg = u.get_numbers_from_text(protocol.lastRead)
 
                                 if len(gg) > 0:
                                     ypr = gg
 
-                                    w, x, y, z = sq.euler2quat(
-                                        ypr[0] + yawOffset, ypr[1], ypr[2], degrees=True
-                                    )
+                                    w, x, y, z = sq.euler2quat(ypr[0] + yawOffset, ypr[1], ypr[2], degrees=True)
 
                                     # self.pose['rW'] = rrr2[0]
                                     # self.pose['rX'] = -rrr2[2]
@@ -316,9 +264,7 @@ class Poser(templates.PoserTemplate):
                                     if self._serialResetYaw:
                                         yawOffset = 0 - ypr[0]
 
-                                await asyncio.sleep(
-                                    self.coro_keepAlive["serialListener"][1]
-                                )
+                                await asyncio.sleep(self.coro_keepAlive["serialListener"][1])
 
                             except Exception as e:
                                 print(f"{self.serialListener.__name__}: {e}")

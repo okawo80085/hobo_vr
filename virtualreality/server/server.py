@@ -1,15 +1,26 @@
 import asyncio
+
+from virtualreality.templates import PoserTemplate
 from .. import utilz as u
 
 DOMAIN = (None, 6969)
 conz = {}
 
 
-async def send2all(everyone, data, me, VIP):
+async def broadcast(everyone, data, me, VIP):
+    """
+    Broadcast a message to all posers
+
+    :param everyone:
+    :param data:
+    :param me:
+    :param VIP:
+    :return:
+    """
     for key, acc in everyone.items():
         try:
             if me != key and (VIP == acc[2] or acc[3]):
-                acc[1].write(u.convv(data))
+                acc[1].write(u.format_str_for_write(data))
                 await acc[1].drain()
 
         except:
@@ -24,7 +35,7 @@ async def handle_echo(reader, writer):
         try:
             addr = writer.get_extra_info("peername")
 
-            data = await u.newRead(reader)
+            data = await u.read(reader)
             if addr not in conz:
                 print("New connection from {}".format(addr))
                 isDriver = False
@@ -44,7 +55,7 @@ async def handle_echo(reader, writer):
 
             print("Received %r from %r" % (data, addr), end=" ")
             # print("Send: %r" % data)
-            sendOK = await send2all(conz, data, addr, conz[addr][2])
+            sendOK = await broadcast(conz, data, addr, conz[addr][2])
             print(sendOK)
 
             await asyncio.sleep(0.00001)
@@ -58,10 +69,14 @@ async def handle_echo(reader, writer):
     del conz[addr]
 
 
-def run_til_dead():
+def run_til_dead(poser: PoserTemplate = None):
+    """Runs the """
     loop = asyncio.get_event_loop()
     coro = asyncio.start_server(handle_echo, *DOMAIN, loop=loop)
     server = loop.run_until_complete(coro)
+
+    if poser is not None:
+        poser_result = asyncio.run_coroutine_threadsafe(poser.main(), loop)
 
     # Serve requests until Ctrl+C is pressed
     print("Serving on {}".format(server.sockets[0].getsockname()))
