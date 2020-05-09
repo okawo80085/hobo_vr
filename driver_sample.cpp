@@ -810,21 +810,28 @@ void CServerDriver_Sample::Cleanup() {
 }
 
 void CServerDriver_Sample::myTrackingThread() {
+  DWORD dwError, dwThreadPri;
+
+  if(!SetThreadPriority(GetCurrentThread(), 15))
+  {
+    dwError = GetLastError();
+    DriverLog("failed to set tracking thread priority to 15: %d", dwError);
+  }
+
+  dwThreadPri = GetThreadPriority(GetCurrentThread());
+  DriverLog("current tracking thread priority: %d", dwThreadPri);
+
   std::vector<double> tempPose;
   while (m_bMyThreadKeepAlive) {
     int ret = 1;
     if (remotePoser != NULL) {
       ret = remotePoser->returnStatus;
-      tempPose = remotePoser->getPose();
     }
 
     if (ret == 0) {
+      tempPose = remotePoser->getPose();
       if (!tempPose.empty())
       {
-        if (m_pNullHmdLatest != NULL) {
-          m_pNullHmdLatest->RunFrame(tempPose);
-        }
-
         if (m_pRightController != NULL) {
           m_pRightController->RunFrame(tempPose);
         }
@@ -832,17 +839,21 @@ void CServerDriver_Sample::myTrackingThread() {
         if (m_pLeftController != NULL) {
           m_pLeftController->RunFrame(tempPose);
         }
+
+        if (m_pNullHmdLatest != NULL) {
+          m_pNullHmdLatest->RunFrame(tempPose);
+        }
       }
 
-      vr::VREvent_t vrEvent;
-      while (vr::VRServerDriverHost()->PollNextEvent(&vrEvent, sizeof(vrEvent))) {
-        if (m_pRightController) {
-          m_pRightController->ProcessEvent(vrEvent);
-        }
-        if (m_pLeftController) {
-          m_pLeftController->ProcessEvent(vrEvent);
-        }
-      }
+      // vr::VREvent_t vrEvent;
+      // while (vr::VRServerDriverHost()->PollNextEvent(&vrEvent, sizeof(vrEvent))) {
+      //   if (m_pRightController) {
+      //     m_pRightController->ProcessEvent(vrEvent);
+      //   }
+      //   if (m_pLeftController) {
+      //     m_pLeftController->ProcessEvent(vrEvent);
+      //   }
+      // }
     }
 
     // std::this_thread::sleep_for(std::chrono::microseconds(100));

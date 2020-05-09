@@ -29,7 +29,6 @@ namespace SP {
 
 class socketPoser {
 public:
-  std::vector<double> newPose;
   int returnStatus;
   int bufLen;
   int expectedPoseSize;
@@ -124,6 +123,7 @@ public:
   int socClose() {
     // cleanup
     // shutdown the connection since no more data will be sent
+    socSend("CLOSE\n", 6);
     iResult = shutdown(ConnectSocket, SD_SEND);
     if (iResult == SOCKET_ERROR) {
       DriverLog("shutdown failed with error: %d\n", WSAGetLastError());
@@ -255,6 +255,8 @@ private:
   int recvbuflen;
   char recvbuf[DEFAULT_BUFLEN];
 
+  std::vector<double> newPose;
+
   bool m_bMyThreadKeepAlive;
   std::thread *m_pMyTread;
   std::queue<std::vector<double>> qq;
@@ -263,7 +265,21 @@ private:
     t->listenThread();
   }
   void listenThread() {
+    DWORD dwError, dwThreadPri;
+
+    if(!SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL))
+    {
+      DriverLog("failed to enter background mode for listen thread: %d\n", GetLastError());
+    }
+
+    dwThreadPri = GetThreadPriority(GetCurrentThread());
+    DriverLog("current listen thread priority: %d", dwThreadPri);
+
+
     while (m_bMyThreadKeepAlive) {
+      if (returnStatus != 0){
+        break;
+      }
       socRecv();
 
       if (!qq.empty()) {
@@ -271,6 +287,8 @@ private:
       }
       qq.push(newPose);
     }
+
+    DriverLog("listen thread finished with status: %d", returnStatus);
   }
 };
 
