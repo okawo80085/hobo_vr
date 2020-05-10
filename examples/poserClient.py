@@ -39,4 +39,4 @@ def example_thread2():
         time.sleep(poser.coro_keep_alive["example_thread2"][1])
 
 
-asyncio.run(poser)
+asyncio.run(poser.main())

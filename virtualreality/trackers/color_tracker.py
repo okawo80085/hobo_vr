@@ -280,4 +280,4 @@ class Poser(templates.PoserTemplate):
 t = Poser(addr="127.0.0.1")
 
 if __name__ == "__main__":
-    asyncio.run(t)
+    asyncio.run(t.main())
