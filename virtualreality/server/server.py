@@ -69,11 +69,14 @@ async def handle_echo(reader, writer):
     del conz[addr]
 
 
-def run_til_dead():
+def run_til_dead(poser: PoserTemplate = None):
     """Runs the """
     loop = asyncio.get_event_loop()
     coro = asyncio.start_server(handle_echo, *DOMAIN, loop=loop)
     server = loop.run_until_complete(coro)
+
+    if poser is not None:
+        poser_result = asyncio.run_coroutine_threadsafe(poser.main(), loop)
 
     # Serve requests until Ctrl+C is pressed
     print("Serving on {}".format(server.sockets[0].getsockname()))

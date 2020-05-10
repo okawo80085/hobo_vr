@@ -7,8 +7,21 @@ from .. import utilz as u
 
 
 class Pose(object):
-    __slots__ = ['x', 'y', 'z', 'r_w', 'r_x', 'r_y', 'r_z', 'vel_x', 'vel_y', 'vel_z', 'ang_vel_x', 'ang_vel_y',
-                 'ang_vel_z']
+    __slots__ = [
+        "x",
+        "y",
+        "z",
+        "r_w",
+        "r_x",
+        "r_y",
+        "r_z",
+        "vel_x",
+        "vel_y",
+        "vel_z",
+        "ang_vel_x",
+        "ang_vel_y",
+        "ang_vel_z",
+    ]
 
     def __init__(self, pose=(0, 0, 0, 1, 0, 0, 0), velocity=(0,) * 6):
         """
@@ -41,7 +54,7 @@ class Pose(object):
         raise KeyError(key)
 
     def __setitem__(self, key, val):
-        assert isinstance(val, numbers.Number), 'value should be numeric'
+        assert isinstance(val, numbers.Number), "value should be numeric"
 
         if key in self.__slots__:
             setattr(self, key, val)
@@ -50,24 +63,61 @@ class Pose(object):
         raise KeyError(key)
 
     def __repr__(self):
-        return '<{}.{} [{}] object at {}>'.format(self.__class__.__module__, self.__class__.__name__, ', '.join([f'{key}={self[key]}' for key in self.__slots__]), hex(id(self)))
+        return "<{}.{} [{}] object at {}>".format(
+            self.__class__.__module__,
+            self.__class__.__name__,
+            ", ".join([f"{key}={self[key]}" for key in self.__slots__]),
+            hex(id(self)),
+        )
 
 
-'''class CoroutineKeepAlive(object):
+"""class CoroutineKeepAlive(object):
     def __init__(self, send_delay, receive_delay, close_delay=0.1):
         self.send = [True, send_delay]
         self.receive = [True, receive_delay]
-        self.close = [True, close_delay]'''
+        self.close = [True, close_delay]"""
 
 
 class ControllerState(Pose):
-    __slots__ = ['x', 'y', 'z', 'r_w', 'r_x', 'r_y', 'r_z', 'vel_x', 'vel_y', 'vel_z', 'ang_vel_x', 'ang_vel_y',
-                 'ang_vel_z', 'grip', 'system', 'menu', 'trackpad_click', 'trigger_value', 'trackpad_x', 'trackpad_y',
-                 'trackpad_touch', 'trigger_click']
+    __slots__ = [
+        "x",
+        "y",
+        "z",
+        "r_w",
+        "r_x",
+        "r_y",
+        "r_z",
+        "vel_x",
+        "vel_y",
+        "vel_z",
+        "ang_vel_x",
+        "ang_vel_y",
+        "ang_vel_z",
+        "grip",
+        "system",
+        "menu",
+        "trackpad_click",
+        "trigger_value",
+        "trackpad_x",
+        "trackpad_y",
+        "trackpad_touch",
+        "trigger_click",
+    ]
 
-    def __init__(self, pose=(0, 0, 0, 1, 0, 0, 0), velocity=(0,) * 6,
-                 grip=0, system=0, menu=0, trackpad_click=0, trigger_value=0,
-                 trackpad_x=0, trackpad_y=0, trackpad_touch=0, trigger_click=0):
+    def __init__(
+        self,
+        pose=(0, 0, 0, 1, 0, 0, 0),
+        velocity=(0,) * 6,
+        grip=0,
+        system=0,
+        menu=0,
+        trackpad_click=0,
+        trigger_value=0,
+        trackpad_x=0,
+        trackpad_y=0,
+        trackpad_touch=0,
+        trigger_click=0,
+    ):
         super().__init__(pose, velocity)
         self.grip: int = grip  # 0 or 1
         self.system: int = system  # 0 or 1
@@ -79,9 +129,13 @@ class ControllerState(Pose):
         self.trackpad_touch: int = trackpad_touch  # 0 or 1
         self.trigger_click: int = trigger_click  # 0 or 1
 
+
 def get_slot_names(slotted_instance):
     # thanks: https://stackoverflow.com/a/6720815/782170
-    return chain.from_iterable(getattr(cls, '__slots__', []) for cls in slotted_instance.__class__.__mro__)
+    return chain.from_iterable(
+        getattr(cls, "__slots__", []) for cls in slotted_instance.__class__.__mro__
+    )
+
 
 def get_slot_values(slotted_instance):
     # thanks: https://stackoverflow.com/a/6720815/782170
@@ -143,7 +197,7 @@ class PoserTemplate:
     """
 
     def __init__(
-            self, *, addr="127.0.0.1", port=6969, send_delay=1 / 100, recv_delay=1 / 1000, **kwargs,
+        self, *, addr="127.0.0.1", port=6969, send_delay=1 / 100, recv_delay=1 / 1000, **kwargs,
     ):
         """
 
@@ -161,8 +215,8 @@ class PoserTemplate:
             method_name
             for method_name in dir(self)
             if callable(getattr(self, method_name))
-               and method_name[0] != "_"
-               and method_name not in self._coro_name_exceptions
+            and method_name[0] != "_"
+            and method_name not in self._coro_name_exceptions
         ]
 
         self.coro_keep_alive = {
@@ -187,7 +241,9 @@ class PoserTemplate:
         """
         print(f'connecting to the server at "{self.addr}:{self.port}"...')
         # connect to the server
-        self.reader, self.writer = await asyncio.open_connection(self.addr, self.port, loop=asyncio.get_event_loop())
+        self.reader, self.writer = await asyncio.open_connection(
+            self.addr, self.port, loop=asyncio.get_event_loop()
+        )
         # send poser id message
         self.writer.write(u.format_str_for_write("poser here"))
 
@@ -195,7 +251,7 @@ class PoserTemplate:
         """
         send all poses thread
         """
-        while self.coro_keep_alive['send'][0]:
+        while self.coro_keep_alive["send"][0]:
             try:
                 msg = u.format_str_for_write(
                     " ".join(
@@ -207,25 +263,25 @@ class PoserTemplate:
 
                 self.writer.write(msg)
 
-                await asyncio.sleep(self.coro_keep_alive['send'][1])
+                await asyncio.sleep(self.coro_keep_alive["send"][1])
             except Exception as e:
                 print(f"send failed: {e}")
-                self.coro_keep_alive['send'][0] = False
+                self.coro_keep_alive["send"][0] = False
                 break
 
     async def recv(self):
         """
         receive messages thread
         """
-        while self.coro_keep_alive['recv'][0]:
+        while self.coro_keep_alive["recv"][0]:
             try:
                 data = await u.read(self.reader)
                 self.last_read = data
 
-                await asyncio.sleep(self.coro_keep_alive['recv'][1])
+                await asyncio.sleep(self.coro_keep_alive["recv"][1])
             except Exception as e:
                 print(f"recv failed: {e}")
-                self.coro_keep_alive['recv'][0] = False
+                self.coro_keep_alive["recv"][0] = False
                 break
 
     async def close(self):
@@ -235,12 +291,12 @@ class PoserTemplate:
         try:
             import keyboard
 
-            while self.coro_keep_alive['close'][0]:
+            while self.coro_keep_alive["close"][0]:
                 if keyboard.is_pressed("q"):
-                    self.coro_keep_alive['close'][0] = False
+                    self.coro_keep_alive["close"][0] = False
                     break
 
-                await asyncio.sleep(self.coro_keep_alive['close'][1])
+                await asyncio.sleep(self.coro_keep_alive["close"][1])
 
         except ImportError as e:
             print(f"close: failed to import keyboard, poser will close in 10 seconds: {e}")
@@ -265,7 +321,11 @@ class PoserTemplate:
         await self._socket_init()
 
         await asyncio.gather(
-            *[getattr(self, coro_name)() for coro_name in self.coro_list if coro_name not in self._coro_name_exceptions]
+            *[
+                getattr(self, coro_name)()
+                for coro_name in self.coro_list
+                if coro_name not in self._coro_name_exceptions
+            ]
         )
 
 
@@ -281,7 +341,9 @@ def thread_register(sleepDelay, runInDefaultExecutor=False):
         def _thread_reg_wrapper(self, *args, **kwargs):
 
             if not asyncio.iscoroutinefunction(func) and not runInDefaultExecutor:
-                raise ValueError(f"{repr(func)} is not a coroutine function and runInDefaultExecutor is set to False")
+                raise ValueError(
+                    f"{repr(func)} is not a coroutine function and runInDefaultExecutor is set to False"
+                )
 
             if func.__name__ not in self.coro_keep_alive and func.__name__ in self.coro_list:
                 self.coro_keep_alive[func.__name__] = [True, sleepDelay]
@@ -334,7 +396,9 @@ class PoserClient(PoserTemplate):
 
         def _thread_register(coro):
             if not asyncio.iscoroutinefunction(coro) and not runInDefaultExecutor:
-                raise ValueError(f"{repr(coro)} is not a coroutine function and runInDefaultExecutor is set to False")
+                raise ValueError(
+                    f"{repr(coro)} is not a coroutine function and runInDefaultExecutor is set to False"
+                )
 
             if coro.__name__ not in self.coro_keep_alive and coro.__name__ not in self.coro_list:
                 self.coro_keep_alive[coro.__name__] = [True, sleep_delay]
