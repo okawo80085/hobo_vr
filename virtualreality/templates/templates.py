@@ -132,9 +132,7 @@ class ControllerState(Pose):
 
 def get_slot_names(slotted_instance):
     # thanks: https://stackoverflow.com/a/6720815/782170
-    return chain.from_iterable(
-        getattr(cls, "__slots__", []) for cls in slotted_instance.__class__.__mro__
-    )
+    return chain.from_iterable(getattr(cls, "__slots__", []) for cls in slotted_instance.__class__.__mro__)
 
 
 def get_slot_values(slotted_instance):
@@ -241,9 +239,7 @@ class PoserTemplate:
         """
         print(f'connecting to the server at "{self.addr}:{self.port}"...')
         # connect to the server
-        self.reader, self.writer = await asyncio.open_connection(
-            self.addr, self.port, loop=asyncio.get_event_loop()
-        )
+        self.reader, self.writer = await asyncio.open_connection(self.addr, self.port, loop=asyncio.get_event_loop())
         # send poser id message
         self.writer.write(u.format_str_for_write("poser here"))
 
@@ -321,11 +317,7 @@ class PoserTemplate:
         await self._socket_init()
 
         await asyncio.gather(
-            *[
-                getattr(self, coro_name)()
-                for coro_name in self.coro_list
-                if coro_name not in self._coro_name_exceptions
-            ]
+            *[getattr(self, coro_name)() for coro_name in self.coro_list if coro_name not in self._coro_name_exceptions]
         )
 
 
@@ -341,9 +333,7 @@ def thread_register(sleepDelay, runInDefaultExecutor=False):
         def _thread_reg_wrapper(self, *args, **kwargs):
 
             if not asyncio.iscoroutinefunction(func) and not runInDefaultExecutor:
-                raise ValueError(
-                    f"{repr(func)} is not a coroutine function and runInDefaultExecutor is set to False"
-                )
+                raise ValueError(f"{repr(func)} is not a coroutine function and runInDefaultExecutor is set to False")
 
             if func.__name__ not in self.coro_keep_alive and func.__name__ in self.coro_list:
                 self.coro_keep_alive[func.__name__] = [True, sleepDelay]
@@ -396,9 +386,7 @@ class PoserClient(PoserTemplate):
 
         def _thread_register(coro):
             if not asyncio.iscoroutinefunction(coro) and not runInDefaultExecutor:
-                raise ValueError(
-                    f"{repr(coro)} is not a coroutine function and runInDefaultExecutor is set to False"
-                )
+                raise ValueError(f"{repr(coro)} is not a coroutine function and runInDefaultExecutor is set to False")
 
             if coro.__name__ not in self.coro_keep_alive and coro.__name__ not in self.coro_list:
                 self.coro_keep_alive[coro.__name__] = [True, sleep_delay]

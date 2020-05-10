@@ -18,10 +18,9 @@ def list_supported_capture_properties(cap: cv2.VideoCapture):
     return supported
 
 
-def manual_caliibration(
-    cam=0, num_colors_to_track=4, frame_width=-1, frame_height=-1, load_file=""
-):
+def manual_calibration(cam=0, num_colors_to_track=4, frame_width=-1, frame_height=-1, load_file=""):
     vs = cv2.VideoCapture(cam)
+    vs.set(cv2.CAP_PROP_EXPOSURE, -7)
     vs_supported = list_supported_capture_properties(vs)
 
     if "CAP_PROP_FOURCC" not in vs_supported:
@@ -170,4 +169,4 @@ def manual_caliibration(
 
 
 if __name__ == "__main__":
-    manual_caliibration()
+    manual_calibration()

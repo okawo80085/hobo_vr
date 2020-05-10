@@ -112,9 +112,7 @@ class Poser:
         self._exampleThread = True  # keep alive for the example thread
 
         self._recvDelay = 1 / 1000  # frequency at which other messages from the server are received
-        self._sendDelay = (
-            1 / 60
-        )  # frequency at which the commands are sent out to the driver, default is 60 fps
+        self._sendDelay = 1 / 60  # frequency at which the commands are sent out to the driver, default is 60 fps
         self._exampleThreadDelay = 1 / 50  # delay for the example thread, the delay is in seconds
 
         self.addr = addr
@@ -124,9 +122,7 @@ class Poser:
         # not a thread
 
         # connect to the server
-        self.reader, self.writer = await asyncio.open_connection(
-            self.addr, self.port, loop=asyncio.get_event_loop()
-        )
+        self.reader, self.writer = await asyncio.open_connection(self.addr, self.port, loop=asyncio.get_event_loop())
         # send poser id message
         self.writer.write(u.format_str_for_write("poser here"))
 

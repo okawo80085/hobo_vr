@@ -102,22 +102,7 @@ class Poser(templates.PoserTemplate):
                                 gg = u.get_numbers_from_text(protocol.lastRead)
 
                                 if len(gg) > 0:
-                                    (
-                                        y,
-                                        p,
-                                        r,
-                                        az,
-                                        ax,
-                                        ay,
-                                        trgr,
-                                        grp,
-                                        util,
-                                        sys,
-                                        menu,
-                                        padClk,
-                                        padY,
-                                        padX,
-                                    ) = gg
+                                    (y, p, r, az, ax, ay, trgr, grp, util, sys, menu, padClk, padY, padX,) = gg
 
                                     if velocity_until_reset < 20:
 
@@ -131,23 +116,17 @@ class Poser(templates.PoserTemplate):
                                         ]
                                         temp_for_offz["x"] = round(
                                             past_velocity[0]
-                                            - ax
-                                            * self.coro_keep_alive["serial_listener_2"][1]
-                                            * 0.005,
+                                            - ax * self.coro_keep_alive["serial_listener_2"][1] * 0.005,
                                             4,
                                         )
                                         temp_for_offz["y"] = round(
                                             past_velocity[1]
-                                            - ay
-                                            * self.coro_keep_alive["serial_listener_2"][1]
-                                            * 0.005,
+                                            - ay * self.coro_keep_alive["serial_listener_2"][1] * 0.005,
                                             4,
                                         )
                                         temp_for_offz["z"] = round(
                                             past_velocity[2]
-                                            - az
-                                            * self.coro_keep_alive["serial_listener_2"][1]
-                                            * 0.005,
+                                            - az * self.coro_keep_alive["serial_listener_2"][1] * 0.005,
                                             4,
                                         )
                                         u.rotate_y(
@@ -204,10 +183,7 @@ class Poser(templates.PoserTemplate):
                                         yaw_offset = 0 - yaw
                                         self._serialResetYaw = True
 
-                                if (
-                                    abs(self.temp_pose.trackpad_x) > 0.07
-                                    or abs(self.temp_pose.trackpad_y) > 0.07
-                                ):
+                                if abs(self.temp_pose.trackpad_x) > 0.07 or abs(self.temp_pose.trackpad_y) > 0.07:
                                     self.temp_pose.trackpad_touch = 1
 
                                 else:
@@ -248,9 +224,7 @@ class Poser(templates.PoserTemplate):
                                 if len(gg) > 0:
                                     ypr = gg
 
-                                    w, x, y, z = sq.euler2quat(
-                                        ypr[0] + yaw_offset, ypr[1], ypr[2], degrees=True,
-                                    )
+                                    w, x, y, z = sq.euler2quat(ypr[0] + yaw_offset, ypr[1], ypr[2], degrees=True,)
 
                                     # self.pose['rW'] = rrr2[0]
                                     # self.pose['rX'] = -rrr2[2]
@@ -277,7 +251,15 @@ class Poser(templates.PoserTemplate):
             await asyncio.sleep(1)
 
 
-t = Poser(addr="127.0.0.1")
+def run_poser_only():
+    t = Poser(addr="127.0.0.1")
+    asyncio.run(t.main())
+
+
+def run_poser_and_server():
+    t = Poser(addr="127.0.0.1")
+    server.run_til_dead(t)
+
 
 if __name__ == "__main__":
-    asyncio.run(t.main())
+    run_poser_only()

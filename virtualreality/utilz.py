@@ -108,10 +108,7 @@ def strings_share_characters(str1: str, str2: str) -> bool:
 def get_numbers_from_text(text):
     """Get a list of number from a string of numbers seperated by tabs."""
     try:
-        if (
-            strings_share_characters(text.lower(), "qwertyuiopsasdfghjklzxcvbnm><*[]{}()")
-            or len(text) == 0
-        ):
+        if strings_share_characters(text.lower(), "qwertyuiopsasdfghjklzxcvbnm><*[]{}()") or len(text) == 0:
             return []
 
         return [float(i) for i in text.split("\t")]
@@ -176,13 +173,7 @@ class BlobTracker(threading.Thread):
     """
 
     def __init__(
-        self,
-        cam_index=0,
-        *,
-        focal_length_px=490,
-        ball_radius_cm=2,
-        offsets=[0, 0, 0],
-        color_masks={},
+        self, cam_index=0, *, focal_length_px=490, ball_radius_cm=2, offsets=[0, 0, 0], color_masks={},
     ):
         """
         Create a blob tracker.
@@ -367,9 +358,7 @@ class BlobTracker(threading.Thread):
         print(f'initializing second Kalman filter for mask "{key}"...')
 
         t_start = time.time()
-        self.kalmanFilterz2[key] = self.kalmanFilterz2[key].em(
-            self.kalmanTrainBatch2[key], n_iter=5
-        )
+        self.kalmanFilterz2[key] = self.kalmanFilterz2[key].em(self.kalmanTrainBatch2[key], n_iter=5)
         print(f"took: {time.time() - t_start}s")
 
         f_means, f_covars = self.kalmanFilterz2[key].filter(self.kalmanTrainBatch2[key])
@@ -383,28 +372,22 @@ class BlobTracker(threading.Thread):
     def _applyKalman(self, key):
         obz = np.array([self.poses[key]["x"], self.poses[key]["y"], self.poses[key]["z"]])
         if self.kalmanFilterz[key] is not None:
-            (
-                self.kalmanStateUpdate[key]["x_now"],
-                self.kalmanStateUpdate[key]["p_now"],
-            ) = self.kalmanFilterz[key].filter_update(
+            (self.kalmanStateUpdate[key]["x_now"], self.kalmanStateUpdate[key]["p_now"],) = self.kalmanFilterz[
+                key
+            ].filter_update(
                 filtered_state_mean=self.kalmanStateUpdate[key]["x_now"],
                 filtered_state_covariance=self.kalmanStateUpdate[key]["p_now"],
                 observation=obz,
             )
 
-            (
-                self.poses[key]["x"],
-                self.poses[key]["y"],
-                self.poses[key]["z"],
-            ) = self.kalmanStateUpdate[key]["x_now"]
+            (self.poses[key]["x"], self.poses[key]["y"], self.poses[key]["z"],) = self.kalmanStateUpdate[key]["x_now"]
 
     def _applyKalman2(self, key):
         obz = np.array(self.xywForKalman2[key])
         if self.kalmanFilterz2[key] is not None:
-            (
-                self.kalmanStateUpdate2[key]["x_now"],
-                self.kalmanStateUpdate2[key]["p_now"],
-            ) = self.kalmanFilterz2[key].filter_update(
+            (self.kalmanStateUpdate2[key]["x_now"], self.kalmanStateUpdate2[key]["p_now"],) = self.kalmanFilterz2[
+                key
+            ].filter_update(
                 filtered_state_mean=self.kalmanStateUpdate2[key]["x_now"],
                 filtered_state_covariance=self.kalmanStateUpdate2[key]["p_now"],
                 observation=obz,
@@ -434,9 +417,7 @@ class BlobTracker(threading.Thread):
 
                     mask = cv2.inRange(hsv, tuple(color_low), tuple(color_high))
 
-                    _, cnts, hr = cv2.findContours(
-                        mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-                    )
+                    _, cnts, hr = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
                     if len(cnts) > 0:
                         c = max(cnts, key=cv2.contourArea)
@@ -456,10 +437,7 @@ class BlobTracker(threading.Thread):
                 if len(self.kalmanTrainBatch2[key]) < self.kalmanTrainSize:
                     self.kalmanTrainBatch2[key].append([x, y, w])
 
-                elif (
-                    len(self.kalmanTrainBatch2[key]) >= self.kalmanTrainSize
-                    and not self.kalmanWasInited2[key]
-                ):
+                elif len(self.kalmanTrainBatch2[key]) >= self.kalmanTrainSize and not self.kalmanWasInited2[key]:
                     self._init_kalman_2(key)
 
                 else:
@@ -504,10 +482,7 @@ class BlobTracker(threading.Thread):
                         [self.poses[key]["x"], self.poses[key]["y"], self.poses[key]["z"],]
                     )
 
-                elif (
-                    len(self.kalmanTrainBatch[key]) >= self.kalmanTrainSize
-                    and not self.kalmanWasInited[key]
-                ):
+                elif len(self.kalmanTrainBatch[key]) >= self.kalmanTrainSize and not self.kalmanWasInited[key]:
                     self._init_kalman(key)
 
                 else:
