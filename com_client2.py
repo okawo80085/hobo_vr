@@ -10,13 +10,13 @@ async def tcp_echo_client(message, loop):
     reader, writer = await asyncio.open_connection(*addrs, loop=loop)
 
     # print('Send: %r' % message)
-    writer.write(u.convv("nut"))
+    writer.write(u.format_str_for_write("nut"))
 
-    data = await u.newRead(reader)
+    data = await u.read(reader)
     print("Received: %r" % data)
 
     print("Close the socket")
-    writer.write(u.convv("CLOSE"))
+    writer.write(u.format_str_for_write("CLOSE"))
     writer.close()
 
 

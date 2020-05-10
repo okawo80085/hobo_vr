@@ -6,9 +6,7 @@ addrs = ("127.0.0.1", 6969)
 
 
 async def tcp_echo_client(message):
-    reader, writer = await asyncio.open_connection(
-        *addrs, loop=asyncio.get_event_loop()
-    )
+    reader, writer = await asyncio.open_connection(*addrs, loop=asyncio.get_event_loop())
 
     for _ in range(10):
         x = random.random()
@@ -16,10 +14,10 @@ async def tcp_echo_client(message):
         x /= 10
         print("Send: %r" % message.format(x))
         await asyncio.sleep(1 / 60)
-        writer.write(u.convv(message.format(x)))
+        writer.write(u.format_str_for_write(message.format(x)))
 
     print("Close the socket")
-    writer.write(u.convv("CLOSE"))
+    writer.write(u.format_str_for_write("CLOSE"))
     writer.close()
 
 

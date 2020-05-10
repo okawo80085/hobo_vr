@@ -1,3 +1,5 @@
+"""Virtual reality tools and drivers for python."""
+
 from . import utilz
 from . import templates
 

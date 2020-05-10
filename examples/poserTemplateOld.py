@@ -105,23 +105,15 @@ class Poser:
             "triggerClick": 0,  # 0 or 1
         }
 
-        self.incomingData_readonly = (
-            ""  # used to access recently read data from the server
-        )
+        self.incomingData_readonly = ""  # used to access recently read data from the server
 
         self._send = True
         self._recv = True
         self._exampleThread = True  # keep alive for the example thread
 
-        self._recvDelay = (
-            1 / 1000
-        )  # frequency at which other messages from the server are received
-        self._sendDelay = (
-            1 / 60
-        )  # frequency at which the commands are sent out to the driver, default is 60 fps
-        self._exampleThreadDelay = (
-            1 / 50
-        )  # delay for the example thread, the delay is in seconds
+        self._recvDelay = 1 / 1000  # frequency at which other messages from the server are received
+        self._sendDelay = 1 / 60  # frequency at which the commands are sent out to the driver, default is 60 fps
+        self._exampleThreadDelay = 1 / 50  # delay for the example thread, the delay is in seconds
 
         self.addr = addr
         self.port = port
@@ -130,11 +122,9 @@ class Poser:
         # not a thread
 
         # connect to the server
-        self.reader, self.writer = await asyncio.open_connection(
-            self.addr, self.port, loop=asyncio.get_event_loop()
-        )
+        self.reader, self.writer = await asyncio.open_connection(self.addr, self.port, loop=asyncio.get_event_loop())
         # send poser id message
-        self.writer.write(u.convv("poser here"))
+        self.writer.write(u.format_str_for_write("poser here"))
 
     async def close(self):
         # wait to stop thread
@@ -156,14 +146,14 @@ class Poser:
         await asyncio.sleep(1)
 
         # disconnect from the server
-        self.writer.write(u.convv("CLOSE"))
+        self.writer.write(u.format_str_for_write("CLOSE"))
         self.writer.close()
 
     async def send(self):
         # send thread
         while self._send:
             try:
-                msg = u.convv(
+                msg = u.format_str_for_write(
                     " ".join(
                         [str(i) for _, i in self.pose.items()]
                         + [str(i) for _, i in self.poseControllerR.items()]
@@ -185,7 +175,7 @@ class Poser:
         # receive thread
         while self._recv:
             try:
-                data = await u.newRead(self.reader)
+                data = await u.read(self.reader)
                 self.incomingData_readonly = data
                 print([self.incomingData_readonly])
 
