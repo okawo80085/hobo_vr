@@ -1,6 +1,7 @@
 import asyncio
 import warnings
 from itertools import chain
+import numbers
 
 from .. import utilz as u
 
@@ -27,11 +28,29 @@ class Pose(object):
         self.r_z: float = pose[6]  # from -1 to 1
 
         self.vel_x: float = velocity[0]  # +(x) is right in meters/second
-        self.vel_y: float = velocity[1]  # +(y) is right in meters/second
-        self.vel_z: float = velocity[2]  # -(z) is right in meters/second
+        self.vel_y: float = velocity[1]  # +(y) is up in meters/second
+        self.vel_z: float = velocity[2]  # -(z) is forward in meters/second
         self.ang_vel_x: float = velocity[3]
         self.ang_vel_y: float = velocity[4]
         self.ang_vel_z: float = velocity[5]
+
+    def __getitem__(self, key):
+        if key in self.__slots__:
+            return getattr(self, key)
+
+        raise KeyError(key)
+
+    def __setitem__(self, key, val):
+        assert isinstance(val, numbers.Number), 'value should be numeric'
+
+        if key in self.__slots__:
+            setattr(self, key, val)
+            return
+
+        raise KeyError(key)
+
+    def __repr__(self):
+        return '<{}.{} [{}] object at {}>'.format(self.__class__.__module__, self.__class__.__name__, ', '.join([f'{key}={self[key]}' for key in self.__slots__]), hex(id(self)))
 
 
 '''class CoroutineKeepAlive(object):

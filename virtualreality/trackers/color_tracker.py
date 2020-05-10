@@ -247,4 +247,4 @@ class Poser(templates.PoserTemplate):
 t = Poser(addr="127.0.0.1")
 
 if __name__ == '__main__':
-    server.run_til_dead(t)
+    asyncio.run(t)
