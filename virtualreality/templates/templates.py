@@ -132,7 +132,7 @@ class ControllerState(Pose):
 
 def get_slot_names(slotted_instance):
     # thanks: https://stackoverflow.com/a/6720815/782170
-    return chain.from_iterable(getattr(cls, "__slots__", []) for cls in slotted_instance.__class__.__mro__)
+    return slotted_instance.__slots__
 
 
 def get_slot_values(slotted_instance):

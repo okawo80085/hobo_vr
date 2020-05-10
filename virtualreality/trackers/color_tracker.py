@@ -17,8 +17,6 @@ class Poser(templates.PoserTemplate):
         super().__init__(*args, **kwargs)
 
         self.temp_pose = ControllerState()
-        self.pose_controller_l = copy(self.temp_pose)
-        self.pose_controller_r = copy(self.temp_pose)
 
         self.serialPaths = {"green": "/dev/ttyUSB1", "blue": "/dev/ttyUSB0"}
 
@@ -35,6 +33,7 @@ class Poser(templates.PoserTemplate):
                     self.pose_controller_l.trackpad_x = 0
                     self.pose_controller_l.trackpad_y = 0
                     self.pose_controller_r = copy(self.temp_pose)
+
                 else:
                     self.pose_controller_r.trackpad_touch = 0
                     self.pose_controller_r.trackpad_x = 0
@@ -99,7 +98,7 @@ class Poser(templates.PoserTemplate):
 
                         while self.coro_keep_alive["serial_listener_2"][0]:
                             try:
-                                gg = u.get_numbers_from_text(protocol.lastRead)
+                                gg = u.get_numbers_from_text(protocol.last_read)
 
                                 if len(gg) > 0:
                                     (y, p, r, az, ax, ay, trgr, grp, util, sys, menu, padClk, padY, padX,) = gg
@@ -219,7 +218,7 @@ class Poser(templates.PoserTemplate):
 
                         while self.coro_keep_alive["serial_listener"][0]:
                             try:
-                                gg = u.get_numbers_from_text(protocol.lastRead)
+                                gg = u.get_numbers_from_text(protocol.last_read)
 
                                 if len(gg) > 0:
                                     ypr = gg
