@@ -1,19 +1,37 @@
+"""pyvr track
+
+Usage:
+    pyvr track [options]
+
+Options:
+   -h, --help
+   -c, --camera <camera>           Source of the camera to use for calibration [default: 0]
+   -r, --resolution <res>          (in progress) Input resolution in width and height [default: -1x-1]
+   -l, --load_calibration <file>   (in progress) Load color mask calibration settings [default: ranges.pickle]
+   -ip, --ip_address <ip_address>  IP Address of the server to connect to [default: 127.0.0.1]
+   -s, --server                    Run the server alongside the tracker.
+"""
+
 import asyncio
 import math
+import sys
 from copy import copy
 
 import serial
 import serial.threaded
 import squaternion as sq
+from docopt import docopt
 
 import virtualreality.utilz as u
+from virtualreality import __version__
 from virtualreality import templates
+from virtualreality.calibration.manual_color_mask_calibration import load_calibration
 from virtualreality.server import server
 from virtualreality.templates import ControllerState
 
 
 class Poser(templates.PoserTemplate):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, camera=4, width=-1, height=-1, calibration_file=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.temp_pose = ControllerState()
@@ -23,6 +41,11 @@ class Poser(templates.PoserTemplate):
         self.mode = 0
         self._serialResetYaw = False
         self.useVelocity = False
+
+        self.camera = camera
+        self.width = width
+        self.height = height
+        self.calibration = load_calibration(calibration_file)
 
     @templates.thread_register(1 / 90)
     async def mode_switcher(self):
@@ -51,7 +74,7 @@ class Poser(templates.PoserTemplate):
     async def get_location(self):
         try:
             t1 = u.BlobTracker(
-                0,
+                self.camera,
                 offsets=[0.6981317007977318, 0, 0],
                 color_masks={
                     "blue": {"h": (98, 10), "s": (200, 55), "v": (250, 32)},
@@ -250,15 +273,38 @@ class Poser(templates.PoserTemplate):
             await asyncio.sleep(1)
 
 
-def run_poser_only():
-    t = Poser(addr="127.0.0.1")
+def run_poser_only(addr="127.0.0.1", cam=4):
+    t = Poser(addr=addr, camera=cam)
     asyncio.run(t.main())
 
 
-def run_poser_and_server():
-    t = Poser(addr="127.0.0.1")
+def run_poser_and_server(addr="127.0.0.1", cam=4):
+    t = Poser(addr=addr, camera=cam)
     server.run_til_dead(t)
 
 
+def main():
+    # allow calling from both python -m and from pyvr:
+    argv = sys.argv[1:]
+    if sys.argv[1] != "track":
+        argv = ["track"] + argv
+
+    args = docopt(__doc__, version=f"pyvr version {__version__}", argv=argv)
+
+    width, height = args["--resolution"].split("x")
+
+    if args["--camera"].isdigit():
+        cam = int(args["--camera"])
+    else:
+        cam = args["--camera"]
+
+    if args["--server"]:
+        run_poser_and_server(args["--ip_address"], cam)
+    else:
+        run_poser_only(args["--ip_address"], cam)
+
+    print(args)
+
+
 if __name__ == "__main__":
-    run_poser_only()
+    main()

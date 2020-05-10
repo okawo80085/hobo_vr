@@ -1,10 +1,26 @@
-"""Manual calibration"""
+"""pyvr calibrate
+
+Usage:
+    pyvr calibrate [options]
+
+Options:
+   -h, --help
+   -c, --camera <camera>    Source of the camera to use for calibration [default: 0]
+   -r, --resolution <res>   Input resolution in width and height [default: -1x-1]
+   -n, --n_masks <n_masks>  Number of masks to calibrate [default: 1]
+   -l, --load <file>        Load previous calibration settings [default: ranges.pickle]
+   -s, --save <file>        Save calibration settings to a file [default: ranges.pickle]
+"""
 
 import logging
+import pickle
+import sys
+from typing import Optional, List
 
 import cv2
+from docopt import docopt
 
-import pickle
+from virtualreality import __version__
 
 
 def list_supported_capture_properties(cap: cv2.VideoCapture):
@@ -13,12 +29,22 @@ def list_supported_capture_properties(cap: cv2.VideoCapture):
     supported = list()
     for attr in dir(cv2):
         if attr.startswith("CAP_PROP") and cap.get(getattr(cv2, attr)) != -1:
-            print(attr)
             supported.append(attr)
     return supported
 
 
-def manual_calibration(cam=0, num_colors_to_track=4, frame_width=-1, frame_height=-1, load_file=""):
+def load_calibration(load_file: Optional[str]) -> Optional[List[List[int]]]:
+    if load_file:
+        try:
+            ranges = pickle.load(open(load_file, "rb"))
+            return ranges
+        except FileNotFoundError as fe:
+            logging.warning(f"Could not load calibration file '{load_file}'.")
+
+
+def manual_calibration(
+    cam=0, num_colors_to_track=4, frame_width=-1, frame_height=-1, load_file="", save_file="ranges.pickle"
+):
     vs = cv2.VideoCapture(cam)
     vs.set(cv2.CAP_PROP_EXPOSURE, -7)
     vs_supported = list_supported_capture_properties(vs)
@@ -66,9 +92,8 @@ def manual_calibration(cam=0, num_colors_to_track=4, frame_width=-1, frame_heigh
     else:
         logging.warning(f"Camera {cam} does not support setting saturation.")
 
-    if load_file:
-        ranges = pickle.load(open(load_file, "rb"))
-    else:
+    ranges = load_calibration(load_file)
+    if ranges is None:
         color_dist = 180 // num_colors_to_track
         ranges = [[color * color_dist, color_dist] * 3 for color in range(num_colors_to_track)]
 
@@ -161,12 +186,38 @@ def manual_calibration(cam=0, num_colors_to_track=4, frame_width=-1, frame_heigh
         print(f"val_center[{color}]: {val_center}")
         print(f"val_range[{color}]: {val_range}")
 
-    pickle.dump(ranges, open("ranges.pickle", "wb"))
-    print('ranges saved to list in "ranges.pickle".')
+    if save_file:
+        pickle.dump(ranges, open(save_file, "wb"))
+        print('ranges saved to list in "ranges.pickle".')
 
     vs.release()
     cv2.destroyAllWindows()
 
 
+def main():
+    # allow calling from both python -m and from pyvr:
+    argv = sys.argv[1:]
+    if sys.argv[1] != "calibrate":
+        argv = ["calibrate"] + argv
+
+    args = docopt(__doc__, version=f"pyvr version {__version__}", argv=argv)
+
+    width, height = args["--resolution"].split("x")
+
+    if args["--camera"].isdigit():
+        cam = int(args["--camera"])
+    else:
+        cam = args["--camera"]
+
+    manual_calibration(
+        cam=cam,
+        num_colors_to_track=int(args["--n_masks"]),
+        frame_width=int(width),
+        frame_height=int(height),
+        load_file=args["--load"],
+        save_file=args["--save"],
+    )
+
+
 if __name__ == "__main__":
-    manual_calibration()
+    main()
