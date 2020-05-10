@@ -148,7 +148,7 @@ class SerialReaderFactory(serial.threaded.LineReader):
     @property
     def last_read(self):
         """Get the readonly last read."""
-        return self.last_read
+        return self._last_read
 
     def handle_line(self, data):
         """Store the latest line in last_read."""
