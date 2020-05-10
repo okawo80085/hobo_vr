@@ -9,7 +9,7 @@
       "windowHeight" : 2160,
       "renderWidth" : 1920,
       "renderHeight" : 1080,
-      "secondsFromVsyncToPhotons" : 0.01,
+      "secondsFromVsyncToPhotons" : 0.02,
       "displayFrequency" : 100.0,
       "DistortionK1" : 0.4,
       "DistortionK2" : 0.5,

@@ -845,15 +845,15 @@ void CServerDriver_Sample::myTrackingThread() {
         }
       }
 
-      // vr::VREvent_t vrEvent;
-      // while (vr::VRServerDriverHost()->PollNextEvent(&vrEvent, sizeof(vrEvent))) {
-      //   if (m_pRightController) {
-      //     m_pRightController->ProcessEvent(vrEvent);
-      //   }
-      //   if (m_pLeftController) {
-      //     m_pLeftController->ProcessEvent(vrEvent);
-      //   }
-      // }
+      vr::VREvent_t vrEvent;
+      while (vr::VRServerDriverHost()->PollNextEvent(&vrEvent, sizeof(vrEvent))) {
+        if (m_pRightController) {
+          m_pRightController->ProcessEvent(vrEvent);
+        }
+        if (m_pLeftController) {
+          m_pLeftController->ProcessEvent(vrEvent);
+        }
+      }
     }
 
     // std::this_thread::sleep_for(std::chrono::microseconds(100));
