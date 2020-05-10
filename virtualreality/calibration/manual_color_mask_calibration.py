@@ -63,7 +63,7 @@ def manual_caliibration(cam=0, num_colors_to_track=4, frame_width=-1, frame_heig
     if load_file:
         ranges = pickle.load(open(load_file, 'rb'))
     else:
-        color_dist = 255 // num_colors_to_track
+        color_dist = 180 // num_colors_to_track
         ranges = [[color * color_dist, color_dist] * 3 for color in range(num_colors_to_track)]
 
     tracker_window_names = []
@@ -71,8 +71,8 @@ def manual_caliibration(cam=0, num_colors_to_track=4, frame_width=-1, frame_heig
         tracker_window_names.append(f"color {color}")
         cv2.namedWindow(tracker_window_names[color])
 
-        cv2.createTrackbar('hue center', tracker_window_names[color], ranges[color][0], 255, lambda _: None)
-        cv2.createTrackbar('hue range', tracker_window_names[color], ranges[color][1], 255, lambda _: None)
+        cv2.createTrackbar('hue center', tracker_window_names[color], ranges[color][0], 180, lambda _: None)
+        cv2.createTrackbar('hue range', tracker_window_names[color], ranges[color][1], 180, lambda _: None)
         cv2.createTrackbar('sat center', tracker_window_names[color], ranges[color][2], 255, lambda _: None)
         cv2.createTrackbar('sat range', tracker_window_names[color], ranges[color][3], 255, lambda _: None)
         cv2.createTrackbar('val center', tracker_window_names[color], ranges[color][4], 255, lambda _: None)
