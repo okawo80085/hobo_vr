@@ -9,7 +9,7 @@ conz = {}
 
 async def broadcast(everyone, data, me, VIP):
     """
-    Broadcast a message to all posers
+    Broadcast a message to all trackers
 
     :param everyone:
     :param data:
