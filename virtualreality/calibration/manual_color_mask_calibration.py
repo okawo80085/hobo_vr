@@ -36,7 +36,8 @@ def list_supported_capture_properties(cap: cv2.VideoCapture):
 def load_calibration(load_file: Optional[str]) -> Optional[List[List[int]]]:
     if load_file:
         try:
-            ranges = pickle.load(open(load_file, "rb"))
+            with open(load_file, "rb") as file:
+                ranges = pickle.load(file)
             return ranges
         except FileNotFoundError as fe:
             logging.warning(f"Could not load calibration file '{load_file}'.")
@@ -187,8 +188,9 @@ def manual_calibration(
         print(f"val_range[{color}]: {val_range}")
 
     if save_file:
-        pickle.dump(ranges, open(save_file, "wb"))
-        print('ranges saved to list in "ranges.pickle".')
+        with open(save_file, "wb") as file:
+            pickle.dump(ranges, file)
+            print('ranges saved to list in "ranges.pickle".')
 
     vs.release()
     cv2.destroyAllWindows()

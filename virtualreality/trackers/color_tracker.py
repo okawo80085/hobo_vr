@@ -31,7 +31,7 @@ from virtualreality.templates import ControllerState
 
 
 class Poser(templates.PoserTemplate):
-    def __init__(self, camera=4, width=-1, height=-1, calibration_file=None, *args, **kwargs):
+    def __init__(self, *args, camera=4, width=-1, height=-1, calibration_file=None, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.temp_pose = ControllerState()
