@@ -1,8 +1,4 @@
 """
-usage: pyvr <command> [<args>...]
-
-options:
-   -h, --help
 
 The most commonly used pyvr commands are:
    calibrate  Calibrate the vr headset's tracking
@@ -10,6 +6,11 @@ The most commonly used pyvr commands are:
    server     Start the server that communicates with SteamVR
 
 See 'pyvr help <command>' for more information on a specific command.
+
+usage: pyvr <command> [<args>...]
+
+options:
+   -h, --help
 """
 
 from docopt import docopt
