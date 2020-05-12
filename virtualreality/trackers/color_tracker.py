@@ -22,12 +22,12 @@ import serial.threaded
 import squaternion as sq
 from docopt import docopt
 
-import virtualreality.utilz as u
-from virtualreality import __version__
-from virtualreality import templates
-from virtualreality.calibration.manual_color_mask_calibration import load_calibration
-from virtualreality.server import server
-from virtualreality.templates import ControllerState
+from .. import utilz as u
+from .. import __version__
+from .. import templates
+from ..calibration.manual_color_mask_calibration import load_calibration
+from ..server import server
+from ..templates import ControllerState
 
 
 class Poser(templates.PoserTemplate):

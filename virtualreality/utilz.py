@@ -127,6 +127,53 @@ def has_nan_in_pose(pose):
 
     return False
 
+class LazyKalman:
+    '''
+    no docs... too bad!
+
+    example usage:
+        t = LazyKalman([[1, 2, 3], [2, 3, 4], [3, 4, 5]], [1, 2, 3], np.eye(3), np.eye(3)) # init filter
+
+        for i in range(10):
+            print (t.apply([5+i, 6+i, 7+i])) # apply and update filter
+    '''
+    def __init__(self, first_train_batch, init_state, transition_matrix, observation_matrix, n_iter=5):
+        first_train_batch = np.array(first_train_batch)
+        init_state = np.array(init_state)
+        transition_matrix = np.array(transition_matrix)
+        observation_matrix = np.array(observation_matrix)
+
+        assert init_state.shape == first_train_batch.shape[1:], 'init_state should be from first_train_batch'
+
+        self._expected_shape = init_state.shape
+
+        self._filter = KalmanFilter(
+            transition_matrices=transition_matrix,
+            observation_matrices=observation_matrix,
+            initial_state_mean=init_state,
+        )
+
+        t_start = time.time()
+        self._filter = self._filter.em(first_train_batch, n_iter=n_iter)
+        print (f' kalman filter initialized, took {time.time() - t_start}s')
+
+        f_means, f_covars = self._filter.filter(first_train_batch)
+
+        self._x_now = f_means[-1, :]
+        self._p_now = f_covars[-1, :]
+
+    def apply(self, obz):
+        obz = np.array(obz)
+
+        assert obz.shape == self._expected_shape, 'shape miss match'
+
+        self._x_now, self._p_now = self._filter.filter_update(
+            filtered_state_mean=self._x_now,
+            filtered_state_covariance=self._p_now,
+            observation=obz,
+        )
+
+        return self._x_now
 
 class SerialReaderFactory(serial.threaded.LineReader):
     """
@@ -230,25 +277,20 @@ class BlobTracker(threading.Thread):
         self.kalmanFilterz: Dict[str, KalmanFilter] = {}
         self.kalmanTrainBatch = {}
         self.kalmanWasInited = {}
-        self.kalmanStateUpdate = {}
 
         self.kalmanFilterz2: Dict[str, KalmanFilter] = {}
         self.kalmanTrainBatch2 = {}
         self.kalmanWasInited2 = {}
-        self.kalmanStateUpdate2 = {}
-        self.xywForKalman2 = {}
 
         for i in self.markerMasks:
             self.poses[i] = {"x": 0, "y": 0, "z": 0}
             self.blobs[i] = None
 
             self.kalmanFilterz[i] = None
-            self.kalmanStateUpdate[i] = None
             self.kalmanTrainBatch[i] = []
             self.kalmanWasInited[i] = False
 
             self.kalmanFilterz2[i] = None
-            self.kalmanStateUpdate2[i] = None
             self.kalmanTrainBatch2[i] = []
             self.kalmanWasInited2[i] = False
 
@@ -311,90 +353,6 @@ class BlobTracker(threading.Thread):
         else:
             raise RuntimeError("tracking loop already finished")
 
-    def _init_kalman(self, key: str) -> None:
-        self.kalmanTrainBatch[key] = np.array(self.kalmanTrainBatch[key])
-
-        init_state = [*self.kalmanTrainBatch[key][0]]
-
-        transition_matrix = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
-
-        observation_matrix = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
-
-        self.kalmanFilterz[key] = KalmanFilter(
-            transition_matrices=transition_matrix,
-            observation_matrices=observation_matrix,
-            initial_state_mean=init_state,
-        )
-
-        print(f'initializing Kalman filter for mask "{key}"...')
-
-        t_start = time.time()
-        self.kalmanFilterz[key] = self.kalmanFilterz[key].em(self.kalmanTrainBatch[key], n_iter=5)
-        print(f"took: {time.time() - t_start}s")
-
-        f_means, f_covars = self.kalmanFilterz[key].filter(self.kalmanTrainBatch[key])
-        self.kalmanStateUpdate[key] = {
-            "x_now": f_means[-1, :],
-            "p_now": f_covars[-1, :],
-        }
-
-        self.kalmanWasInited[key] = True
-
-    def _init_kalman_2(self, key):
-        self.kalmanTrainBatch2[key] = np.array(self.kalmanTrainBatch2[key])
-
-        init_state = [*self.kalmanTrainBatch2[key][0]]
-
-        transition_matrix = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
-
-        observation_matrix = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
-
-        self.kalmanFilterz2[key] = KalmanFilter(
-            transition_matrices=transition_matrix,
-            observation_matrices=observation_matrix,
-            initial_state_mean=init_state,
-        )
-
-        print(f'initializing second Kalman filter for mask "{key}"...')
-
-        t_start = time.time()
-        self.kalmanFilterz2[key] = self.kalmanFilterz2[key].em(self.kalmanTrainBatch2[key], n_iter=5)
-        print(f"took: {time.time() - t_start}s")
-
-        f_means, f_covars = self.kalmanFilterz2[key].filter(self.kalmanTrainBatch2[key])
-        self.kalmanStateUpdate2[key] = {
-            "x_now": f_means[-1, :],
-            "p_now": f_covars[-1, :],
-        }
-
-        self.kalmanWasInited2[key] = True
-
-    def _applyKalman(self, key):
-        obz = np.array([self.poses[key]["x"], self.poses[key]["y"], self.poses[key]["z"]])
-        if self.kalmanFilterz[key] is not None:
-            (self.kalmanStateUpdate[key]["x_now"], self.kalmanStateUpdate[key]["p_now"],) = self.kalmanFilterz[
-                key
-            ].filter_update(
-                filtered_state_mean=self.kalmanStateUpdate[key]["x_now"],
-                filtered_state_covariance=self.kalmanStateUpdate[key]["p_now"],
-                observation=obz,
-            )
-
-            (self.poses[key]["x"], self.poses[key]["y"], self.poses[key]["z"],) = self.kalmanStateUpdate[key]["x_now"]
-
-    def _applyKalman2(self, key):
-        obz = np.array(self.xywForKalman2[key])
-        if self.kalmanFilterz2[key] is not None:
-            (self.kalmanStateUpdate2[key]["x_now"], self.kalmanStateUpdate2[key]["p_now"],) = self.kalmanFilterz2[
-                key
-            ].filter_update(
-                filtered_state_mean=self.kalmanStateUpdate2[key]["x_now"],
-                filtered_state_covariance=self.kalmanStateUpdate2[key]["p_now"],
-                observation=obz,
-            )
-
-            self.xywForKalman2[key] = self.kalmanStateUpdate2[key]["x_now"]
-
     def find_blobs_in_frame(self):
         """Get a frame from the camera and find all the blobs in it."""
         if self.alive:
@@ -417,7 +375,13 @@ class BlobTracker(threading.Thread):
 
                     mask = cv2.inRange(hsv, tuple(color_low), tuple(color_high))
 
-                    _, cnts, hr = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                    temp = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+                    if len(temp) == 3:
+                        _, cnts, hr = temp
+
+                    else:
+                        cnts, hr = temp
 
                     if len(cnts) > 0:
                         c = max(cnts, key=cv2.contourArea)
@@ -432,17 +396,15 @@ class BlobTracker(threading.Thread):
                 x, y = elip[0]
                 w, h = elip[1]
 
-                self.xywForKalman2[key] = [x, y, w]
-
                 if len(self.kalmanTrainBatch2[key]) < self.kalmanTrainSize:
                     self.kalmanTrainBatch2[key].append([x, y, w])
 
                 elif len(self.kalmanTrainBatch2[key]) >= self.kalmanTrainSize and not self.kalmanWasInited2[key]:
-                    self._init_kalman_2(key)
+                    self.kalmanFilterz2[key] = LazyKalman(self.kalmanTrainBatch2[key], self.kalmanTrainBatch2[key][0], np.eye(3), np.eye(3))
+                    self.kalmanWasInited2[key] = True
 
                 else:
-                    self._applyKalman2(key)
-                    x, y, w = self.xywForKalman2[key]
+                    x, y, w = self.kalmanFilterz2[key].apply([x, y, w])
 
                 f_px = self.camera_focal_length
                 x_px = x
@@ -483,11 +445,12 @@ class BlobTracker(threading.Thread):
                     )
 
                 elif len(self.kalmanTrainBatch[key]) >= self.kalmanTrainSize and not self.kalmanWasInited[key]:
-                    self._init_kalman(key)
+                    self.kalmanFilterz[key] = LazyKalman(self.kalmanTrainBatch[key], self.kalmanTrainBatch[key][0], np.eye(3), np.eye(3))
+                    self.kalmanWasInited[key] = True
 
                 else:
                     if not has_nan_in_pose(self.poses[key]):
-                        self._applyKalman(key)
+                        self.poses[key]['x'], self.poses[key]['y'], self.poses[key]['z'] = self.kalmanFilterz[key].apply([self.poses[key]['x'], self.poses[key]['y'], self.poses[key]['z']])
 
     def close(self):
         """Clocse the blob tracker thread."""
