@@ -6,6 +6,8 @@ from .. import utilz as u
 DOMAIN = (None, 6969)
 conz = {}
 
+PRINT_MESSAGES = False
+
 
 async def broadcast(everyone, data, me, VIP):
     """
@@ -53,10 +55,10 @@ async def handle_echo(reader, writer):
             if not len(data) or data == "CLOSE\n":
                 break
 
-            print("Received %r from %r" % (data, addr), end=" ")
-            # print("Send: %r" % data)
             sendOK = await broadcast(conz, data, addr, conz[addr][2])
-            print(sendOK)
+
+            if PRINT_MESSAGES:
+                print("Received %r from %r %r" % (data, addr, sendOK))
 
             await asyncio.sleep(0.00001)
 
