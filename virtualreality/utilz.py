@@ -474,7 +474,7 @@ class BlobTracker(threading.Thread):
 
                 # self._translate()
 
-                if not not has_nan_in_pose(self.poses[key]):
+                if not has_nan_in_pose(self.poses[key]):
                     if not self.kalmanWasInited[key]:
                         self.kalmanFilterz[key] = LazyKalman(
                             [self.poses[key]["x"], self.poses[key]["y"], self.poses[key]["z"],], np.eye(3), np.eye(3)
