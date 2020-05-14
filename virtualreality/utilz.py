@@ -127,23 +127,38 @@ def has_nan_in_pose(pose):
 
     return False
 
+
 class LazyKalman:
-    '''
-    no docs... too bad!
+    """
+    no docs... too bad.
+
+    But then, SimLeek added some.
 
     example usage:
-        t = LazyKalman([[1, 2, 3], [2, 3, 4], [3, 4, 5]], [1, 2, 3], np.eye(3), np.eye(3)) # init filter
+        t = LazyKalman([1, 2, 3], np.eye(3), np.eye(3)) # init filter
 
         for i in range(10):
             print (t.apply([5+i, 6+i, 7+i])) # apply and update filter
-    '''
-    def __init__(self, first_train_batch, init_state, transition_matrix, observation_matrix, n_iter=5):
-        first_train_batch = np.array(first_train_batch)
+    """
+
+    def __init__(self, init_state, transition_matrix, observation_matrix, n_iter=5, train_size=15):
+        """
+        Create the Kalman filter.
+
+        :param init_state: Initial state of the Kalman filter. Should be equal to first element in first_train_batch.
+        :param transition_matrix: adjacency matrix representing state transition from t to t+1 for any time t
+                                  Example: http://campar.in.tum.de/Chair/KalmanFilter
+                                  Most likely, this will be an NxN eye matrix the where N is the number of variables
+                                  being estimated
+        :param observation_matrix: translation matrix from measurement coordinate system to desired coordinate system
+                                   See: https://dsp.stackexchange.com/a/27488
+                                   Most likely, this will be an NxN eye matrix the where N is the number of variables
+                                   being estimated
+        :param n_iter: Number of times to repeat the parameter estimation function (estimates noise)
+        """
         init_state = np.array(init_state)
         transition_matrix = np.array(transition_matrix)
         observation_matrix = np.array(observation_matrix)
-
-        assert init_state.shape == first_train_batch.shape[1:], 'init_state should be from first_train_batch'
 
         self._expected_shape = init_state.shape
 
@@ -153,27 +168,54 @@ class LazyKalman:
             initial_state_mean=init_state,
         )
 
-        t_start = time.time()
-        self._filter = self._filter.em(first_train_batch, n_iter=n_iter)
-        print (f' kalman filter initialized, took {time.time() - t_start}s')
+        self._calibration_countdown = 0
+        self._calibration_observations = []
+        self._em_iter = n_iter
 
-        f_means, f_covars = self._filter.filter(first_train_batch)
+        self.calibrate(train_size, n_iter)
 
-        self._x_now = f_means[-1, :]
-        self._p_now = f_covars[-1, :]
+        self._x_now = np.zeros(3)
+        self._p_now = np.zeros(3)
 
     def apply(self, obz):
+        """Apply the Kalman filter against the observation obz."""
+        # Todo: automatically start a calibration routine if everything is at rest for long enough,
+        #  or if the user leaves, or if there is enough error. Also, add some UI calibrate button, save, and load.
         obz = np.array(obz)
 
-        assert obz.shape == self._expected_shape, 'shape miss match'
+        assert obz.shape == self._expected_shape, "shape miss match"
 
         self._x_now, self._p_now = self._filter.filter_update(
-            filtered_state_mean=self._x_now,
-            filtered_state_covariance=self._p_now,
-            observation=obz,
+            filtered_state_mean=self._x_now, filtered_state_covariance=self._p_now, observation=obz,
         )
 
+        if self._calibration_countdown:
+            self._calibration_observations.append(obz)
+            self._calibration_countdown -= 1
+            if self._calibration_countdown == 0:
+                self._run_calibration()
         return self._x_now
+
+    def _run_calibration(self):
+        """Update the Kalman filter so that noise matrices are more accurate."""
+        t_start = time.time()
+        self._filter = self._filter.em(self._calibration_observations, n_iter=self._em_iter)
+        print(f" kalman filter calibrated, took {time.time() - t_start}s")
+        f_means, f_covars = self._filter.filter(self._calibration_observations)
+        self._x_now = f_means[-1, :]
+        self._p_now = f_covars[-1, :]
+        self._calibration_observations = []
+
+    def calibrate(self, observations=100000, em_iter=10):
+        """
+        Start the calibration routine.
+
+        :param observations: Number of observations before calibration runs.
+        :param em_iter: number of times calibration runs over all observations.
+        """
+        self._calibration_countdown = observations
+        self._em_iter = em_iter
+
 
 class SerialReaderFactory(serial.threaded.LineReader):
     """
@@ -274,12 +316,10 @@ class BlobTracker(threading.Thread):
 
         self.kalmanTrainSize = 15
 
-        self.kalmanFilterz: Dict[str, KalmanFilter] = {}
-        self.kalmanTrainBatch = {}
+        self.kalmanFilterz: Dict[str, LazyKalman] = {}
         self.kalmanWasInited = {}
 
-        self.kalmanFilterz2: Dict[str, KalmanFilter] = {}
-        self.kalmanTrainBatch2 = {}
+        self.kalmanFilterz2: Dict[str, LazyKalman] = {}
         self.kalmanWasInited2 = {}
 
         for i in self.markerMasks:
@@ -287,11 +327,9 @@ class BlobTracker(threading.Thread):
             self.blobs[i] = None
 
             self.kalmanFilterz[i] = None
-            self.kalmanTrainBatch[i] = []
             self.kalmanWasInited[i] = False
 
             self.kalmanFilterz2[i] = None
-            self.kalmanTrainBatch2[i] = []
             self.kalmanWasInited2[i] = False
 
         # -------------------threading related------------------------
@@ -396,11 +434,8 @@ class BlobTracker(threading.Thread):
                 x, y = elip[0]
                 w, h = elip[1]
 
-                if len(self.kalmanTrainBatch2[key]) < self.kalmanTrainSize:
-                    self.kalmanTrainBatch2[key].append([x, y, w])
-
-                elif len(self.kalmanTrainBatch2[key]) >= self.kalmanTrainSize and not self.kalmanWasInited2[key]:
-                    self.kalmanFilterz2[key] = LazyKalman(self.kalmanTrainBatch2[key], self.kalmanTrainBatch2[key][0], np.eye(3), np.eye(3))
+                if not self.kalmanWasInited2[key]:
+                    self.kalmanFilterz2[key] = LazyKalman([x, y, w], np.eye(3), np.eye(3))
                     self.kalmanWasInited2[key] = True
 
                 else:
@@ -439,21 +474,19 @@ class BlobTracker(threading.Thread):
 
                 # self._translate()
 
-                if len(self.kalmanTrainBatch[key]) < self.kalmanTrainSize:
-                    self.kalmanTrainBatch[key].append(
-                        [self.poses[key]["x"], self.poses[key]["y"], self.poses[key]["z"],]
-                    )
-
-                elif len(self.kalmanTrainBatch[key]) >= self.kalmanTrainSize and not self.kalmanWasInited[key]:
-                    self.kalmanFilterz[key] = LazyKalman(self.kalmanTrainBatch[key], self.kalmanTrainBatch[key][0], np.eye(3), np.eye(3))
-                    self.kalmanWasInited[key] = True
-
-                else:
-                    if not has_nan_in_pose(self.poses[key]):
-                        self.poses[key]['x'], self.poses[key]['y'], self.poses[key]['z'] = self.kalmanFilterz[key].apply([self.poses[key]['x'], self.poses[key]['y'], self.poses[key]['z']])
+                if not not has_nan_in_pose(self.poses[key]):
+                    if not self.kalmanWasInited[key]:
+                        self.kalmanFilterz[key] = LazyKalman(
+                            [self.poses[key]["x"], self.poses[key]["y"], self.poses[key]["z"],], np.eye(3), np.eye(3)
+                        )
+                        self.kalmanWasInited[key] = True
+                    else:
+                        self.poses[key]["x"], self.poses[key]["y"], self.poses[key]["z"] = self.kalmanFilterz[
+                            key
+                        ].apply([self.poses[key]["x"], self.poses[key]["y"], self.poses[key]["z"]])
 
     def close(self):
-        """Clocse the blob tracker thread."""
+        """Close the blob tracker thread."""
         with self._lock:
             self.stop()
 
