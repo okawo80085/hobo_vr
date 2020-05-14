@@ -1,4 +1,5 @@
-"""pyvr calibrate
+"""
+pyvr calibrate.
 
 Usage:
     pyvr calibrate [options]
@@ -24,7 +25,7 @@ from virtualreality import __version__
 
 
 def list_supported_capture_properties(cap: cv2.VideoCapture):
-    """ List the properties supported by the capture device."""
+    """List the properties supported by the capture device."""
     # thanks: https://stackoverflow.com/q/47935846/782170
     supported = list()
     for attr in dir(cv2):
@@ -34,6 +35,7 @@ def list_supported_capture_properties(cap: cv2.VideoCapture):
 
 
 def load_calibration(load_file: Optional[str]) -> Optional[List[List[int]]]:
+    """Load the calibration data from a file."""
     if load_file:
         try:
             with open(load_file, "rb") as file:
@@ -46,6 +48,7 @@ def load_calibration(load_file: Optional[str]) -> Optional[List[List[int]]]:
 def manual_calibration(
     cam=0, num_colors_to_track=4, frame_width=-1, frame_height=-1, load_file="", save_file="ranges.pickle"
 ):
+    """Manually calibrate the hsv ranges and camera settings used for blob tracking."""
     vs = cv2.VideoCapture(cam)
     vs.set(cv2.CAP_PROP_EXPOSURE, -7)
     vs_supported = list_supported_capture_properties(vs)
@@ -197,6 +200,7 @@ def manual_calibration(
 
 
 def main():
+    """Calibrate entry point."""
     # allow calling from both python -m and from pyvr:
     argv = sys.argv[1:]
     if sys.argv[1] != "calibrate":

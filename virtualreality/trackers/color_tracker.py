@@ -1,4 +1,5 @@
-"""pyvr track
+"""
+pyvr track.
 
 Usage:
     pyvr track [options]
@@ -31,7 +32,10 @@ from ..templates import ControllerState
 
 
 class Poser(templates.PoserTemplate):
+    """A pose estimator."""
+
     def __init__(self, *args, camera=4, width=-1, height=-1, calibration_file=None, **kwargs):
+        """Create a pose estimator."""
         super().__init__(*args, **kwargs)
 
         self.temp_pose = ControllerState()
@@ -49,6 +53,7 @@ class Poser(templates.PoserTemplate):
 
     @templates.thread_register(1 / 90)
     async def mode_switcher(self):
+        """Check to switch between left and right controllers."""
         while self.coro_keep_alive["mode_switcher"][0]:
             try:
                 if self.mode == 1:
@@ -72,6 +77,7 @@ class Poser(templates.PoserTemplate):
 
     @templates.thread_register(1 / 60)
     async def get_location(self):
+        """Get locations from blob trackers."""
         try:
             t1 = u.BlobTracker(
                 self.camera,
@@ -107,6 +113,7 @@ class Poser(templates.PoserTemplate):
 
     @templates.thread_register(1 / 100)
     async def serial_listener_2(self):
+        """Get controller data from serial."""
         past_velocity = [0, 0, 0]
         velocity_until_reset = 0
         temp_for_offz = {"x": 0, "y": 0, "z": 0}
@@ -230,6 +237,7 @@ class Poser(templates.PoserTemplate):
 
     @templates.thread_register(1 / 100)
     async def serial_listener(self):
+        """Get orientation data from serial."""
         while self.coro_keep_alive["serial_listener"][0]:
             try:
                 with serial.Serial(self.serialPaths["blue"], 115200, timeout=1 / 5) as ser2:
@@ -274,16 +282,19 @@ class Poser(templates.PoserTemplate):
 
 
 def run_poser_only(addr="127.0.0.1", cam=4):
+    """Run the poser only. The server must be started in another program."""
     t = Poser(addr=addr, camera=cam)
     asyncio.run(t.main())
 
 
 def run_poser_and_server(addr="127.0.0.1", cam=4):
+    """Run the poser and server in one program."""
     t = Poser(addr=addr, camera=cam)
     server.run_til_dead(t)
 
 
 def main():
+    """Run color tracker entry point."""
     # allow calling from both python -m and from pyvr:
     argv = sys.argv[1:]
     if sys.argv[1] != "track":

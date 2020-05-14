@@ -1,3 +1,4 @@
+"""Server loop that communicates between the driver and posers."""
 import asyncio
 
 from virtualreality.templates import PoserTemplate
@@ -11,7 +12,7 @@ PRINT_MESSAGES = False
 
 async def broadcast(everyone, data, me, VIP):
     """
-    Broadcast a message to all trackers
+    Broadcast a message to all trackers.
 
     :param everyone:
     :param data:
@@ -33,6 +34,7 @@ async def broadcast(everyone, data, me, VIP):
 
 
 async def handle_echo(reader, writer):
+    """Handle communication between poser and driver."""
     while 1:
         try:
             addr = writer.get_extra_info("peername")
@@ -72,7 +74,7 @@ async def handle_echo(reader, writer):
 
 
 def run_til_dead(poser: PoserTemplate = None):
-    """Runs the """
+    """Run the server until it dies."""
     loop = asyncio.get_event_loop()
     coro = asyncio.start_server(handle_echo, *DOMAIN, loop=loop)
     server = loop.run_until_complete(coro)

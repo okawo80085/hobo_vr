@@ -1,3 +1,4 @@
+"""Templates for pose estimators, or posers."""
 import asyncio
 import warnings
 from itertools import chain
@@ -7,6 +8,8 @@ from .. import utilz as u
 
 
 class Pose(object):
+    """Struct containing all variables needed for instantaneous pose."""
+
     __slots__ = [
         "x",
         "y",
@@ -79,6 +82,8 @@ class Pose(object):
 
 
 class ControllerState(Pose):
+    """Struct containing all variables needed for instantaneous controller state."""
+
     __slots__ = [
         "x",
         "y",
@@ -118,6 +123,23 @@ class ControllerState(Pose):
         trackpad_touch=0,
         trigger_click=0,
     ):
+        """
+        Instantaneous controller state.
+
+        :param pose: location in meters and orientation in quaternion
+        :param velocity: velocity in meters/second
+                         Angular velocity of the pose in axis-angle representation. The direction is the angle of
+                         rotation and the magnitude is the angle around that axis in radians/second.
+        :param grip: is grip down
+        :param system: is system button down
+        :param menu: is menu button down
+        :param trackpad_click: is trackpad clicked
+        :param trigger_value: trigger pressure value
+        :param trackpad_x: trackpad touch x position
+        :param trackpad_y: trackpad touch y position
+        :param trackpad_touch: is trackpad being touched
+        :param trigger_click: is trigger clicked
+        """
         super().__init__(pose, velocity)
         self.grip: int = grip  # 0 or 1
         self.system: int = system  # 0 or 1
@@ -131,17 +153,21 @@ class ControllerState(Pose):
 
 
 def get_slot_names(slotted_instance):
+    """Get all slot names in a class with slots."""
     # thanks: https://stackoverflow.com/a/6720815/782170
     return slotted_instance.__slots__
 
 
 def get_slot_values(slotted_instance):
+    """Get all slot values in a class with slots."""
     # thanks: https://stackoverflow.com/a/6720815/782170
     return [getattr(slotted_instance, slot) for slot in get_slot_names(slotted_instance)]
 
 
 class PoserTemplate:
-    """Poser base class.
+    """
+    Poser base class.
+
     self.main() -
 
     supplies 3 tracked device pose dicts:
@@ -171,8 +197,7 @@ class PoserTemplate:
     every child class also needs to register it's thread
     methods with the thread_register decorator
 
-    example:
-
+    Example:
         class MyPoser(PoserTemplate):
             def __init__(self, *args, **kwargs):
                 super().__init(**kwargs)
@@ -198,6 +223,7 @@ class PoserTemplate:
         self, *, addr="127.0.0.1", port=6969, send_delay=1 / 100, recv_delay=1 / 1000, **kwargs,
     ):
         """
+        Create the poser template.
 
         :param addr: is the address of the server to connect to, stored in self.addr
         :param port: is the port of the server to connect to, stored in self.port
@@ -230,9 +256,10 @@ class PoserTemplate:
 
     async def _socket_init(self):
         """
-        connect to the server using self.addr and self.port and send the id message,
-        store socket reader and writer in self.reader and self.writer,
-        it is not recommended you override this method
+        Connect to the server using self.addr and self.port and send the id message.
+
+        Also store socket reader and writer in self.reader and self.writer.
+        It is not recommended you override this method
 
         send id message
         more on id messages: https://github.com/okawo80085/hobo_vr/wiki/server-id-messages
@@ -244,9 +271,7 @@ class PoserTemplate:
         self.writer.write(u.format_str_for_write("poser here"))
 
     async def send(self):
-        """
-        send all poses thread
-        """
+        """Send all poses thread."""
         while self.coro_keep_alive["send"][0]:
             try:
                 msg = u.format_str_for_write(
@@ -266,9 +291,7 @@ class PoserTemplate:
                 break
 
     async def recv(self):
-        """
-        receive messages thread
-        """
+        """Receive messages thread."""
         while self.coro_keep_alive["recv"][0]:
             try:
                 data = await u.read(self.reader)
@@ -281,9 +304,7 @@ class PoserTemplate:
                 break
 
     async def close(self):
-        """
-        await close thread, press "q" to kill all registered threads
-        """
+        """Await close thread, press "q" to kill all registered threads."""
         try:
             import keyboard
 
@@ -312,7 +333,10 @@ class PoserTemplate:
 
     async def main(self):
         """
-        main async method, gathers all recognized threads and runs them, it is not recommended you override this method
+        Run the main async method.
+
+        Gathers all recognized threads and runs them.
+        It is not recommended you override this method.
         """
         await self._socket_init()
 
@@ -323,7 +347,7 @@ class PoserTemplate:
 
 def thread_register(sleepDelay, runInDefaultExecutor=False):
     """
-    registers thread for PoserTemplate base class
+    Register thread for PoserTemplate base class.
 
     sleepDelay - sleep delay in seconds
     runInDefaultExecutor - bool, set True if you want the function to be executed in asyncio's default pool executor
@@ -357,7 +381,7 @@ def thread_register(sleepDelay, runInDefaultExecutor=False):
 
 class PoserClient(PoserTemplate):
     """
-    PoserClient
+    PoserClient.
 
     example usage:
         poser = PoserClient()
@@ -373,12 +397,13 @@ class PoserClient(PoserTemplate):
     """
 
     def __init__(self, *args, **kwargs):
+        """Create the poser client."""
         super().__init__(*args, **kwargs)
         self._coro_name_exceptions.append("thread_register")
 
     def thread_register(self, sleep_delay, runInDefaultExecutor=False):
         """
-        registers threads for PoserClient
+        Register a thread for PoserClient.
 
         sleepDelay - sleep delay in seconds
         runInDefaultExecutor - bool, set True if you want the function to be executed in asyncio's default pool executor

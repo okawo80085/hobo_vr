@@ -1,4 +1,5 @@
 """
+pyvr.
 
 The most commonly used pyvr commands are:
    calibrate  Calibrate the vr headset's tracking
@@ -19,6 +20,7 @@ from virtualreality import __version__
 
 
 def main():
+    """Pyvr entry point."""
     args = docopt(__doc__, version=f"pyvr version {__version__}", options_first=True)
 
     if args["<command>"] == "calibrate":
