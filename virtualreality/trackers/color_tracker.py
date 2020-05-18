@@ -219,7 +219,7 @@ class Poser(templates.PoserTemplate):
                                     self.temp_pose.trackpad_touch = 0
 
                                 if self.temp_pose.trigger_value > 0.9:
-                                    self.temp_pose.trackpad_click = 1
+                                    self.temp_pose.trigger_click = 1
 
                                 else:
                                     self.temp_pose.trigger_click = 0
