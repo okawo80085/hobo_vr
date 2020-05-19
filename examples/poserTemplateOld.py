@@ -12,8 +12,7 @@ modify the Poser class to your needs, except:
 """
 
 import asyncio
-import virtualreality.utilz as u
-import time
+import virtualreality.util.utilz as u
 import keyboard
 
 
