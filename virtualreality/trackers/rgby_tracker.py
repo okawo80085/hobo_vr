@@ -6,9 +6,9 @@ import serial
 import serial.threaded
 import squaternion as sq
 from docopt import docopt
-from virtualreality.util import utilz as u
-from virtualreality.util.IMU import get_i2c_imu
-from virtualreality.util.kalman import EulerKalman
+from ..util import utilz as u
+from ..util.IMU import get_i2c_imu
+from ..util.kalman import EulerKalman
 
 from .. import __version__
 from .. import templates
@@ -201,7 +201,7 @@ class Poser(templates.PoserTemplate):
                                         self.temp_pose.vel_z = 0
 
                                     yaw = y
-                                    w, x, y, z = sq.euler2quat(y + yaw_offset, p, r, degrees=True)
+                                    w, x, y, z = sq.Quaternion.from_euler(y + yaw_offset, p, r, degrees=True)
 
                                     self.temp_pose.r_w = round(w, 4)
                                     self.temp_pose.r_x = round(y, 4)
@@ -278,7 +278,7 @@ class Poser(templates.PoserTemplate):
                                 if len(gg) > 0:
                                     ypr = gg
 
-                                    w, x, y, z = sq.euler2quat(ypr[0] + yaw_offset, ypr[1], ypr[2], degrees=True, )
+                                    w, x, y, z = sq.Quaternion.from_euler(ypr[0] + yaw_offset, ypr[1], ypr[2], degrees=True, )
 
                                     # self.pose['rW'] = rrr2[0]
                                     # self.pose['rX'] = -rrr2[2]
