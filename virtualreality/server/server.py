@@ -2,7 +2,7 @@
 import asyncio
 
 from virtualreality.templates import PoserTemplate
-from .. import utilz as u
+from virtualreality.util import utilz as u
 
 DOMAIN = (None, 6969)
 conz = {}

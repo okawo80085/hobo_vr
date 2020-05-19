@@ -10,7 +10,7 @@ import cv2
 import numpy as np
 import serial.threaded
 from pykalman import KalmanFilter
-
+from displayarray import read_updates
 
 def format_str_for_write(input_str: str) -> bytes:
     """Format a string for writing to SteamVR's stream."""
@@ -107,6 +107,8 @@ def strings_share_characters(str1: str, str2: str) -> bool:
 
 def get_numbers_from_text(text):
     """Get a list of number from a string of numbers seperated by tabs."""
+    if isinstance(text, bytearray):
+        text = text.decode('utf-8')
     try:
         if strings_share_characters(text.lower(), "qwertyuiopsasdfghjklzxcvbnm><*[]{}()") or len(text) == 0:
             return []
@@ -292,19 +294,19 @@ class BlobTracker(threading.Thread):
         :param color_masks: color mask parameters, in opencv hsv color space, for color detection
         """
         super().__init__()
-        self._vs = cv2.VideoCapture(cam_index)
-        self._vs.set(cv2.CAP_PROP_FOURCC, cv2.CAP_OPENCV_MJPEG)  # high speed capture
+        self._vs = read_updates(cam_index)
 
         time.sleep(2)
 
         self.camera_focal_length = focal_length_px
         self.BALL_RADIUS_CM = ball_radius_cm
         self.offsets = offsets
+        self.cam_index = cam_index
 
-        self.can_track, frame = self._vs.read()
+        frame, self.can_track = self._try_get_frame()
 
         if not self.can_track:
-            self._vs.release()
+            self._vs.end()
             self._vs = None
 
         self.frame_height, self.frame_width, _ = frame.shape if self.can_track else (0, 0, 0)
@@ -338,6 +340,20 @@ class BlobTracker(threading.Thread):
         self._lock = threading.Lock()
         self.daemon = False
         self.pose_que = queue.Queue()
+        self.last_frame = None
+        self.time_of_last_frame = -1
+
+    def _try_get_frame(self):
+        self._vs.update()
+        try:
+            frame = self._vs.frames[str(self.cam_index)][0]
+            can_track = True
+            if not frame is self.last_frame:
+                self.time_of_last_frame = time.time()
+        except Exception as e:
+            frame = None
+            can_track = False
+        return frame, can_track
 
     def stop(self):
         """Stop the blob tracking thread."""
@@ -348,7 +364,7 @@ class BlobTracker(threading.Thread):
     def run(self):
         """Run the main blob tracking thread."""
         try:
-            self.can_track, _ = self._vs.read()
+            self.can_track, _ = self._try_get_frame()
 
             if not self.can_track:
                 raise RuntimeError("video source already expired")
@@ -387,14 +403,13 @@ class BlobTracker(threading.Thread):
         """Get the least recent set of poses."""
         if self.can_track and self.alive:
             return self.pose_que.get()
-
         else:
             raise RuntimeError("tracking loop already finished")
 
     def find_blobs_in_frame(self):
         """Get a frame from the camera and find all the blobs in it."""
         if self.alive:
-            self.can_track, frame = self._vs.read()
+            frame, self.can_track= self._try_get_frame()
 
             for key, mask_range in self.markerMasks.items():
                 hc, hr = mask_range["h"]
@@ -491,7 +506,7 @@ class BlobTracker(threading.Thread):
             self.stop()
 
             if self._vs is not None:
-                self._vs.release()
+                self._vs.end()
                 self._vs = None
 
     def __enter__(self):

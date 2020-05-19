@@ -1,5 +1,5 @@
 import asyncio
-import virtualreality.utilz as u
+import virtualreality.util.utilz as u
 import random
 
 addrs = ("127.0.0.1", 6969)

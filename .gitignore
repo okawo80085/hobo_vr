@@ -8,12 +8,10 @@ bin
 __pycache__
 .vs
 *.user
-data/
 t.py
 t2.py
 *.pyc
 *.jpg
-tests/
 t2.py
 openvr*.h
 !sample/bin

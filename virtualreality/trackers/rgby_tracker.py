@@ -1,34 +1,82 @@
-"""
-pyvr track.
-
-Usage:
-    pyvr track [options]
-
-Options:
-   -h, --help
-   -c, --camera <camera>           Source of the camera to use for calibration [default: 0]
-   -r, --resolution <res>          (in progress) Input resolution in width and height [default: -1x-1]
-   -l, --load_calibration <file>   (in progress) Load color mask calibration settings [default: ranges.pickle]
-   -ip, --ip_address <ip_address>  IP Address of the server to connect to [default: 127.0.0.1]
-   -s, --server                    Run the server alongside the tracker.
-"""
-
 import asyncio
 import math
 import sys
-from copy import copy
 
 import serial
 import serial.threaded
 import squaternion as sq
 from docopt import docopt
-
 from ..util import utilz as u
+from ..util.IMU import get_i2c_imu
+from ..util.kalman import EulerKalman
+
 from .. import __version__
 from .. import templates
-from ..calibration.manual_color_mask_calibration import load_calibration
 from ..server import server
-from ..templates import ControllerState
+from ..templates import PoseEuler
+
+
+def horizontal_asymptote(val, max_val, speed=1):
+    b = max_val + 1
+    out_val = (speed * b * val + b) / (speed * val + b) - 1
+    return out_val
+
+
+class HeadsetPoserPiece(object):
+    def __init__(self,
+                 tracker_camera=0,
+                 imu_factory=get_i2c_imu,
+                 blob_colors={},
+                 translation_offsets={}):
+        self.tracker_camera = tracker_camera
+        self.conn, self.imu = imu_factory()
+        self.pose = PoseEuler()
+        self.blob_colors = blob_colors
+        self.translation_offsets = translation_offsets
+        self._last_blob_update = 0
+        self._last_imu_update = 0
+        self.kalman = EulerKalman()
+
+        assert len(blob_colors.keys()) == len(translation_offsets.keys())
+
+        try:
+            if self.blob_colors:
+                self.blob_tracker = u.BlobTracker(
+                    self.tracker_camera,
+                    offsets=[0, 0, 0],
+                    color_masks=self.blob_colors,
+                )
+            else:
+                self.blob_tracker = None
+        except Exception as e:
+            print(f"failed to init headset blob tracker: {repr(e)}")
+            self.blob_tracker = None
+
+    def update_blob_xyz(self):
+        try:
+            if self.blob_colors and self.blob_tracker.time_of_last_frame != self._last_blob_update:
+                self._last_blob_update = self.blob_tracker.time_of_last_frame
+                pose_list = []
+                poses = self.blob_tracker.get_poses()
+                for color in self.blob_colors.keys():
+                    pose_x = poses[color]["x"]
+                    pose_y = poses[color]["y"]
+                    pose_z = poses[color]["z"]
+                    pose_x += self.translation_offsets[color]["x"]
+                    pose_y += self.translation_offsets[color]["y"]
+                    pose_z += self.translation_offsets[color]["z"]
+                    pose_list.append((pose_x, pose_y, pose_z))
+                pose_x = sum((p[0] for p in pose_list)) / len(pose_list)
+                pose_y = sum((p[1] for p in pose_list)) / len(pose_list)
+                pose_z = sum((p[2] for p in pose_list)) / len(pose_list)
+                self.kalman.apply_blob((pose_x, pose_y, pose_z))
+        except Exception as e:
+            print("Could not get blob location:", e)
+
+    def update_imu_info(self):
+        if self.imu.protocol is not None and self.imu.protocol.time_of_last_data != self._last_imu_update:
+            self._last_imu_update = self.imu.protocol.time_of_last_data
+            self.kalman.apply_imu(self.imu.protocol)
 
 
 class Poser(templates.PoserTemplate):
@@ -38,42 +86,18 @@ class Poser(templates.PoserTemplate):
         """Create a pose estimator."""
         super().__init__(*args, **kwargs)
 
-        self.temp_pose = ControllerState()
-
-        self.serialPaths = {"green": "/dev/ttyUSB1", "blue": "/dev/ttyUSB0"}
+        self.headset = HeadsetPoserPiece(0,
+                                         blob_colors={"blue": {"h": (98, 10), "s": (200, 55), "v": (250, 32)},
+                                                      "green": {"h": (68, 15), "s": (135, 53), "v": (255, 50)}},
+                                         translation_offsets={"blue": [0, 0, 0],
+                                                              "green": [0, 0, 0]})
 
         self.mode = 0
-        self._serialResetYaw = False
         self.useVelocity = False
 
         self.camera = camera
         self.width = width
         self.height = height
-        self.calibration = load_calibration(calibration_file)
-
-    @templates.thread_register(1 / 90)
-    async def mode_switcher(self):
-        """Check to switch between left and right controllers."""
-        while self.coro_keep_alive["mode_switcher"][0]:
-            try:
-                if self.mode == 1:
-                    self.pose_controller_l.trackpad_touch = 0
-                    self.pose_controller_l.trackpad_x = 0
-                    self.pose_controller_l.trackpad_y = 0
-                    self.pose_controller_r = copy(self.temp_pose)
-
-                else:
-                    self.pose_controller_r.trackpad_touch = 0
-                    self.pose_controller_r.trackpad_x = 0
-                    self.pose_controller_r.trackpad_y = 0
-                    self.pose_controller_l = copy(self.temp_pose)
-
-                await asyncio.sleep(self.coro_keep_alive["mode_switcher"][1])
-
-            except Exception as e:
-                print(f"failed mode_switcher: {e}")
-                self.coro_keep_alive["mode_switcher"][0] = False
-                break
 
     @templates.thread_register(1 / 60)
     async def get_location(self):
@@ -219,7 +243,7 @@ class Poser(templates.PoserTemplate):
                                     self.temp_pose.trackpad_touch = 0
 
                                 if self.temp_pose.trigger_value > 0.9:
-                                    self.temp_pose.trigger_click = 1
+                                    self.temp_pose.trackpad_click = 1
 
                                 else:
                                     self.temp_pose.trigger_click = 0
@@ -254,7 +278,7 @@ class Poser(templates.PoserTemplate):
                                 if len(gg) > 0:
                                     ypr = gg
 
-                                    w, x, y, z = sq.Quaternion.from_euler(ypr[0] + yaw_offset, ypr[1], ypr[2], degrees=True,)
+                                    w, x, y, z = sq.Quaternion.from_euler(ypr[0] + yaw_offset, ypr[1], ypr[2], degrees=True, )
 
                                     # self.pose['rW'] = rrr2[0]
                                     # self.pose['rX'] = -rrr2[2]

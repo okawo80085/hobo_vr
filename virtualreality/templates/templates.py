@@ -1,10 +1,104 @@
 """Templates for pose estimators, or posers."""
 import asyncio
-import warnings
-from itertools import chain
 import numbers
+import warnings
 
-from .. import utilz as u
+from virtualreality.util import utilz as u
+
+
+class PoseEuler(object):
+    """Struct containing all variables needed for instantaneous pose."""
+
+    __slots__ = [
+        "x",
+        "y",
+        "z",
+        "vel_x",
+        "vel_y",
+        "vel_z",
+        "acc_x",
+        "acc_y",
+        "acc_z",
+        "ang_x",
+        "ang_y",
+        "ang_z",
+        "vel_ang_x",
+        "vel_ang_y",
+        "vel_ang_z",
+        "acc_ang_x",
+        "acc_ang_y",
+        "acc_ang_z",
+    ]
+
+    def __init__(self,
+                 x: float = 0,
+                 y: float = 0,
+                 z: float = 0,
+                 vel_x: float = 0,
+                 vel_y: float = 0,
+                 vel_z: float = 0,
+                 acc_x: float = 0,
+                 acc_y: float = 0,
+                 acc_z: float = 0,
+                 ang_x: float = 0,
+                 ang_y: float = 0,
+                 ang_z: float = 0,
+                 vel_ang_x: float = 0,
+                 vel_ang_y: float = 0,
+                 vel_ang_z: float = 0,
+                 acc_ang_x: float = 0,
+                 acc_ang_y: float = 0,
+                 acc_ang_z: float = 0,
+                 ):
+        """
+        Instantaneous pose and velocity of an object.
+
+        :param pose: location in meters and orientation in quaternion
+        :param velocity: velocity in meters/second
+                         Angular velocity of the pose in axis-angle representation. The direction is the angle of
+                         rotation and the magnitude is the angle around that axis in radians/second.
+        """
+        self.x = x
+        self.y = y
+        self.z = z
+        self.vel_x = vel_x
+        self.vel_y = vel_y
+        self.vel_z = vel_z
+        self.acc_x = acc_x
+        self.acc_y = acc_y
+        self.acc_z = acc_z
+        self.ang_x = ang_x
+        self.ang_y = ang_y
+        self.ang_z = ang_z
+        self.vel_ang_x = vel_ang_x
+        self.vel_ang_y = vel_ang_y
+        self.vel_ang_z = vel_ang_z
+        self.acc_ang_x = acc_ang_x
+        self.acc_ang_y = acc_ang_y
+        self.acc_ang_z = acc_ang_z
+
+    def __getitem__(self, key):
+        if key in self.__slots__:
+            return getattr(self, key)
+
+        raise KeyError(key)
+
+    def __setitem__(self, key, val):
+        assert isinstance(val, numbers.Number), "value should be numeric"
+
+        if key in self.__slots__:
+            setattr(self, key, val)
+            return
+
+        raise KeyError(key)
+
+    def __repr__(self):
+        return "<{}.{} [{}\n] object at {}>".format(
+            self.__class__.__module__,
+            self.__class__.__name__,
+            "\n\t".join([f"{key}={self[key]}" for key in self.__slots__]),
+            hex(id(self)),
+        )
 
 
 class Pose(object):
@@ -110,18 +204,18 @@ class ControllerState(Pose):
     ]
 
     def __init__(
-        self,
-        pose=(0, 0, 0, 1, 0, 0, 0),
-        velocity=(0,) * 6,
-        grip=0,
-        system=0,
-        menu=0,
-        trackpad_click=0,
-        trigger_value=0,
-        trackpad_x=0,
-        trackpad_y=0,
-        trackpad_touch=0,
-        trigger_click=0,
+            self,
+            pose=(0, 0, 0, 1, 0, 0, 0),
+            velocity=(0,) * 6,
+            grip=0,
+            system=0,
+            menu=0,
+            trackpad_click=0,
+            trigger_value=0,
+            trackpad_x=0,
+            trackpad_y=0,
+            trackpad_touch=0,
+            trigger_click=0,
     ):
         """
         Instantaneous controller state.
@@ -220,7 +314,7 @@ class PoserTemplate:
     """
 
     def __init__(
-        self, *, addr="127.0.0.1", port=6969, send_delay=1 / 100, recv_delay=1 / 1000, **kwargs,
+            self, *, addr="127.0.0.1", port=6969, send_delay=1 / 100, recv_delay=1 / 1000, **kwargs,
     ):
         """
         Create the poser template.
@@ -239,8 +333,8 @@ class PoserTemplate:
             method_name
             for method_name in dir(self)
             if callable(getattr(self, method_name))
-            and method_name[0] != "_"
-            and method_name not in self._coro_name_exceptions
+               and method_name[0] != "_"
+               and method_name not in self._coro_name_exceptions
         ]
 
         self.coro_keep_alive = {
