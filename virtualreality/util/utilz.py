@@ -264,7 +264,7 @@ class BlobTracker(threading.Thread):
     """
 
     def __init__(
-        self, cam_index=0, *, focal_length_px=490, ball_radius_cm=2, offsets=[0, 0, 0], color_masks={},
+        self, cam_index=0, *, focal_length_px=490, ball_radius_cm=2, color_masks={},
     ):
         """
         Create a blob tracker.
@@ -290,7 +290,6 @@ class BlobTracker(threading.Thread):
         :param cam_index: index of the camera that will be used to track the blobs
         :param focal_length_px: focal length in pixels
         :param ball_radius_cm: the radius of the ball to be tracked in cm
-        :param offsets: rotational offsets, in radians, applied to the 3D coordinates of the blobs
         :param color_masks: color mask parameters, in opencv hsv color space, for color detection
         """
         super().__init__()
@@ -300,8 +299,10 @@ class BlobTracker(threading.Thread):
 
         self.camera_focal_length = focal_length_px
         self.BALL_RADIUS_CM = ball_radius_cm
-        self.offsets = offsets
         self.cam_index = cam_index
+
+        self.last_frame = None
+        self.time_of_last_frame = -1
 
         frame, self.can_track = self._try_get_frame()
 
@@ -340,17 +341,16 @@ class BlobTracker(threading.Thread):
         self._lock = threading.Lock()
         self.daemon = False
         self.pose_que = queue.Queue()
-        self.last_frame = None
-        self.time_of_last_frame = -1
 
     def _try_get_frame(self):
         self._vs.update()
         try:
             frame = self._vs.frames[str(self.cam_index)][0]
             can_track = True
-            if not frame is self.last_frame:
+            if frame is not self.last_frame:
                 self.time_of_last_frame = time.time()
         except Exception as e:
+            print ('_try_get_frame() failed with:', repr(e), self._vs.frames)
             frame = None
             can_track = False
         return frame, can_track
@@ -364,7 +364,7 @@ class BlobTracker(threading.Thread):
     def run(self):
         """Run the main blob tracking thread."""
         try:
-            self.can_track, _ = self._try_get_frame()
+            _, self.can_track = self._try_get_frame()
 
             if not self.can_track:
                 raise RuntimeError("video source already expired")
@@ -378,7 +378,7 @@ class BlobTracker(threading.Thread):
             try:
                 self.find_blobs_in_frame()
                 self.solve_blob_poses()
-                rotate(self.poses, self.offsets)
+                # rotate(self.poses, self.offsets)
 
                 if not self.pose_que.empty():
                     try:
@@ -512,6 +512,7 @@ class BlobTracker(threading.Thread):
     def __enter__(self):
         self.start()
         if not self.alive:
+            self.close()
             raise RuntimeError("video source already expired")
 
         return self

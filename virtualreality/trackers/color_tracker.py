@@ -79,9 +79,9 @@ class Poser(templates.PoserTemplate):
     async def get_location(self):
         """Get locations from blob trackers."""
         try:
+            offsets = [0.6981317007977318, 0, 0]
             t1 = u.BlobTracker(
                 self.camera,
-                offsets=[0.6981317007977318, 0, 0],
                 color_masks={
                     "blue": {"h": (98, 10), "s": (200, 55), "v": (250, 32)},
                     "green": {"h": (68, 15), "s": (135, 53), "v": (255, 50)},
@@ -97,13 +97,15 @@ class Poser(templates.PoserTemplate):
                 try:
                     poses = t1.get_poses()
 
+                    u.rotate(poses, offsets)
+
                     self.temp_pose.x = round(-poses["green"]["x"], 6)
                     self.temp_pose.y = round(poses["green"]["y"] + 1, 6)
                     self.temp_pose.z = round(poses["green"]["z"], 6)
 
                     self.pose.x = round(-poses["blue"]["x"] - 0.01, 6)
                     self.pose.y = round(poses["blue"]["y"] + 1 - 0.07, 6)
-                    self.pose.z = round(poses["blue"]["z"] - 0.03, 6)
+                    self.pose.z = round(poses["blue"]["z"], 6)
 
                     await asyncio.sleep(self.coro_keep_alive["get_location"][1])
 
