@@ -27,7 +27,7 @@ async def read(reader: StreamReader, read_len: int = 20) -> str:
     """Read one line from reader asynchronously."""
     data = []
     temp = " "
-    while temp[-1] != "\n" and temp != "":
+    while "\n" not in temp and temp != "":
         temp = await reader.read(read_len)
         temp = temp.decode("utf-8")
         data.append(temp)
