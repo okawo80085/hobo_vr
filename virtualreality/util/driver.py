@@ -41,7 +41,7 @@ class DummyDriver(threading.Thread):
         self.start()
         if not self.alive:
             self.close()
-            raise RuntimeError("video source already expired")
+            raise RuntimeError("receive thread already finished")
 
         return self
 
@@ -89,7 +89,7 @@ class DummyDriver(threading.Thread):
                 pass
 
             except Exception as e:
-                print (f'DummyDriver recv thread failed: {repr(e)}')
+                print (f'DummyDriver receive thread failed: {repr(e)}')
                 break
 
         self.alive = False
