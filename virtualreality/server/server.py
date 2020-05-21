@@ -35,9 +35,9 @@ async def broadcast(everyone, data, me, VIP):
 
 async def handle_echo(reader, writer):
     """Handle communication between poser and driver."""
+    addr = writer.get_extra_info("peername")
     while 1:
         try:
-            addr = writer.get_extra_info("peername")
 
             data = await u.read(reader)
             if addr not in conz:
@@ -68,9 +68,10 @@ async def handle_echo(reader, writer):
             print("Losing connection to {}, reason: {}".format(addr, e))
             break
 
-    print("Close the client socket")
+    print(f"Connection to {addr} closed")
     writer.close()
-    del conz[addr]
+    if addr in conz:
+        del conz[addr]
 
 
 def run_til_dead(poser: PoserTemplate = None):
