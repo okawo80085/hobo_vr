@@ -1,8 +1,8 @@
 """Server loop that communicates between the driver and posers."""
 import asyncio
 
-from virtualreality.templates import PoserTemplate
-from virtualreality.util import utilz as u
+from ..templates import PoserTemplate
+from ..util import utilz as u
 
 DOMAIN = (None, 6969)
 conz = {}
