@@ -10,12 +10,12 @@ class DummyDriver(threading.Thread):
     example:
     t = DummyDriver(57, addr='192.168.31.60', port=6969)
 
-	with t:
-	    t.send('hello') # driver id message
-	    for _ in range(10):
-	        time.sleep(1) # delay, doesn't affect the receiving
-	        print (t.get_pose())
-	    t.send('nut') # whatever send message
+    with t:
+        t.send('hello') # driver id message
+        for _ in range(10):
+            time.sleep(1) # delay, doesn't affect the receiving
+            print (t.get_pose())
+        t.send('nut') # whatever send message
 
 
     """
@@ -73,7 +73,7 @@ class DummyDriver(threading.Thread):
             raise RuntimeError("recv thread already finished")
 
     def send(self, text):
-    	self.sock.send(u.format_str_for_write(text))
+        self.sock.send(u.format_str_for_write(text))
 
     def run(self):
         while self.alive:
