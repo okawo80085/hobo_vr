@@ -5,6 +5,7 @@ import serial
 import serial.threaded
 from serial import SerialException
 from squaternion import Quaternion
+
 from virtualreality.util import utilz as u
 
 
@@ -29,6 +30,15 @@ def angle_between(v1, v2):
     v2_u = unit_vector(v2)
     return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
 
+def from_to_quaternion(v1, v2, is_unit=True):
+    # https://stackoverflow.com/a/1171995/782170
+    q = np.cross(v1, v2)
+    if not is_unit:
+        w = np.sqrt(np.linalg.norm(v1)**2 + np.linalg.norm(v2) **2) + np.dot(v1, v2)
+    else:
+        w = 1 + np.dot(v1, v2)
+    q = Quaternion(*q, 1 + w)
+    return q.normalize
 
 class IMU(object):
     def __init__(self):
@@ -42,18 +52,31 @@ class IMU(object):
         self._mag_y = 0.0
         self._mag_z = 0.0
         self.grav_magnitude = 14  # I have no idea why gravity is 14 on my imu, but it is
+        self._mag_iron_offset_x = 23.5
+        self._mag_iron_offset_y = 23.5
+        self._mag_iron_offset_z = -45
+
+    def get_north_up(self, expected_orientation=None, grav_magnitude=None, stationary=False, accel=None):
+        grav = np.asarray(unit_vector(self.get_grav(expected_orientation, grav_magnitude, stationary, accel)))
+        mag = unit_vector(np.asarray(self.get_mag()))
+        east = unit_vector(np.cross(mag, grav))
+        north = -unit_vector(np.cross(east, grav))
+        up = -unit_vector(np.cross(north, east))
+
+        return north, up
 
     def get_orientation(self, expected_orientation=None, grav_magnitude=None, stationary=False, accel=None):
-        """Gets magnetometer roll, pitch, yaw, as difference from up vector"""
-        mag = unit_vector(np.asarray([self._mag_x, self._mag_y, self._mag_z]))
-        grav = np.asarray(self.get_grav(expected_orientation, grav_magnitude, stationary, accel))
-        east = np.cross(mag, grav)
-        south = np.cross(east, grav)
-        down = unit_vector(np.cross(south, east))
+        """Gets orientation quaternion"""
+        north, up = self.get_north_up()
+        _forward = np.asarray([0,1,0])
+        _up = np.asarray([0,0,1])
 
-        q = Quaternion(*down, 1)
+        # http://answers.unity.com/answers/819741/view.html
+        v = north + up * - np.dot(up, north)
+        q = from_to_quaternion(_forward, v)
+        f = from_to_quaternion(v, north) * q
 
-        return q.to_euler()
+        return f
 
     def get_grav(self, q=None, magnitude=None, stationary=False, accel=None):
         if stationary or ((accel is not None) and (not np.any(accel))) or q is None:
@@ -88,8 +111,17 @@ class IMU(object):
     def get_gyro(self):
         return [self._gyro_x, self._gyro_y, self._gyro_z]
 
+    def set_mag_iron_offset(self, offset):
+        assert len(offset) == 3
+        self._mag_iron_offset_x = offset[0]
+        self._mag_iron_offset_x = offset[1]
+        self._mag_iron_offset_x = offset[2]
+
     def get_mag(self):
-        return [self._mag_x, self._mag_y, self._mag_z]
+        mag = [self._mag_x-self._mag_iron_offset_x,
+               self._mag_y-self._mag_iron_offset_y,
+               self._mag_z-self._mag_iron_offset_z]
+        return mag
 
 
 class PureIMUProtocol(serial.threaded.Packetizer):
