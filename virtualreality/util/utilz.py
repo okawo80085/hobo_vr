@@ -35,6 +35,18 @@ async def read(reader: StreamReader, read_len: int = 20) -> str:
 
     return "".join(data)
 
+def read2(reader, read_len = 20):
+    """Read one line from reader asynchronously."""
+    data = []
+    temp = " "
+    while "\n" not in temp and temp != "":
+        temp = reader.recv(read_len)
+        temp = temp.decode("utf-8")
+        data.append(temp)
+        time.sleep(0)  # allows thread switching
+
+    return "".join(data)
+
 
 def rotate_z(points: Dict[str, Dict[str, float]], angle: float):
     """Rotate a set of points around the z axis."""
@@ -107,7 +119,7 @@ def strings_share_characters(str1: str, str2: str) -> bool:
 
 def get_numbers_from_text(text, separator="\t"):
     """Get a list of number from a string of numbers seperated by :separator:[default: "\t"]."""
-    if isinstance(text, bytearray):
+    if isinstance(text, bytearray) or isinstance(text, bytes):
         text = text.decode('utf-8')
     try:
         if strings_share_characters(text.lower(), "qwertyuiopsasdfghjklzxcvbnm><*[]{}()") or len(text) == 0:
