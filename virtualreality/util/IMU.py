@@ -36,8 +36,8 @@ def from_to_quaternion(v1, v2, is_unit=True):
     if not is_unit:
         w = np.sqrt(np.linalg.norm(v1)**2 + np.linalg.norm(v2) **2) + np.dot(v1, v2)
     else:
-        w = 1 + np.dot(v1, v2)
-    q = Quaternion(*q, 1 + w)
+        w = np.sqrt(2) + np.dot(v1, v2)
+    q = Quaternion(*q, w)
     return q.normalize
 
 class IMU(object):
