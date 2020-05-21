@@ -3,7 +3,7 @@ import asyncio
 import numbers
 import warnings
 
-from virtualreality.util import utilz as u
+from ..util import utilz as u
 
 
 class PoseEuler(object):
