@@ -13,6 +13,9 @@ Options:
    -s, --server                    Run the server alongside the tracker.
 """
 
+# undocumented reference
+# kinda specific to okawo's hardware
+
 import asyncio
 import math
 import sys
