@@ -7,8 +7,11 @@
 #include <iostream>
 #include <sstream>
 #include <vector>
+
 #include <queue>
 #include <thread>
+#include <mutex>
+
 
 #include <Ws2tcpip.h>
 #include <winsock2.h>
@@ -17,7 +20,7 @@
 #pragma comment(lib, "Mswsock.lib")
 #pragma comment(lib, "AdvApi32.lib")
 
-#define DEFAULT_BUFLEN 2048
+#define DEFAULT_BUFLEN 600
 #define DEFAULT_PORT "6969"
 
 // using namespace std;
@@ -88,30 +91,14 @@ public:
 
   int socRecv() {
     if (returnStatus == 0) {
+      m_mtx.lock();
       iResult = recv(ConnectSocket, recvbuf, recvbuflen, 0);
       bufLen = iResult;
-      if (iResult > 0) {
-        // DriverLog("Bytes received: %d\n", iResult);
-        cleanCharList(recvbuf, &bufLen);
-        convert2ss(recvbuf, &bufLen);
-        if (bufLen != expectedPoseSize) {
-          DriverLog("received pose packet size mismatch, %d expected but got %d, "
-                    "returning null",
-                    expectedPoseSize, bufLen);
-          // std::cout << "expected pose size " << expectedPoseSize << ", but got " << bufLen << std::endl;
-
-          if (bufLen < expectedPoseSize) {
-            newPose.clear();
-            for (int i=0; i<expectedPoseSize; i++){
-              newPose.push_back(0.0);
-            }
-          }
-        }
-
-      } else if (iResult == 0) {
+      m_mtx.unlock();
+      if (iResult == 0) {
         DriverLog("Connection closed\n");
         returnStatus = -1;
-      } else {
+      } else if (iResult < 0) {
         returnStatus = WSAGetLastError();
         DriverLog("recv failed with error: %d\n", returnStatus);
       }
@@ -150,12 +137,30 @@ public:
   }
 
   std::vector<double> getPose() {
-    std::vector<double> v;
-    if (!qq.empty() && m_bMyThreadKeepAlive){
-      v = qq.front();
-      qq.pop();
+    m_mtx.lock();
+    for (int i=0; i<bufLen; i++) {
+      copybuf[i] = recvbuf[i];
     }
-    return v;
+    bufLen2 = bufLen;
+    m_mtx.unlock();
+    if (bufLen2 > 0){
+      // cleanCharList(recvbuf, &bufLen);
+      convert2ss(copybuf, &bufLen2);
+      if (bufLen2 != expectedPoseSize) {
+        DriverLog("received pose packet size mismatch, %d expected but got %d, "
+                  "returning null",
+                  expectedPoseSize, bufLen2);
+        // std::cout << "poses missmatch " << bufLen2 << '\n';
+
+        if (bufLen2 < expectedPoseSize) {
+          newPose.clear();
+          for (int i=0; i<expectedPoseSize; i++){
+            newPose.push_back(0.0);
+          }
+        }
+      }
+    }
+    return newPose;
   }
 
   socketPoser(int i_expectedPoseSize) {
@@ -254,8 +259,12 @@ private:
   int iResult;
   int recvbuflen;
   char recvbuf[DEFAULT_BUFLEN];
+  char copybuf[DEFAULT_BUFLEN];
+  int bufLen2;
 
   std::vector<double> newPose;
+
+  std::mutex m_mtx;
 
   bool m_bMyThreadKeepAlive;
   std::thread *m_pMyTread;
@@ -269,7 +278,7 @@ private:
 
     if(!SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL))
     {
-      DriverLog("failed to enter background mode for listen thread: %d\n", GetLastError());
+      DriverLog("failed to enter THREAD_PRIORITY_TIME_CRITICAL mode for listen thread: %d\n", GetLastError());
     }
 
     dwThreadPri = GetThreadPriority(GetCurrentThread());
@@ -282,10 +291,11 @@ private:
       }
       socRecv();
 
-      if (!qq.empty()) {
-        qq.pop();
-      }
-      qq.push(newPose);
+      // if (!qq.empty()) {
+      //   qq.pop();
+      // }
+      // qq.push(newPose);
+      std::this_thread::sleep_for(std::chrono::microseconds(1));
     }
 
     DriverLog("listen thread finished with status: %d", returnStatus);
