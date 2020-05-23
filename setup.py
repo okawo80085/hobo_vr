@@ -32,7 +32,7 @@ setup(
         "Topic :: Scientific/Engineering :: Human Machine Interfaces",
         "Topic :: System :: Hardware :: Hardware Drivers",
     ],
-    install_requires=["keyboard", "opencv-python", "numpy", "pykalman", "pyserial", "docopt", "squaternion"],
+    install_requires=["keyboard", "opencv-python", "numpy", "pykalman", "pyserial", "docopt", "pyrr"],
     extras_require={"image": ["imutils"]},
     entry_points={"console_scripts": ["pyvr=virtualreality.main:main"]},
 )

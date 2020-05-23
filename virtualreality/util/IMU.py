@@ -3,8 +3,8 @@ import time
 import numpy as np
 import serial
 import serial.threaded
+from pyrr import Quaternion
 from serial import SerialException
-from squaternion import Quaternion
 
 from virtualreality.util import utilz as u
 
@@ -40,7 +40,7 @@ def perpendicular_vector(v):
 
     # x = y = z = 0 is not an acceptable solution
     if v.x == v.y == v.z == 0:
-        raise ValueError('zero-vector')
+        raise ValueError("zero-vector")
 
     # If one dimension is zero, this can be solved by setting that to
     # non-zero and the others to zero. Example: (4, 2, 0) lies in the
@@ -76,7 +76,6 @@ def from_to_quaternion(v1, v2, is_unit=True, epsilon=1e-5):
 
 
 class IMU(object):
-
     epsilon = 1e-5
 
     def __init__(self):
@@ -94,31 +93,21 @@ class IMU(object):
         self._mag_iron_offset_y = 23.5
         self._mag_iron_offset_z = -45
 
-    def get_north_up(self, expected_orientation=None, grav_magnitude=None, stationary=False, accel=None):
+    def get_north_west_up(self, expected_orientation=None, grav_magnitude=None, stationary=False, accel=None):
         grav = np.asarray(unit_vector(self.get_grav(expected_orientation, grav_magnitude, stationary, accel)))
         mag = unit_vector(np.asarray(self.get_mag()))
         east = unit_vector(np.cross(mag, grav))
         north = -unit_vector(np.cross(east, grav))
         up = -unit_vector(np.cross(north, east))
 
-        return north, up
+        return north, -east, up
 
     def get_orientation(self, expected_orientation=None, grav_magnitude=None, stationary=False, accel=None):
         """Gets orientation quaternion"""
-        north, up = self.get_north_up()
-        _forward = np.asarray([0, 1, 0])
-        _up = np.asarray([0, 0, 1])
-
-        # http://answers.unity.com/answers/819741/view.html
-        diff = abs(sum(up - north))
-        if diff > self.epsilon:
-            v = north + up * - np.dot(up, north)
-            q = from_to_quaternion(_forward, v)
-            f = from_to_quaternion(v, north) * q
-        else:
-            f = from_to_quaternion(_forward, north)
-
-        return f
+        north, west, up = self.get_north_west_up()
+        rot = np.asarray([north, west, up]).transpose()
+        q = Quaternion.from_matrix(rot)
+        return q
 
     def get_grav(self, q=None, magnitude=None, stationary=False, accel=None):
         if stationary or ((accel is not None) and (not np.any(accel))) or q is None:
@@ -160,14 +149,16 @@ class IMU(object):
         self._mag_iron_offset_x = offset[2]
 
     def get_mag(self):
-        mag = [self._mag_x - self._mag_iron_offset_x,
-               self._mag_y - self._mag_iron_offset_y,
-               self._mag_z - self._mag_iron_offset_z]
+        mag = [
+            self._mag_x - self._mag_iron_offset_x,
+            self._mag_y - self._mag_iron_offset_y,
+            self._mag_z - self._mag_iron_offset_z,
+        ]
         return mag
 
 
 class PureIMUProtocol(serial.threaded.Packetizer):
-    TERMINATOR = b'\n'
+    TERMINATOR = b"\n"
 
     def __init__(self):
         super().__init__()
@@ -195,12 +186,12 @@ def get_coms_in_range(start=0, stop=20):
     coms = []
     for i in range(start, stop):
         try:
-            arduino = serial.Serial(f'COM{i}', 115200, timeout=.1)
+            arduino = serial.Serial(f"COM{i}", 115200, timeout=0.1)
             arduino.close()
-            coms.append(f'COM{i}')
+            coms.append(f"COM{i}")
             break
         except SerialException as se:
-            if 'FileNotFoundError' in str(se):
+            if "FileNotFoundError" in str(se):
                 continue
             else:
                 print(f"COM{i} blocked. Did you try closing Cura?")

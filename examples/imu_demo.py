@@ -3,13 +3,15 @@ import traceback
 
 import numpy as np
 from mayavi import mlab
+from pyrr import Quaternion
 
 from virtualreality.util.IMU import get_i2c_imu, get_coms_in_range, unit_vector
-from squaternion import Quaternion
+
 
 def demo_get_i2c_imu_orient_algo():
-    uvw = np.asarray([[.1, 0, 0], [1, 0, 0], [0, .1, 0], [0, 1, 0], [0, 0, .1], [0, 0, 1]],
-                     dtype=np.float64).transpose()
+    uvw = np.asarray(
+        [[0.1, 0, 0], [1, 0, 0], [0, 0.1, 0], [0, 1, 0], [0, 0, 0.1], [0, 0, 1]], dtype=np.float64
+    ).transpose()
 
     obj = mlab.plot3d(uvw[0], uvw[1], uvw[2])
 
@@ -27,8 +29,7 @@ def demo_get_i2c_imu_orient_algo():
                 east = unit_vector(np.cross(mag, grav))
                 south = unit_vector(np.cross(east, grav))
                 down = unit_vector(np.cross(south, east))
-                xyz = np.asarray([east * .1, east, south * .1, south, down * .1, down],
-                                 dtype=np.float64).transpose()
+                xyz = np.asarray([east * 0.1, east, south * 0.1, south, down * 0.1, down], dtype=np.float64).transpose()
                 if np.isnan(acc).any():
                     acc = (float(0),) * 3
                 if not np.isnan(xyz).any():
@@ -45,8 +46,9 @@ def demo_get_i2c_imu_orient_algo():
 
 
 def test_get_i2c_imu():
-    uvw = np.asarray([[.1, 0, 0], [1, 0, 0], [0, .1, 0], [0, 1, 0], [0, 0, .1], [0, 0, 1]],
-                     dtype=np.float64).transpose()
+    uvw = np.asarray(
+        [[0.1, 0, 0], [1, 0, 0], [0, 0.1, 0], [0, 1, 0], [0, 0, 0.1], [0, 0, 1]], dtype=np.float64
+    ).transpose()
 
     obj = mlab.plot3d(uvw[0], uvw[1], uvw[2])
 
@@ -63,9 +65,8 @@ def test_get_i2c_imu():
                 if np.isnan(acc).any():
                     acc = (float(0),) * 3
                 if not np.isnan(orient1).any():
-                    quvw = Quaternion(np.asarray([0]*6), *uvw)  # Behold! The multi-quaternion!
-                    qxyz = orient1 * quvw * orient1.conjugate
-                    xyz = qxyz.vector
+                    qxyz = [orient1 * Quaternion.from_axis(v) * ~orient1 for v in uvw.transpose()]
+                    xyz = np.asarray([np.asarray(x.xyz) for x in qxyz]).transpose()
                     obj.mlab_source.set(x=xyz[0], y=xyz[1], z=xyz[2])
                 time.sleep(0)
                 yield
@@ -79,8 +80,7 @@ def test_get_i2c_imu():
 
 
 def test_get_i2c_imu_north_up():
-    uvw = np.asarray([[.1, 0, 0], [1, 0, 0], [0, .1, 0], [0, 1, 0]],
-                     dtype=np.float64).transpose()
+    uvw = np.asarray([[0.1, 0, 0], [1, 0, 0], [0, 0.1, 0], [0, 1, 0]], dtype=np.float64).transpose()
 
     obj = mlab.plot3d(uvw[0], uvw[1], uvw[2])
 
@@ -97,8 +97,7 @@ def test_get_i2c_imu_north_up():
                 if np.isnan(acc).any():
                     acc = (float(0),) * 3
                 if not np.isnan(n).any() and not np.isnan(u).any():
-                    xyz = np.asarray([n * .1, n, u * .1, u],
-                                     dtype=np.float64).transpose()
+                    xyz = np.asarray([n * 0.1, n, u * 0.1, u], dtype=np.float64).transpose()
                     obj.mlab_source.set(x=xyz[0], y=xyz[1], z=xyz[2])
                 time.sleep(0)
                 yield
@@ -111,5 +110,5 @@ def test_get_i2c_imu_north_up():
     mlab.show()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_get_i2c_imu()

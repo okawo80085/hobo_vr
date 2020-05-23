@@ -78,7 +78,7 @@ class EulerKalman(object):
         t_now = time.time()
         dt = t_now - self.t_prev
         a[tuple(i - 3 for i in range(3, 9)), tuple(i for i in range(3, 9))] = dt
-        a[tuple(i - 6 for i in range(6, 9)), tuple(i for i in range(6, 9))] = .5 * dt ** 2
+        a[tuple(i - 6 for i in range(6, 9)), tuple(i for i in range(6, 9))] = 0.5 * dt ** 2
         m = np.zeros((18, 18))
         m[0:9, 0:9] = a
         m[9:18, 9:18] = a
@@ -97,8 +97,9 @@ class EulerKalman(object):
         self._filter.transition_matrices = self._get_transition_matrix()
 
         # run with no observation to get current data for info the imu doesn't have.
-        temp_x_now, _ = \
-            self._filter.filter_update(filtered_state_mean=self._x_now, filtered_state_covariance=self._p_now)
+        temp_x_now, _ = self._filter.filter_update(
+            filtered_state_mean=self._x_now, filtered_state_covariance=self._p_now
+        )
 
         acc = imu.get_acc(q=temp_x_now[9:12])
         orient = imu.get_orientation(accel=acc)
@@ -130,8 +131,9 @@ class EulerKalman(object):
         self._filter.transition_matrices = self._get_transition_matrix()
 
         # run with no observation to get current data for info the imu doesn't have.
-        temp_x_now, _ = \
-            self._filter.filter_update(filtered_state_mean=self._x_now, filtered_state_covariance=self._p_now)
+        temp_x_now, _ = self._filter.filter_update(
+            filtered_state_mean=self._x_now, filtered_state_covariance=self._p_now
+        )
 
         partial_obz = temp_x_now
         partial_obz[0:3] = xyz

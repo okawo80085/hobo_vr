@@ -12,6 +12,7 @@ import serial.threaded
 from pykalman import KalmanFilter
 from displayarray import read_updates
 
+
 def format_str_for_write(input_str: str) -> bytes:
     """Format a string for writing to SteamVR's stream."""
     if len(input_str) < 1:
@@ -35,7 +36,8 @@ async def read(reader: StreamReader, read_len: int = 20) -> str:
 
     return "".join(data)
 
-def read2(reader, read_len = 20):
+
+def read2(reader, read_len=20):
     """Read one line from reader asynchronously."""
     data = []
     temp = " "
@@ -120,7 +122,7 @@ def strings_share_characters(str1: str, str2: str) -> bool:
 def get_numbers_from_text(text, separator="\t"):
     """Get a list of number from a string of numbers seperated by :separator:[default: "\t"]."""
     if isinstance(text, bytearray) or isinstance(text, bytes):
-        text = text.decode('utf-8')
+        text = text.decode("utf-8")
     try:
         if strings_share_characters(text.lower(), "qwertyuiopsasdfghjklzxcvbnm><*[]{}()") or len(text) == 0:
             return []
@@ -362,7 +364,7 @@ class BlobTracker(threading.Thread):
             if frame is not self.last_frame:
                 self.time_of_last_frame = time.time()
         except Exception as e:
-            print ('_try_get_frame() failed with:', repr(e), self._vs.frames)
+            print("_try_get_frame() failed with:", repr(e), self._vs.frames)
             frame = None
             can_track = False
         return frame, can_track
@@ -421,7 +423,7 @@ class BlobTracker(threading.Thread):
     def find_blobs_in_frame(self):
         """Get a frame from the camera and find all the blobs in it."""
         if self.alive:
-            frame, self.can_track= self._try_get_frame()
+            frame, self.can_track = self._try_get_frame()
 
             for key, mask_range in self.markerMasks.items():
                 hc, hr = mask_range["h"]

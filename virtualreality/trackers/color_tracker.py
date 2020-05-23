@@ -17,10 +17,10 @@ import asyncio
 import math
 import sys
 from copy import copy
-
+import numpy as np
 import serial
 import serial.threaded
-import squaternion as sq
+import pyrr
 from docopt import docopt
 
 from ..util import utilz as u
@@ -179,7 +179,9 @@ class Poser(templates.PoserTemplate):
                                         self.temp_pose.vel_z = 0
 
                                     yaw = y
-                                    w, x, y, z = sq.Quaternion.from_euler(y + yaw_offset, p, r, degrees=True)
+                                    eulers = [y + yaw_offset, p, r]
+                                    eulers = np.radians(eulers)
+                                    x, y, z, w = pyrr.Quaternion.from_eulers(eulers).xyzw
 
                                     self.temp_pose.r_w = round(w, 4)
                                     self.temp_pose.r_x = round(y, 4)
@@ -256,7 +258,9 @@ class Poser(templates.PoserTemplate):
                                 if len(gg) > 0:
                                     ypr = gg
 
-                                    w, x, y, z = sq.Quaternion.from_euler(ypr[0] + yaw_offset, ypr[1], ypr[2], degrees=True,)
+                                    eulers = [ypr[0] + yaw_offset, ypr[1], ypr[2]]
+                                    eulers = np.radians(eulers)
+                                    x, y, z, w = pyrr.Quaternion.from_eulers(eulers).xyzw
 
                                     # self.pose['rW'] = rrr2[0]
                                     # self.pose['rX'] = -rrr2[2]
