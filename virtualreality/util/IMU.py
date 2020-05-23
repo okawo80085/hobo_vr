@@ -30,17 +30,55 @@ def angle_between(v1, v2):
     v2_u = unit_vector(v2)
     return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
 
-def from_to_quaternion(v1, v2, is_unit=True):
-    # https://stackoverflow.com/a/1171995/782170
-    q = np.cross(v1, v2)
+
+def perpendicular_vector(v):
+    r""" Finds an arbitrary perpendicular vector to *v*."""
+    # https://codereview.stackexchange.com/a/43937
+    # for two vectors (x, y, z) and (a, b, c) to be perpendicular,
+    # the following equation has to be fulfilled
+    #     0 = ax + by + cz
+
+    # x = y = z = 0 is not an acceptable solution
+    if v.x == v.y == v.z == 0:
+        raise ValueError('zero-vector')
+
+    # If one dimension is zero, this can be solved by setting that to
+    # non-zero and the others to zero. Example: (4, 2, 0) lies in the
+    # x-y-Plane, so (0, 0, 1) is orthogonal to the plane.
+    if v.x == 0:
+        return np.asarray([1, 0, 0])
+    if v.y == 0:
+        return np.asarray([0, 1, 0])
+    if v.z == 0:
+        return np.asarray([0, 0, 1])
+
+    # arbitrarily set a = b = 1
+    # then the equation simplifies to
+    #     c = -(x + y)/z
+    return np.asarray([1, 1, -1.0 * (v.x + v.y) / v.z])
+
+
+def from_to_quaternion(v1, v2, is_unit=True, epsilon=1e-5):
+    # https://stackoverflow.com/a/11741520/782170
     if not is_unit:
-        w = np.sqrt(np.linalg.norm(v1)**2 + np.linalg.norm(v2) **2) + np.dot(v1, v2)
-    else:
-        w = np.sqrt(2) + np.dot(v1, v2)
-    q = Quaternion(*q, w)
+        v1 = unit_vector(v1)
+        v2 = unit_vector(v2)
+
+    k_cos_theta = np.dot(v1, v2)
+    k = np.sqrt(np.dot(v1, v1) * np.dot(v2, v2))
+
+    if abs(k_cos_theta / k + 1) < epsilon:
+        # 180 degree rotation around any orthogonal vector
+        return Quaternion(0, unit_vector(perpendicular_vector(v1)))
+
+    q = Quaternion(k_cos_theta + k, *np.cross(v1, v2))
     return q.normalize
 
+
 class IMU(object):
+
+    epsilon = 1e-5
+
     def __init__(self):
         self._acc_x = 0.0
         self._acc_y = 0.0
@@ -68,13 +106,17 @@ class IMU(object):
     def get_orientation(self, expected_orientation=None, grav_magnitude=None, stationary=False, accel=None):
         """Gets orientation quaternion"""
         north, up = self.get_north_up()
-        _forward = np.asarray([0,1,0])
-        _up = np.asarray([0,0,1])
+        _forward = np.asarray([0, 1, 0])
+        _up = np.asarray([0, 0, 1])
 
         # http://answers.unity.com/answers/819741/view.html
-        v = north + up * - np.dot(up, north)
-        q = from_to_quaternion(_forward, v)
-        f = from_to_quaternion(v, north) * q
+        diff = abs(sum(up - north))
+        if diff > self.epsilon:
+            v = north + up * - np.dot(up, north)
+            q = from_to_quaternion(_forward, v)
+            f = from_to_quaternion(v, north) * q
+        else:
+            f = from_to_quaternion(_forward, north)
 
         return f
 
@@ -118,9 +160,9 @@ class IMU(object):
         self._mag_iron_offset_x = offset[2]
 
     def get_mag(self):
-        mag = [self._mag_x-self._mag_iron_offset_x,
-               self._mag_y-self._mag_iron_offset_y,
-               self._mag_z-self._mag_iron_offset_z]
+        mag = [self._mag_x - self._mag_iron_offset_x,
+               self._mag_y - self._mag_iron_offset_y,
+               self._mag_z - self._mag_iron_offset_z]
         return mag
 
 
@@ -149,7 +191,7 @@ class PureIMUProtocol(serial.threaded.Packetizer):
             self.imu.time_of_last_data = time.time()
 
 
-def get_coms_in_range(start=0, stop=10):
+def get_coms_in_range(start=0, stop=20):
     coms = []
     for i in range(start, stop):
         try:

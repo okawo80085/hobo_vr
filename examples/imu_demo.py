@@ -5,7 +5,7 @@ import numpy as np
 from mayavi import mlab
 
 from virtualreality.util.IMU import get_i2c_imu, get_coms_in_range, unit_vector
-
+from squaternion import Quaternion
 
 def demo_get_i2c_imu_orient_algo():
     uvw = np.asarray([[.1, 0, 0], [1, 0, 0], [0, .1, 0], [0, 1, 0], [0, 0, .1], [0, 0, 1]],
@@ -63,8 +63,9 @@ def test_get_i2c_imu():
                 if np.isnan(acc).any():
                     acc = (float(0),) * 3
                 if not np.isnan(orient1).any():
-                    rot = np.array(orient1.to_rot())
-                    xyz = np.matmul(rot, uvw)
+                    quvw = Quaternion(np.asarray([0]*6), *uvw)  # Behold! The multi-quaternion!
+                    qxyz = orient1 * quvw * orient1.conjugate
+                    xyz = qxyz.vector
                     obj.mlab_source.set(x=xyz[0], y=xyz[1], z=xyz[2])
                 time.sleep(0)
                 yield
@@ -111,4 +112,4 @@ def test_get_i2c_imu_north_up():
 
 
 if __name__ == '__main__':
-    test_get_i2c_imu_north_up()
+    test_get_i2c_imu()
