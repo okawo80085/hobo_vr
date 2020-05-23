@@ -30,26 +30,27 @@ class PoseEuler(object):
         "acc_ang_z",
     ]
 
-    def __init__(self,
-                 x: float = 0,
-                 y: float = 0,
-                 z: float = 0,
-                 vel_x: float = 0,
-                 vel_y: float = 0,
-                 vel_z: float = 0,
-                 acc_x: float = 0,
-                 acc_y: float = 0,
-                 acc_z: float = 0,
-                 ang_x: float = 0,
-                 ang_y: float = 0,
-                 ang_z: float = 0,
-                 vel_ang_x: float = 0,
-                 vel_ang_y: float = 0,
-                 vel_ang_z: float = 0,
-                 acc_ang_x: float = 0,
-                 acc_ang_y: float = 0,
-                 acc_ang_z: float = 0,
-                 ):
+    def __init__(
+        self,
+        x: float = 0,
+        y: float = 0,
+        z: float = 0,
+        vel_x: float = 0,
+        vel_y: float = 0,
+        vel_z: float = 0,
+        acc_x: float = 0,
+        acc_y: float = 0,
+        acc_z: float = 0,
+        ang_x: float = 0,
+        ang_y: float = 0,
+        ang_z: float = 0,
+        vel_ang_x: float = 0,
+        vel_ang_y: float = 0,
+        vel_ang_z: float = 0,
+        acc_ang_x: float = 0,
+        acc_ang_y: float = 0,
+        acc_ang_z: float = 0,
+    ):
         """
         Instantaneous pose and velocity of an object.
 
@@ -204,18 +205,18 @@ class ControllerState(Pose):
     ]
 
     def __init__(
-            self,
-            pose=(0, 0, 0, 1, 0, 0, 0),
-            velocity=(0,) * 6,
-            grip=0,
-            system=0,
-            menu=0,
-            trackpad_click=0,
-            trigger_value=0,
-            trackpad_x=0,
-            trackpad_y=0,
-            trackpad_touch=0,
-            trigger_click=0,
+        self,
+        pose=(0, 0, 0, 1, 0, 0, 0),
+        velocity=(0,) * 6,
+        grip=0,
+        system=0,
+        menu=0,
+        trackpad_click=0,
+        trigger_value=0,
+        trackpad_x=0,
+        trackpad_y=0,
+        trackpad_touch=0,
+        trigger_click=0,
     ):
         """
         Instantaneous controller state.
@@ -314,7 +315,7 @@ class PoserTemplate:
     """
 
     def __init__(
-            self, *, addr="127.0.0.1", port=6969, send_delay=1 / 100, recv_delay=1 / 1000, **kwargs,
+        self, *, addr="127.0.0.1", port=6969, send_delay=1 / 100, recv_delay=1 / 1000, **kwargs,
     ):
         """
         Create the poser template.
@@ -333,8 +334,8 @@ class PoserTemplate:
             method_name
             for method_name in dir(self)
             if callable(getattr(self, method_name))
-               and method_name[0] != "_"
-               and method_name not in self._coro_name_exceptions
+            and method_name[0] != "_"
+            and method_name not in self._coro_name_exceptions
         ]
 
         self.coro_keep_alive = {

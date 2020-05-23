@@ -3,12 +3,12 @@ from pytest import skip
 from virtualreality.util.IMU import get_i2c_imu, get_coms_in_range
 
 
-#@skip("Not an actual test yet")
+# @skip("Not an actual test yet")
 def test_get_i2c_imu():
     coms = get_coms_in_range()
     con, pro = get_i2c_imu(coms[0])
     pro.start()
-    orient1 = (float('nan'),) * 3
+    orient1 = (float("nan"),) * 3
     while np.any(np.isnan(orient1)):
         orient1 = pro.protocol.imu.get_orientation()
     while True:
@@ -21,5 +21,5 @@ def test_get_i2c_imu():
         print(f"orient2: {pro.protocol.imu.get_orientation(orient1)}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_get_i2c_imu()

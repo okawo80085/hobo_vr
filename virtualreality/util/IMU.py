@@ -3,8 +3,9 @@ import time
 import numpy as np
 import serial
 import serial.threaded
+from pyrr import Quaternion
 from serial import SerialException
-from squaternion import Quaternion
+
 from virtualreality.util import utilz as u
 
 
@@ -30,7 +31,53 @@ def angle_between(v1, v2):
     return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
 
 
+def perpendicular_vector(v):
+    r""" Finds an arbitrary perpendicular vector to *v*."""
+    # https://codereview.stackexchange.com/a/43937
+    # for two vectors (x, y, z) and (a, b, c) to be perpendicular,
+    # the following equation has to be fulfilled
+    #     0 = ax + by + cz
+
+    # x = y = z = 0 is not an acceptable solution
+    if v.x == v.y == v.z == 0:
+        raise ValueError("zero-vector")
+
+    # If one dimension is zero, this can be solved by setting that to
+    # non-zero and the others to zero. Example: (4, 2, 0) lies in the
+    # x-y-Plane, so (0, 0, 1) is orthogonal to the plane.
+    if v.x == 0:
+        return np.asarray([1, 0, 0])
+    if v.y == 0:
+        return np.asarray([0, 1, 0])
+    if v.z == 0:
+        return np.asarray([0, 0, 1])
+
+    # arbitrarily set a = b = 1
+    # then the equation simplifies to
+    #     c = -(x + y)/z
+    return np.asarray([1, 1, -1.0 * (v.x + v.y) / v.z])
+
+
+def from_to_quaternion(v1, v2, is_unit=True, epsilon=1e-5):
+    # https://stackoverflow.com/a/11741520/782170
+    if not is_unit:
+        v1 = unit_vector(v1)
+        v2 = unit_vector(v2)
+
+    k_cos_theta = np.dot(v1, v2)
+    k = np.sqrt(np.dot(v1, v1) * np.dot(v2, v2))
+
+    if abs(k_cos_theta / k + 1) < epsilon:
+        # 180 degree rotation around any orthogonal vector
+        return Quaternion(0, unit_vector(perpendicular_vector(v1)))
+
+    q = Quaternion(k_cos_theta + k, *np.cross(v1, v2))
+    return q.normalize
+
+
 class IMU(object):
+    epsilon = 1e-5
+
     def __init__(self):
         self._acc_x = 0.0
         self._acc_y = 0.0
@@ -42,18 +89,25 @@ class IMU(object):
         self._mag_y = 0.0
         self._mag_z = 0.0
         self.grav_magnitude = 14  # I have no idea why gravity is 14 on my imu, but it is
+        self._mag_iron_offset_x = 23.5
+        self._mag_iron_offset_y = 23.5
+        self._mag_iron_offset_z = -45
+
+    def get_north_west_up(self, expected_orientation=None, grav_magnitude=None, stationary=False, accel=None):
+        grav = np.asarray(unit_vector(self.get_grav(expected_orientation, grav_magnitude, stationary, accel)))
+        mag = unit_vector(np.asarray(self.get_mag()))
+        east = unit_vector(np.cross(mag, grav))
+        north = -unit_vector(np.cross(east, grav))
+        up = -unit_vector(np.cross(north, east))
+
+        return north, -east, up
 
     def get_orientation(self, expected_orientation=None, grav_magnitude=None, stationary=False, accel=None):
-        """Gets magnetometer roll, pitch, yaw, as difference from up vector"""
-        mag = unit_vector(np.asarray([self._mag_x, self._mag_y, self._mag_z]))
-        grav = np.asarray(self.get_grav(expected_orientation, grav_magnitude, stationary, accel))
-        east = np.cross(mag, grav)
-        south = np.cross(east, grav)
-        down = unit_vector(np.cross(south, east))
-
-        q = Quaternion(*down, 1)
-
-        return q.to_euler()
+        """Gets orientation quaternion"""
+        north, west, up = self.get_north_west_up()
+        rot = np.asarray([north, west, up]).transpose()
+        q = Quaternion.from_matrix(rot)
+        return q
 
     def get_grav(self, q=None, magnitude=None, stationary=False, accel=None):
         if stationary or ((accel is not None) and (not np.any(accel))) or q is None:
@@ -88,12 +142,23 @@ class IMU(object):
     def get_gyro(self):
         return [self._gyro_x, self._gyro_y, self._gyro_z]
 
+    def set_mag_iron_offset(self, offset):
+        assert len(offset) == 3
+        self._mag_iron_offset_x = offset[0]
+        self._mag_iron_offset_x = offset[1]
+        self._mag_iron_offset_x = offset[2]
+
     def get_mag(self):
-        return [self._mag_x, self._mag_y, self._mag_z]
+        mag = [
+            self._mag_x - self._mag_iron_offset_x,
+            self._mag_y - self._mag_iron_offset_y,
+            self._mag_z - self._mag_iron_offset_z,
+        ]
+        return mag
 
 
 class PureIMUProtocol(serial.threaded.Packetizer):
-    TERMINATOR = b'\n'
+    TERMINATOR = b"\n"
 
     def __init__(self):
         super().__init__()
@@ -117,16 +182,16 @@ class PureIMUProtocol(serial.threaded.Packetizer):
             self.imu.time_of_last_data = time.time()
 
 
-def get_coms_in_range(start=0, stop=10):
+def get_coms_in_range(start=0, stop=20):
     coms = []
     for i in range(start, stop):
         try:
-            arduino = serial.Serial(f'COM{i}', 115200, timeout=.1)
+            arduino = serial.Serial(f"COM{i}", 115200, timeout=0.1)
             arduino.close()
-            coms.append(f'COM{i}')
+            coms.append(f"COM{i}")
             break
         except SerialException as se:
-            if 'FileNotFoundError' in str(se):
+            if "FileNotFoundError" in str(se):
                 continue
             else:
                 print(f"COM{i} blocked. Did you try closing Cura?")
