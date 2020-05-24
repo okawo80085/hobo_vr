@@ -13,6 +13,9 @@ import moderngl_window
 from moderngl_window import geometry
 
 from base import CameraWindow
+from virtualreality.util import driver
+
+myDriver = driver.DummyDriver(57) # receiver is global, too bad!
 
 
 class ShadowMapping(CameraWindow):
@@ -90,6 +93,11 @@ class ShadowMapping(CameraWindow):
         self.ctx.enable_only(moderngl.DEPTH_TEST | moderngl.CULL_FACE)
         scene_pos = Vector3((0, -5, -32), dtype='f4')
 
+        data = myDriver.get_pose()
+        hmd = data[:13]
+        cntl1 = data[13:13+22]
+        cntl2 = data[13+22:13+22+22]
+
         # --- PASS 1: Render shadow map
         self.offscreen.clear()
         self.offscreen.use()
@@ -127,23 +135,45 @@ class ShadowMapping(CameraWindow):
 
         self.offscreen_depth.use(location=0)
 
+        x, y, z, w, rx, ry, rz = cntl1[:7]
+        y = -y
+        ry = -ry
+
+        rotz = Matrix44.from_quaternion([rx, ry, rz, w], dtype='f4')
+        mat1 = Matrix44.from_translation([x*10, y*10, z*10], dtype='f4')
+
+        self.basic_lightL['m_model'].write(mat1*rotz)
         self.basic_lightL['m_proj'].write(self.camera.projection.matrix)
         self.basic_lightL['m_camera'].write(self.camera.matrix)
         self.basic_lightL['m_shadow_bias'].write(matrix44.multiply(depth_mvp, bias_matrix))
         self.basic_lightL['lightDir'].write(self.lightpos)
-        self.basic_lightL['m_model'].write(Matrix44.from_translation(scene_pos, dtype='f4') * Matrix44.from_y_rotation(time, dtype='f4'))
 
+        x, y, z, w, rx, ry, rz = cntl1[:7]
+        y = -y
+        ry = -ry
+
+        rotz = Matrix44.from_quaternion([rx, ry, rz, w], dtype='f4')
+        mat1 = Matrix44.from_translation([x*10, y*10, z*10], dtype='f4')
+
+        self.basic_lightR['m_model'].write(mat1*rotz)
         self.basic_lightR['m_proj'].write(self.camera.projection.matrix)
         self.basic_lightR['m_camera'].write(self.camera.matrix)
         self.basic_lightR['m_shadow_bias'].write(matrix44.multiply(depth_mvp, bias_matrix))
         self.basic_lightR['lightDir'].write(self.lightpos)
-        self.basic_lightR['m_model'].write(Matrix44.from_translation(scene_pos, dtype='f4') * Matrix44.from_y_rotation(time, dtype='f4'))
 
+
+        x, y, z, w, rx, ry, rz = hmd[:7]
+        y = -y
+        ry = -ry
+
+        rotz = Matrix44.from_quaternion([rx, ry, rz, w], dtype='f4')
+        mat1 = Matrix44.from_translation([x*10, y*10, z*10], dtype='f4')
+
+        self.basic_lightHmd['m_model'].write(mat1*rotz)
         self.basic_lightHmd['m_proj'].write(self.camera.projection.matrix)
         self.basic_lightHmd['m_camera'].write(self.camera.matrix)
         self.basic_lightHmd['m_shadow_bias'].write(matrix44.multiply(depth_mvp, bias_matrix))
         self.basic_lightHmd['lightDir'].write(self.lightpos)
-        self.basic_lightHmd['m_model'].write(Matrix44.from_translation(scene_pos, dtype='f4') * Matrix44.from_y_rotation(time, dtype='f4'))
 
         self.handL.render(self.basic_lightL)
         self.handL2.render(self.basic_lightL)
@@ -171,5 +201,7 @@ class ShadowMapping(CameraWindow):
 
 
 if __name__ == '__main__':
-    moderngl_window.run_window_config(ShadowMapping)
+    with myDriver:
+        myDriver.send('hello')
+        moderngl_window.run_window_config(ShadowMapping)
     print ('lol')

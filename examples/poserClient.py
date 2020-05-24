@@ -22,19 +22,21 @@ import pyrr
 from virtualreality import templates
 from virtualreality.server import server
 
-poser = templates.PoserClient(addr='192.168.31.60')
-
-print (poser.pose)
+poser = templates.PoserClient()
 
 @poser.thread_register(1/60)
 async def example_thread():
     h = 0
     while poser.coro_keep_alive["example_thread"][0]:
-        poser.pose["y"] = np.sin(h)
-        poser.pose["x"] = np.cos(h)
-        poser.pose["z"] = np.cos(h)
+        poser.pose["y"] = round(np.sin(h), 4)
+        poser.pose["x"] = round(np.cos(h), 4)
+        poser.pose["z"] = round(np.cos(h), 4)
 
-        poser.pose.r_x, poser.pose.r_y, poser.pose.r_z, poser.pose.r_w = pyrr.Quaternion.from_y_rotation(h)
+        x, y, z, w = pyrr.Quaternion.from_y_rotation(h)
+        poser.pose.r_x = round(x, 4)
+        poser.pose.r_y = round(y, 4)
+        poser.pose.r_z = round(z, 4)
+        poser.pose.r_w = round(w, 4)
 
         h += 0.01
 
