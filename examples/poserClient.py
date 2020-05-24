@@ -16,27 +16,37 @@ more examples/references:
 
 import asyncio
 import time
+import numpy as np
+import pyrr
 
 from virtualreality import templates
 from virtualreality.server import server
 
-poser = templates.PoserClient()
+poser = templates.PoserClient(addr='192.168.31.60')
 
+print (poser.pose)
 
-@poser.thread_register(1.1)
+@poser.thread_register(1/60)
 async def example_thread():
+    h = 0
     while poser.coro_keep_alive["example_thread"][0]:
-        poser.pose["y"] += 0.2
+        poser.pose["y"] = np.sin(h)
+        poser.pose["x"] = np.cos(h)
+        poser.pose["z"] = np.cos(h)
+
+        poser.pose.r_x, poser.pose.r_y, poser.pose.r_z, poser.pose.r_w = pyrr.Quaternion.from_y_rotation(h)
+
+        h += 0.01
 
         await asyncio.sleep(poser.coro_keep_alive["example_thread"][1])
 
 
-@poser.thread_register(1, runInDefaultExecutor=True)
-def example_thread2():
-    while poser.coro_keep_alive["example_thread2"][0]:
-        poser.pose["x"] += 0.2
+# @poser.thread_register(1, runInDefaultExecutor=True)
+# def example_thread2():
+#     while poser.coro_keep_alive["example_thread2"][0]:
+#         poser.pose["x"] += 0.2
 
-        time.sleep(poser.coro_keep_alive["example_thread2"][1])
+#         time.sleep(poser.coro_keep_alive["example_thread2"][1])
 
 
 asyncio.run(poser.main())
