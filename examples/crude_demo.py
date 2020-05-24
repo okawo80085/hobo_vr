@@ -5,58 +5,45 @@ import cv2
 
 import virtualreality as vr
 
+
+M_VERTEX_SHADER = '''
+#version 330
+
+in vec3 in_vert;
+
+uniform mat4 transformMat;
+uniform mat4 projection;
+
+
+void main() {
+    gl_Position = projection*transformMat * vec4(in_vert, 1.0);
+}
+'''
+
+M_FRAG_SHADER = '''
+#version 330
+
+uniform vec3 color;
+
+out vec4 f_color;
+
+void main() {
+    f_color = vec4(color, 1);
+}
+'''
+
 ctx = moderngl.create_standalone_context()
 ctx.enable(moderngl.DEPTH_TEST)
 
 prog = ctx.program(
-    vertex_shader='''
-        #version 330
-
-        in vec3 in_vert;
-
-        uniform mat4 transformMat;
-        uniform mat4 projection;
-
-
-        void main() {
-            gl_Position = projection*transformMat * vec4(in_vert, 1.0);
-        }
-    ''',
-    fragment_shader='''
-        #version 330
-
-        out vec4 f_color;
-
-        void main() {
-            f_color = vec4(0, 0, 1, 1);
-        }
-    ''',
+    vertex_shader=M_VERTEX_SHADER,
+    fragment_shader=M_FRAG_SHADER,
 )
 
 
 prog2 = ctx.program(
-    vertex_shader='''
-        #version 330
-
-        in vec3 in_vert;
-
-        uniform mat4 transformMat;
-        uniform mat4 projection;
-
-
-        void main() {
-            gl_Position = projection*transformMat * vec4(in_vert, 1.0);
-        }
-    ''',
-    fragment_shader='''
-        #version 330
-
-        out vec4 f_color;
-
-        void main() {
-            f_color = vec4(0, 1, 0, 1);
-        }
-    ''',
+    vertex_shader=M_VERTEX_SHADER,
+    fragment_shader=M_FRAG_SHADER,
 )
 
 x = np.array([ 1, -1, 0,   0,  0, 0])/5
@@ -68,7 +55,7 @@ z = np.array([-1, -1, 1,  -1, -1, 1])/5
 size = (1280, 720)
 
 
-vertices = np.dstack([x, y, z]) # blue pointy thing
+vertices = np.dstack([x, y, z]) # pointy thing
 
 vbo = ctx.buffer(vertices.astype('f4').tobytes())
 vbo2 = ctx.buffer(vertices.astype('f4').tobytes())
@@ -78,10 +65,13 @@ vao = ctx.vertex_array(prog, [
 							(vbo, '3f', 'in_vert'),
 							])
 
+prog['color'].write(np.array([0,0,1]).astype('f4').tobytes()) # setting the color
+
 # vertex array with a "shader" for the green pointy thing
 vao2 = ctx.vertex_array(prog2, [
 							(vbo2, '3f', 'in_vert'),
 							])
+prog2['color'].write(np.array([0,1,0]).astype('f4').tobytes()) # setting the color
 
 
 # boring render buffers setup, needed to get depth or something
@@ -103,8 +93,8 @@ while 1:
 
 	mat = Matrix44.from_y_rotation(h, dtype='f4')
 	mat2 = Matrix44.from_x_rotation(h, dtype='f4')
-	mat3 = Matrix44.from_translation([np.sin(h), 0, -2], dtype='f4')
-	mat4 = Matrix44.from_translation([np.cos(h), -1, -2], dtype='f4')
+	mat3 = Matrix44.from_translation([np.sin(h), np.cos(h), -2], dtype='f4')
+	mat4 = Matrix44.from_translation([np.cos(h), np.sin(h), -2], dtype='f4')
 
 	prog['transformMat'].write(mat3*mat2*mat)
 	prog2['transformMat'].write(mat4*mat2*mat)
@@ -123,7 +113,7 @@ while 1:
 	cv2.imshow('nut', cv2.cvtColor(frame*depth, cv2.COLOR_RGB2BGR))
 
 
-	kk = cv2.waitKey(1) & 0xFF
+	kk = cv2.waitKey(10) & 0xFF
 
 	if kk == 27:
 		break
