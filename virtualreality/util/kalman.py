@@ -102,7 +102,7 @@ class EulerKalman(object):
         )
 
         acc = imu.get_acc(q=temp_x_now[9:12])
-        orient = imu.get_orientation(accel=acc)
+        orient = imu.get_instant_orientation(accel=acc)
         gyro = imu.get_gyro()
         partial_obz = temp_x_now
         partial_obz[6:9] = acc

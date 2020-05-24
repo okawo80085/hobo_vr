@@ -12,6 +12,7 @@ from virtualreality.util import utilz as u
 def unit_vector(vector):
     """ Returns the unit vector of the vector.  """
     # https://stackoverflow.com/a/13849249/782170
+    vector = np.asarray(vector)
     return vector / np.linalg.norm(vector)
 
 
@@ -75,6 +76,12 @@ def from_to_quaternion(v1, v2, is_unit=True, epsilon=1e-5):
     return q.normalize
 
 
+def get_ki_kbias(convergance_time, overshoot_measure, sampling_rate):
+    ki = sampling_rate / (1.4 * convergance_time + sampling_rate)
+    kbias = (overshoot_measure ** 2 * ki) / (160 * convergance_time)
+    return ki, kbias
+
+
 class IMU(object):
     epsilon = 1e-5
 
@@ -92,9 +99,13 @@ class IMU(object):
         self._mag_iron_offset_x = 23.5
         self._mag_iron_offset_y = 23.5
         self._mag_iron_offset_z = -45
+        self.prev_grav = None
+        self.prev_mag = None
+        self.prev_orientation_time = None
+        self.prev_bias = None
 
-    def get_north_west_up(self, expected_orientation=None, grav_magnitude=None, stationary=False, accel=None):
-        grav = np.asarray(unit_vector(self.get_grav(expected_orientation, grav_magnitude, stationary, accel)))
+    def get_north_west_up(self):
+        grav = np.asarray(unit_vector(self.get_grav()))
         mag = unit_vector(np.asarray(self.get_mag()))
         east = unit_vector(np.cross(mag, grav))
         north = -unit_vector(np.cross(east, grav))
@@ -102,16 +113,85 @@ class IMU(object):
 
         return north, -east, up
 
-    def get_orientation(self, expected_orientation=None, grav_magnitude=None, stationary=False, accel=None):
+    def get_instant_orientation(self):
         """Gets orientation quaternion"""
         north, west, up = self.get_north_west_up()
         rot = np.asarray([north, west, up]).transpose()
         q = Quaternion.from_matrix(rot)
         return q
 
+    def get_orientation(self, convergence_acc: float, overshoot_acc: float, convergence_mag: float,
+                        overshoot_mag: float):
+        # https://www.sciencedirect.com/science/article/pii/S2405896317321201
+        if self.prev_grav is not None:
+            t2 = time.time()
+
+            k_acc, k_bias_acc = get_ki_kbias(convergence_acc, overshoot_acc, t2 - self.prev_orientation_time)
+            k_mag, k_bias_mag = get_ki_kbias(convergence_mag, overshoot_mag, t2 - self.prev_orientation_time)
+
+            grav = np.asarray(unit_vector(self.get_grav()))
+            mag = unit_vector(np.asarray(self.get_mag()))
+            east = unit_vector(np.cross(mag, grav))
+            north = -unit_vector(np.cross(east, grav))
+
+            gyro = self.get_gyro()
+            if self.prev_bias is not None:
+                gyro += self.prev_bias
+
+            gy = Quaternion.from_eulers(gyro * (t2 - self.prev_orientation_time))
+            pred_mag = (gy * Quaternion.from_axis(self.prev_mag) * ~gy)
+            pred_grav = (gy * Quaternion.from_axis(self.prev_grav) * ~gy)
+            pred_north = pred_mag - np.dot(pred_mag, pred_grav) * pred_grav
+
+            pred_north_v = np.asarray(pred_north.xyz)
+            pred_grav_v = np.asarray(pred_grav.xyz)
+            pred_mag_v = np.asarray(pred_mag.xyz)
+
+            fix_north = Quaternion.from_axis(np.cross(north, pred_north_v) * k_mag)
+            fix_grav = Quaternion.from_axis(np.cross(grav, pred_grav_v) * k_acc)
+
+            angle_acc = angle_between(grav, pred_grav_v)
+            angle_mag = angle_between(mag, pred_mag_v)
+            x_acc = np.cross(grav, pred_grav_v)
+            x_mag = np.cross(mag, pred_mag_v)
+            pb0 = k_bias_acc*angle_acc*x_acc + k_bias_mag*angle_mag*x_mag
+            if self.prev_bias is not None:
+                self.prev_bias = self.prev_bias * (t2 - self.prev_orientation_time) + pb0
+            else:
+                self.prev_bias = pb0
+
+            true_north = unit_vector((pred_north * fix_north).xyz)
+            true_grav = unit_vector((pred_grav * fix_grav).xyz)
+            true_east = unit_vector(np.cross(true_north, true_grav))
+            true_up = -true_grav
+            true_west = -true_east
+
+            rot = np.asarray([true_north, true_west, true_up]).transpose()
+            q = Quaternion.from_matrix(rot)
+
+            self.prev_grav = true_grav
+            self.prev_mag = true_north
+            self.prev_orientation_time = t2
+
+            return q
+        else:
+            grav = np.asarray(unit_vector(self.get_grav()))
+            mag = unit_vector(np.asarray(self.get_mag()))
+            east = unit_vector(np.cross(mag, grav))
+            north = -unit_vector(np.cross(east, grav))
+            up = -unit_vector(np.cross(north, east))
+
+            rot = np.asarray([north, -east, up]).transpose()
+            q = Quaternion.from_matrix(rot)
+            if (not np.isnan(grav).any()) and (not np.isnan(mag).any()):
+                self.prev_grav = grav
+                self.prev_mag = mag
+                self.prev_orientation_time = time.time()
+            return q
+
     def get_grav(self, q=None, magnitude=None, stationary=False, accel=None):
-        if stationary or ((accel is not None) and (not np.any(accel))) or q is None:
-            g = [self._acc_x, self._acc_y, self._acc_z]
+        if stationary or q is None or ((accel is not None) and (not np.any(accel))):
+            g = np.asarray([self._acc_x, self._acc_y, self._acc_z])
             self.grav_magnitude = sum(abs(np.asarray(g)))
             return g
         elif q is not None:
@@ -120,7 +200,7 @@ class IMU(object):
             if magnitude is None:
                 magnitude = self.grav_magnitude
             # http://www.varesano.net/blog/fabio/simple-gravity-compensation-9-dom-imus
-            g = [0.0, 0.0, 0.0]
+            g = np.asarray([0.0, 0.0, 0.0])
 
             # get expected direction of gravity
             g[0] = q.x * magnitude
@@ -137,10 +217,10 @@ class IMU(object):
     def get_acc(self, q=None):
         g = self.get_grav(q)
         # compensate accelerometer readings with the expected gravity
-        return [self._acc_x - g[0], self._acc_y - g[1], self._acc_z - g[2]]
+        return np.asarray([self._acc_x - g[0], self._acc_y - g[1], self._acc_z - g[2]])
 
     def get_gyro(self):
-        return [self._gyro_x, self._gyro_y, self._gyro_z]
+        return np.asarray([self._gyro_x, self._gyro_y, self._gyro_z])
 
     def set_mag_iron_offset(self, offset):
         assert len(offset) == 3
@@ -154,7 +234,7 @@ class IMU(object):
             self._mag_y - self._mag_iron_offset_y,
             self._mag_z - self._mag_iron_offset_z,
         ]
-        return mag
+        return np.asarray(mag)
 
 
 class PureIMUProtocol(serial.threaded.Packetizer):

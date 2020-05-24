@@ -45,7 +45,7 @@ def demo_get_i2c_imu_orient_algo():
     mlab.show()
 
 
-def test_get_i2c_imu():
+def test_get_i2c_imu_instant():
     uvw = np.asarray(
         [[0.1, 0, 0], [1, 0, 0], [0, 0.1, 0], [0, 1, 0], [0, 0, 0.1], [0, 0, 1]], dtype=np.float64
     ).transpose()
@@ -61,7 +61,7 @@ def test_get_i2c_imu():
             pro.start()
             acc = (float(0),) * 3
             while True:
-                orient1 = pro.protocol.imu.get_orientation()
+                orient1 = pro.protocol.imu.get_instant_orientation()
                 if np.isnan(acc).any():
                     acc = (float(0),) * 3
                 if not np.isnan(orient1).any():
@@ -110,5 +110,39 @@ def test_get_i2c_imu_north_up():
     mlab.show()
 
 
+def test_get_i2c_imu_continuous():
+    uvw = np.asarray(
+        [[0.1, 0, 0], [1, 0, 0], [0, 0.1, 0], [0, 1, 0], [0, 0, 0.1], [0, 0, 1]], dtype=np.float64
+    ).transpose()
+
+    obj = mlab.plot3d(uvw[0], uvw[1], uvw[2])
+
+    @mlab.animate(delay=10)
+    def run_get_i2c_imu():
+        try:
+            nonlocal uvw
+            coms = get_coms_in_range()
+            con, pro = get_i2c_imu(coms[0])
+            pro.start()
+            acc = (float(0),) * 3
+            while True:
+                orient1 = pro.protocol.imu.get_orientation(*[.01 for _ in range(4)])
+                if np.isnan(acc).any():
+                    acc = (float(0),) * 3
+                if not np.isnan(orient1).any():
+                    qxyz = [orient1 * Quaternion.from_axis(v) * ~orient1 for v in uvw.transpose()]
+                    xyz = np.asarray([np.asarray(x.xyz) for x in qxyz]).transpose()
+                    obj.mlab_source.set(x=xyz[0], y=xyz[1], z=xyz[2])
+                time.sleep(0)
+                yield
+        except:
+            e = traceback.format_exc()
+            print(e)
+            print("ded")
+
+    run_get_i2c_imu()
+    mlab.show()
+
+
 if __name__ == "__main__":
-    test_get_i2c_imu()
+    test_get_i2c_imu_instant()
