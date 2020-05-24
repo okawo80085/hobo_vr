@@ -53,6 +53,11 @@ prog3 = ctx.program(
     fragment_shader=M_FRAG_SHADER,
 )
 
+prog4 = ctx.program(
+    vertex_shader=M_VERTEX_SHADER,
+    fragment_shader=M_FRAG_SHADER,
+)
+
 x = np.array([ 1, -1, 0,   0,  0, 0,   1,  0, -1])/5
 y = np.array([ 0,  0, 0,  -1,  1, 0,   0, -1,  1])/5 *(-1)
 z = np.array([-1, -1, 1,  -1, -1, 1,  -1, -1, -1])/5
@@ -64,9 +69,16 @@ size = (1280, 720)
 
 vertices = np.dstack([x, y, z]) # pointy thing
 
+x = np.array([ 1, -1, 0,  0,])/5 * 3
+y = np.array([ 0,  0, 0,  0,])/5 *(-1)
+z = np.array([ 0,  0, 1, -1,])/5
+
+fv = np.dstack([x, y, z]) * 10
+
 vbo = ctx.buffer(vertices.astype('f4').tobytes())
 vbo2 = ctx.buffer(vertices.astype('f4').tobytes())
 vbo3 = ctx.buffer(vertices.astype('f4').tobytes())
+vbo4 = ctx.buffer(fv.astype('f4').tobytes())
 
 # vertex array with a "shader" for the 1 pointy thing
 vao = ctx.vertex_array(prog, [
@@ -88,6 +100,11 @@ vao3 = ctx.vertex_array(prog3, [
 prog3['color'].write(np.array([1,0.3,0]).astype('f4').tobytes()) # setting the color
 
 
+floor = ctx.vertex_array(prog4, [
+                            (vbo4, '3f', 'in_vert'),
+                            ])
+prog4['color'].write(np.array([1,1,1]).astype('f4').tobytes()) # setting the color
+
 # boring render buffers setup, needed to get depth or something
 cbo = ctx.renderbuffer(size)
 dbo = ctx.depth_texture(size, alignment=1)
@@ -100,11 +117,15 @@ fbo.use()
 prog['projection'].write(Matrix44.perspective_projection(95, 16/9, 1, 200, dtype='f4'))
 prog2['projection'].write(Matrix44.perspective_projection(95, 16/9, 1, 200, dtype='f4'))
 prog3['projection'].write(Matrix44.perspective_projection(95, 16/9, 1, 200, dtype='f4'))
+prog4['projection'].write(Matrix44.perspective_projection(95, 16/9, 1, 200, dtype='f4'))
 
-mydriver = driver.DummyDriver(57, addr='192.168.31.60')
+mydriver = driver.DummyDriver(57)
 
 modelRotOffz = Matrix44.from_y_rotation(np.pi, dtype='f4')
+
 viewPosOffz = Matrix44.from_translation([0, 0, -3], dtype='f4')
+# viewPosOffz *= Matrix44.from_y_rotation(np.pi/4, dtype='f4')
+prog4['transformMat'].write(Matrix44.from_translation([0, 1.2, 0], dtype='f4')*viewPosOffz)
 
 with mydriver:
     mydriver.send('hello')
@@ -119,6 +140,7 @@ with mydriver:
 
         x, y, z, w, rx, ry, rz = hmd[:7]
         y = -y
+        ry = -ry
 
         rotz = Matrix44.from_quaternion([rx, ry, rz, w], dtype='f4')*modelRotOffz
         mat1 = Matrix44.from_translation([x, y, z], dtype='f4')*viewPosOffz
@@ -127,6 +149,7 @@ with mydriver:
 
         x, y, z, w, rx, ry, rz = cntl1[:7]
         y = -y
+        ry = -ry
 
         rotz = Matrix44.from_quaternion([rx, ry, rz, w], dtype='f4')*modelRotOffz
         mat1 = Matrix44.from_translation([x, y, z], dtype='f4')*viewPosOffz
@@ -135,6 +158,7 @@ with mydriver:
 
         x, y, z, w, rx, ry, rz = cntl2[:7]
         y = -y
+        ry = -ry
 
         rotz = Matrix44.from_quaternion([rx, ry, rz, w], dtype='f4')*modelRotOffz
         mat1 = Matrix44.from_translation([x, y, z], dtype='f4')*viewPosOffz
@@ -144,6 +168,7 @@ with mydriver:
         vao.render(moderngl.TRIANGLES) # shader render
         vao2.render(moderngl.TRIANGLES) # shader render
         vao3.render(moderngl.TRIANGLES) # shader render
+        floor.render(moderngl.LINE_LOOP)
 
         # get the rendered frame
         frame = np.frombuffer(fbo.read(components=4, dtype='f4'), dtype='f4')
