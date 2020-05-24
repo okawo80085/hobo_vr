@@ -17,7 +17,7 @@ from base import CameraWindow
 
 class ShadowMapping(CameraWindow):
     title = "Shadow Mapping"
-    resource_dir = (Path(__file__) / '../../resources').resolve()
+    resource_dir = (Path(__file__) / '../resources').resolve()
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
