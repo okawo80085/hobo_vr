@@ -32,6 +32,8 @@ class DummyDriver(threading.Thread):
         self.sock.connect((addr, port))
         self.sock.settimeout(2)
 
+        self.lastBuff = ''
+
         # -------------------threading related------------------------
 
         self.alive = True
@@ -66,6 +68,7 @@ class DummyDriver(threading.Thread):
             pose = u.get_numbers_from_text(self.lastBuff, " ")
 
             if len(pose) != self.eps:
+                print (f'pose size miss match, expected {self.eps}, got {len(pose)}')
                 pose = [0 for _ in range(self.eps)]
 
             return pose
