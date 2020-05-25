@@ -41,16 +41,18 @@ class ShadowMapping(CameraWindow):
         )
 
         # Scene geometry
-        self.hmd = geometry.cube(size=(5, 5, 1), center=(0, -6, 0))
-        self.hmd2 = geometry.cube(size=(2, 2, 1), center=(0, -6, -2))
+        self.hmd = geometry.cube(size=np.array((7, 5, 1))/2, center=(0, 0, 0))
+        self.hmd2 = geometry.cube(size=np.array((2, 2, 1))/2, center=(0, 0, 2))
 
-        self.handL = geometry.cube(size=(2, 2, 5), center=(0, 0, 0))
-        self.handL2 = geometry.cube(size=(1, 1, 1), center=(2, 0, 0))
-        self.handL3 = geometry.cube(size=(1, 1, 1), center=(0, 0, 4))
+        self.handL = geometry.cube(size=np.array((2, 2, 5))/2, center=(0, 0, 0))
+        self.handL2 = geometry.cube(size=np.array((1, 1, 1))/2, center=(2, 0, 0))
+        self.handL3 = geometry.cube(size=np.array((1, 1, 1))/2, center=(0, 0, 4))
 
-        self.handR = geometry.cube(size=(2, 2, 5), center=(0, 2.5, 0))
-        self.handR2 = geometry.cube(size=(1, 1, 1), center=(2, 2.5, 0))
-        self.handR3 = geometry.cube(size=(1, 1, 1), center=(0, 2.5, 4))
+        self.handR = geometry.cube(size=np.array((2, 2, 5))/2, center=(0, 0, 0))
+        self.handR2 = geometry.cube(size=np.array((1, 1, 1))/2, center=(2, 0, 0))
+        self.handR3 = geometry.cube(size=np.array((1, 1, 1))/2, center=(0, 0, 4))
+
+        self.floor = geometry.cube(size=np.array((100, 0.3, 100)), center=(0, -16, 0))
 
         # self.sun = geometry.sphere(radius=1.0)
 
@@ -77,7 +79,11 @@ class ShadowMapping(CameraWindow):
 
         self.basic_lightHmd = self.load_program('programs/shadow_mapping/directional_light.glsl')
         self.basic_lightHmd['shadowMap'].value = 0
-        self.basic_lightHmd['color'].value = 1.0, 0.0, 0.0, 1.0
+        self.basic_lightHmd['color'].value = 1.0, 0.0, 0.0, 1
+
+        self.basic_lightFloor = self.load_program('programs/shadow_mapping/directional_light.glsl')
+        self.basic_lightFloor['shadowMap'].value = 0
+        self.basic_lightFloor['color'].value = 1.0, 1.0, 1.0, 1
 
 
         self.texture_prog = self.load_program('programs/texture.glsl')
@@ -118,6 +124,8 @@ class ShadowMapping(CameraWindow):
         self.hmd.render(self.shadowmap_program)
         self.hmd2.render(self.shadowmap_program)
 
+        self.floor.render(self.shadowmap_program)
+
         # --- PASS 2: Render scene to screen
         self.wnd.use()
         # self.basic_light['m_proj'].write(self.camera.projection.matrix)
@@ -135,9 +143,11 @@ class ShadowMapping(CameraWindow):
 
         self.offscreen_depth.use(location=0)
 
-        x, y, z, w, rx, ry, rz = cntl1[:7]
-        y = -y
+        x, y, z, w, rx, ry, rz = cntl2[:7]
+        # y = -y
         ry = -ry
+        rx = -rx
+        rz = -rz
 
         rotz = Matrix44.from_quaternion([rx, ry, rz, w], dtype='f4')
         mat1 = Matrix44.from_translation([x*10, y*10, z*10], dtype='f4')
@@ -149,8 +159,10 @@ class ShadowMapping(CameraWindow):
         self.basic_lightL['lightDir'].write(self.lightpos)
 
         x, y, z, w, rx, ry, rz = cntl1[:7]
-        y = -y
+        # y = -y
         ry = -ry
+        rx = -rx
+        rz = -rz
 
         rotz = Matrix44.from_quaternion([rx, ry, rz, w], dtype='f4')
         mat1 = Matrix44.from_translation([x*10, y*10, z*10], dtype='f4')
@@ -163,8 +175,10 @@ class ShadowMapping(CameraWindow):
 
 
         x, y, z, w, rx, ry, rz = hmd[:7]
-        y = -y
+        # y = -y
         ry = -ry
+        rx = -rx
+        rz = -rz
 
         rotz = Matrix44.from_quaternion([rx, ry, rz, w], dtype='f4')
         mat1 = Matrix44.from_translation([x*10, y*10, z*10], dtype='f4')
@@ -185,6 +199,14 @@ class ShadowMapping(CameraWindow):
 
         self.hmd.render(self.basic_lightHmd)
         self.hmd2.render(self.basic_lightHmd)
+
+        self.basic_lightFloor['m_model'].write(Matrix44.from_translation((0, 0, 0), dtype='f4'))
+        self.basic_lightFloor['m_proj'].write(self.camera.projection.matrix)
+        self.basic_lightFloor['m_camera'].write(self.camera.matrix)
+        self.basic_lightFloor['m_shadow_bias'].write(matrix44.multiply(depth_mvp, bias_matrix))
+        self.basic_lightFloor['lightDir'].write(self.lightpos)
+
+        self.floor.render(self.basic_lightFloor)
 
         # # Render the sun position
         # self.sun_prog['m_proj'].write(self.camera.projection.matrix)
