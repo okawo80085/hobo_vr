@@ -23,7 +23,7 @@ async def broadcast(everyone, data, me, VIP):
     for key, acc in everyone.items():
         try:
             if me != key and (VIP == acc[2] or acc[3]):
-                acc[1].write(u.format_str_for_write(data))
+                acc[1].write(data)
                 await acc[1].drain()
 
         except:
@@ -39,7 +39,7 @@ async def handle_echo(reader, writer):
     while 1:
         try:
 
-            data = await u.read(reader)
+            data = await u.read3(reader)
             if addr not in conz:
                 print("New connection from {}".format(addr))
                 isDriver = False

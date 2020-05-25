@@ -32,7 +32,12 @@ class DummyDriver(threading.Thread):
         self.sock.connect((addr, port))
         self.sock.settimeout(2)
 
-        self.lastBuff = ''
+        self.lastPacket = ''
+        self.backBuffer = bytearray()
+        self.readSize = 600
+        self._terminator = b'\n'
+
+        self.newPose = [0 for _ in range(self.eps)]
 
         # -------------------threading related------------------------
 
@@ -64,30 +69,35 @@ class DummyDriver(threading.Thread):
         self.sock.close()
 
     def get_pose(self):
-        if self.alive:
-            pose = u.get_numbers_from_text(self.lastBuff, " ")
-
-            if len(pose) != self.eps:
-                print (f'pose size miss match, expected {self.eps}, got {len(pose)}')
-                pose = [0 for _ in range(self.eps)]
-
-            return pose
-
-        else:
-            raise RuntimeError("recv thread already finished")
+        return self.newPose
 
     def send(self, text):
         self.sock.send(u.format_str_for_write(text))
 
+    def _handlePacket(self, lastPacket):
+        lastPacket = lastPacket.decode('utf-8')
+        if self.alive and not u.strings_share_characters(lastPacket, "qwrtyuiopsasdfghjklzxcvbnm><*[]{}()"):
+            pose = u.get_numbers_from_text(lastPacket.strip('\n').strip(' '), " ")
+
+            if len(pose) != self.eps:
+                print (f'pose size miss match, expected {self.eps}, got {len(pose)}')
+                print (repr(lastPacket))
+                pose = [0 for _ in range(self.eps)]
+
+            self.newPose = pose
+
     def run(self):
         while self.alive:
             try:
-                data = u.read2(self.sock)
+                data = self.sock.recv(self.readSize)
+                self.backBuffer.extend(data)
 
                 if not data:
                     break
 
-                self.lastBuff = data
+                while self._terminator in self.backBuffer:
+                    lastPacket, self.backBuffer = self.backBuffer.split(self._terminator, 1)
+                    self._handlePacket(lastPacket)
 
             except socket.timeout as e:
                 pass
