@@ -49,6 +49,17 @@ def read2(reader, read_len=20):
 
     return "".join(data)
 
+async def read3(reader: StreamReader, read_len: int = 20) -> str:
+    """Read one line from reader asynchronously."""
+    data = bytearray()
+    temp = b" "
+    while b"\n" not in temp and temp != b"":
+        temp = await reader.read(read_len)
+        data.extend(temp)
+        time.sleep(0)  # allows thread switching
+
+    return data
+
 
 def rotate_z(points: Dict[str, Dict[str, float]], angle: float):
     """Rotate a set of points around the z axis."""
@@ -124,13 +135,13 @@ def get_numbers_from_text(text, separator="\t"):
     if isinstance(text, bytearray) or isinstance(text, bytes):
         text = text.decode("utf-8")
     try:
-        if strings_share_characters(text.lower(), "qwertyuiopsasdfghjklzxcvbnm><*[]{}()") or len(text) == 0:
+        if strings_share_characters(text.lower(), "qwrtyuiopsasdfghjklzxcvbnm><*[]{}()") or len(text) == 0:
             return []
 
         return [float(i) for i in text.split(separator)]
 
     except Exception as e:
-        print(f"get_numbers_from_text: {e} {repr(text)}")
+        print(f"get_numbers_from_text: {repr(e)} {repr(text)}")
 
         return []
 
