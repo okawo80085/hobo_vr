@@ -9,8 +9,8 @@ Options:
    -c, --camera <camera>           Source of the camera to use for calibration [default: 0]
    -r, --resolution <res>          (in progress) Input resolution in width and height [default: -1x-1]
    -l, --load_calibration <file>   (in progress) Load color mask calibration settings [default: ranges.pickle]
-   -i, --ip_address <ip_address>  IP Address of the server to connect to [default: 127.0.0.1]
-   -s, --server                    Run the server alongside the tracker.
+   -i, --ip_address <ip_address>   IP Address of the server to connect to [default: 127.0.0.1]
+   -s, --standalone                Run the server alongside the tracker.
 """
 
 # undocumented reference
@@ -318,7 +318,7 @@ def main():
     else:
         cam = args["--camera"]
 
-    if args["--server"]:
+    if args["--standalone"]:
         run_poser_and_server(args["--ip_address"], cam)
     else:
         run_poser_only(args["--ip_address"], cam)

@@ -125,7 +125,7 @@ class EulerKalman(object):
     def apply_blob(self, xyz):
         """Apply the Kalman filter against the observation obz."""
         # Todo: automatically start a calibration routine if everything is at rest for long enough,
-        #  or if the user leaves, or if there is enough error. Also, add some UI calibrate button, save, and load.
+        #  or if the user leaves, or if there is enough error. Also, add some UI calibrate button, save, and load_from_file.
         assert len(xyz) == 3
 
         self._filter.transition_matrices = self._get_transition_matrix()

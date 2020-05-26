@@ -207,7 +207,7 @@ class LazyKalman:
     def apply(self, obz):
         """Apply the Kalman filter against the observation obz."""
         # Todo: automatically start a calibration routine if everything is at rest for long enough,
-        #  or if the user leaves, or if there is enough error. Also, add some UI calibrate button, save, and load.
+        #  or if the user leaves, or if there is enough error. Also, add some UI calibrate button, save, and load_from_file.
         obz = np.array(obz)
 
         assert obz.shape == self._expected_shape, "shape miss match"
