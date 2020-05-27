@@ -15,7 +15,7 @@ from moderngl_window import geometry
 from base import CameraWindow
 from virtualreality.util import driver
 
-myDriver = driver.DummyDriver(57) # receiver is global, too bad!
+myDriver = driver.DummyDriverReceiver(57) # receiver is global, too bad!
 
 
 class ShadowMapping(CameraWindow):

@@ -119,7 +119,7 @@ prog2['projection'].write(Matrix44.perspective_projection(95, 16/9, 1, 200, dtyp
 prog3['projection'].write(Matrix44.perspective_projection(95, 16/9, 1, 200, dtype='f4'))
 prog4['projection'].write(Matrix44.perspective_projection(95, 16/9, 1, 200, dtype='f4'))
 
-mydriver = driver.DummyDriver(57)
+mydriver = driver.DummyDriverReceiver(57)
 
 modelRotOffz = Matrix44.from_y_rotation(np.pi, dtype='f4')
 

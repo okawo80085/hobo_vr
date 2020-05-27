@@ -44,17 +44,17 @@ async def handle_echo(reader, writer):
                 print("New connection from {}".format(addr))
                 isDriver = False
                 isPoser = False
-                if data == "hello\n":
+                if data == b"hello\n":
                     print("driver connected")
                     isDriver = True
 
-                if data == "poser here\n":
+                if data == b"poser here\n":
                     print("poser connected")
                     isPoser = True
 
                 conz[addr] = (reader, writer, isDriver or isPoser, isPoser)
 
-            if not len(data) or data == "CLOSE\n":
+            if not len(data) or data == b"CLOSE\n":
                 break
 
             sendOK = await broadcast(conz, data, addr, conz[addr][2])
