@@ -76,7 +76,7 @@ class DummyDriver(threading.Thread):
 
     def _handlePacket(self, lastPacket):
         lastPacket = lastPacket.decode('utf-8')
-        if self.alive and not u.strings_share_characters(lastPacket, "qwrtyuiopsasdfghjklzxcvbnm><*[]{}()"):
+        if self.alive and not u.strings_share_characters(lastPacket.lower(), "qwrtyuiopsasdfghjklzxcvbnm><*[]{}()"):
             pose = u.get_numbers_from_text(lastPacket.strip('\n').strip(' '), " ")
 
             if len(pose) != self.eps:
