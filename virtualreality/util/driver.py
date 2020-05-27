@@ -4,12 +4,12 @@ import threading
 from . import utilz as u
 
 
-class DummyDriver(threading.Thread):
+class DummyDriverReceiver(threading.Thread):
     """
     no docs, again... too bad!
 
     example:
-    t = DummyDriver(57, addr='192.168.31.60', port=6969)
+    t = DummyDriverReceiver(57, addr='192.168.31.60', port=6969)
 
     with t:
         t.send('hello') # driver id message
@@ -18,8 +18,8 @@ class DummyDriver(threading.Thread):
             print (t.get_pose())
         t.send('nut') # whatever send message
 
-
     """
+
 
     def __init__(self, expected_pose_size, *, addr="127.0.0.1", port=6969):
         """
@@ -75,16 +75,19 @@ class DummyDriver(threading.Thread):
         self.sock.send(u.format_str_for_write(text))
 
     def _handlePacket(self, lastPacket):
+        ret = True
         lastPacket = lastPacket.decode('utf-8')
         if self.alive and not u.strings_share_characters(lastPacket.lower(), "qwrtyuiopsasdfghjklzxcvbnm><*[]{}()"):
             pose = u.get_numbers_from_text(lastPacket.strip('\n').strip(' '), " ")
 
             if len(pose) != self.eps:
                 print (f'pose size miss match, expected {self.eps}, got {len(pose)}')
-                print (repr(lastPacket))
+                ret = False
                 pose = [0 for _ in range(self.eps)]
 
             self.newPose = pose
+
+        return ret
 
     def run(self):
         while self.alive:
@@ -97,7 +100,9 @@ class DummyDriver(threading.Thread):
 
                 while self._terminator in self.backBuffer:
                     lastPacket, self.backBuffer = self.backBuffer.split(self._terminator, 1)
-                    self._handlePacket(lastPacket)
+                    w = self._handlePacket(lastPacket)
+                    if not w:
+                        print (repr(lastPacket), repr(self.backBuffer))
 
             except socket.timeout as e:
                 pass
