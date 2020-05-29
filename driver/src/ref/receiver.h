@@ -8,6 +8,12 @@
 
 #pragma comment(lib, "Ws2_32.lib")
 
+#include <vector>
+#include <string>
+#include <sstream>
+#include <algorithm>
+#include <iterator>
+
 namespace SockReceiver {
   int receive_till_zero( SOCKET sock, char* buf, int& numbytes, int max_packet_size ) {
     // thanks to https://stackoverflow.com/a/13528453/10190971
@@ -41,6 +47,36 @@ namespace SockReceiver {
 
       return ret;
   }
+
+  std::vector<std::string> split_string(std::string text){
+    std::istringstream iss(text);
+
+    std::vector<std::string> tokens{std::istream_iterator<std::string>{iss},
+                            std::istream_iterator<std::string>{}};
+
+    return tokens;
+  }
+
+  std::vector<double> split2double(std::vector<std::string> split) {
+    std::vector<double> out(split.size());
+    std::transform(split.begin(), split.end(), out.begin(), [](const std::string& val)
+    {
+      return std::stod(val);
+    });
+
+    return out;
+  }
+
+  bool str_in_str(std::string a, std::string b) {
+    for (auto i : a) {
+      if (b.find(i) != std::string::npos) return true;
+    }
+    return false;
+  }
+
+
+  
+
 };
 
 #endif // RECEIVER_H
