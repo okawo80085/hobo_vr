@@ -408,8 +408,8 @@ public:
     r2 = rr * (1 + m_fDistortionK1 * (rr * rr) +
                m_fDistortionK2 * (rr * rr * rr * rr));
     theta = atan2(fU - 0.5f, fV - 0.5f);
-    hX = sin(theta) * r2 * m_fZoomWidth;
-    hY = cos(theta) * r2 * m_fZoomHeight;
+    hX = float(sin(theta) * r2) * m_fZoomWidth;
+    hY = float(cos(theta) * r2) * m_fZoomHeight;
 
     coordinates.rfBlue[0] = hX + 0.5f;
     coordinates.rfBlue[1] = hY + 0.5f;
@@ -658,11 +658,11 @@ public:
           0);
 
       vr::VRDriverInput()->UpdateScalarComponent(
-          m_compTrigger, lastRead[(i_indexOffset + 17)], 0);
+          m_compTrigger, float(lastRead[(i_indexOffset + 17)]), 0);
       vr::VRDriverInput()->UpdateScalarComponent(
-          m_compTrackpadX, lastRead[(i_indexOffset + 18)], 0);
+          m_compTrackpadX, float(lastRead[(i_indexOffset + 18)]), 0);
       vr::VRDriverInput()->UpdateScalarComponent(
-          m_compTrackpadY, lastRead[(i_indexOffset + 19)], 0);
+          m_compTrackpadY, float(lastRead[(i_indexOffset + 19)]), 0);
 
       vr::VRDriverInput()->UpdateBooleanComponent(
           m_compTrackpadTouch, lastRead[(i_indexOffset + 20)] > 0.1,

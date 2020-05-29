@@ -34,7 +34,7 @@ class DummyDriverReceiver(threading.Thread):
 
         self.lastPacket = ''
         self.backBuffer = bytearray()
-        self.readSize = 600
+        self.readSize = 50
         self._terminator = b'\n'
 
         self.newPose = [0 for _ in range(self.eps)]
@@ -85,7 +85,8 @@ class DummyDriverReceiver(threading.Thread):
                 ret = False
                 pose = [0 for _ in range(self.eps)]
 
-            self.newPose = pose
+            else:
+                self.newPose = pose
 
         return ret
 
@@ -100,15 +101,14 @@ class DummyDriverReceiver(threading.Thread):
 
                 while self._terminator in self.backBuffer:
                     lastPacket, self.backBuffer = self.backBuffer.split(self._terminator, 1)
-                    w = self._handlePacket(lastPacket)
-                    if not w:
+                    if not self._handlePacket(lastPacket):
                         print (repr(lastPacket), repr(self.backBuffer))
 
             except socket.timeout as e:
                 pass
 
             except Exception as e:
-                print(f"DummyDriver receive thread failed: {repr(e)}")
+                print(f"DummyDriverReceiver receive thread failed: {repr(e)}")
                 break
 
         self.alive = False
