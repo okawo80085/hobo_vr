@@ -274,7 +274,7 @@ private:
     t->listenThread();
   }
   void listenThread() {
-    DWORD dwError, dwThreadPri;
+    DWORD dwThreadPri;
 
     if(!SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL))
     {
