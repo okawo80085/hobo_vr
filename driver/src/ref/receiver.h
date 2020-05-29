@@ -8,7 +8,7 @@
 
 #pragma comment(lib, "Ws2_32.lib")
 
-namespace hobo {
+namespace SockReceiver {
   int receive_till_zero( SOCKET sock, char* buf, int& numbytes, int max_packet_size ) {
     // thanks to https://stackoverflow.com/a/13528453/10190971
     int i = 0;
