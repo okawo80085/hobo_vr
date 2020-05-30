@@ -105,19 +105,25 @@ namespace SockReceiver {
       WSADATA wsaData;
       int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
       if (iResult != NO_ERROR) {
-          // log init error
-          // printf("init error: %d\n", iResult);
-          throw std::runtime_error("failed to init winsock");
+        // log init error
+        // printf("init error: %d\n", iResult);
+#ifdef DRIVERLOG_H
+        DriverLog("receiver init error: %d\n", WSAGetLastError());
+#endif
+        throw std::runtime_error("failed to init winsock");
       }
 
       // create socket
       this->mySoc = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
       if (this->mySoc == INVALID_SOCKET) {
-          // log create error
-          // printf("create error\n");
-          WSACleanup();
-          throw std::runtime_error("failed to create socket");
+        // log create error
+        // printf("create error\n");
+#ifdef DRIVERLOG_H
+        DriverLog("receiver create error: %d\n", WSAGetLastError());
+#endif
+        WSACleanup();
+        throw std::runtime_error("failed to create socket");
       }
 
       // addr details
@@ -129,14 +135,20 @@ namespace SockReceiver {
       // connect socket
       iResult = connect(this->mySoc, (SOCKADDR *) & addrDetails, sizeof (addrDetails));
       if (iResult == SOCKET_ERROR) {
-          // log connect error
-          // printf("cennect error: %d\n", iResult);
-          iResult = closesocket(this->mySoc);
-          if (iResult == SOCKET_ERROR)
-              // log closesocket error
-              // printf("closesocket error: %d\n", iResult);
-          WSACleanup();
-          throw std::runtime_error("failed to connect");
+        // log connect error
+        // printf("cennect error: %d\n", iResult);
+#ifdef DRIVERLOG_H
+        DriverLog("receiver connect error: %d\n", WSAGetLastError());
+#endif
+        iResult = closesocket(this->mySoc);
+        if (iResult == SOCKET_ERROR)
+          // log closesocket error
+          // printf("closesocket error: %d\n", iResult);
+#ifdef DRIVERLOG_H
+          DriverLog("receiver connect error: %d\n", WSAGetLastError());
+#endif
+        WSACleanup();
+        throw std::runtime_error("failed to connect");
       }
     }
 
@@ -154,6 +166,9 @@ namespace SockReceiver {
         // log failed to create recv thread
         // printf("thread start error\n");
         this->close();
+#ifdef DRIVERLOG_H
+        DriverLog("receiver thread start error\n");
+#endif
         throw std::runtime_error("failed to crate receiver thread or thread already exited");
       }
     }
@@ -173,10 +188,13 @@ namespace SockReceiver {
         int res = this->send2("CLOSE\n");
         int iResult = closesocket(this->mySoc);
         if (iResult == SOCKET_ERROR) {
-            // log closesocket error
-            // printf("closesocket error: %d\n", WSAGetLastError());
-            WSACleanup();
-            throw std::runtime_error("failed to closesocket");
+          // log closesocket error
+          // printf("closesocket error: %d\n", WSAGetLastError());
+#ifdef DRIVERLOG_H
+          DriverLog("receiver closesocket error: %d\n", WSAGetLastError());
+#endif
+          WSACleanup();
+          throw std::runtime_error("failed to closesocket");
         }
         else
           WSACleanup();
@@ -208,6 +226,10 @@ namespace SockReceiver {
       char mybuff[2048];
       int numbit = 0, msglen, packErr;
 
+#ifdef DRIVERLOG_H
+      DriverLog("receiver thread started\n");
+#endif
+
       // std::string b = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ{}[]()=+<>/,";
 
       while (this->threadKeepAlive) {
@@ -221,12 +243,14 @@ namespace SockReceiver {
           remove_message_from_buffer(mybuff, numbit, msglen);
 
           packErr = this->_handle(packet);
-          // if (!packErr) {
-          //   // log packet process error
-          // }
+          if (packErr != -1) {
+            // log packet process error
+#ifdef DRIVERLOG_H
+            DriverLog("receiver packet size miss match, expected %d, got %d\n", this->eps, packErr);
+#endif
+          }
 
           std::this_thread::sleep_for(std::chrono::microseconds(1));
-
 
         } catch(...) {
           break;
@@ -236,6 +260,9 @@ namespace SockReceiver {
       this->threadKeepAlive = false;
 
       // log end of recv thread
+#ifdef DRIVERLOG_H
+      DriverLog("receiver thread ended\n");
+#endif
 
     }
 
@@ -244,11 +271,11 @@ namespace SockReceiver {
 
       if (temp.size() == this->eps) {
         this->newPose = temp;
-        return 1;
+        return -1;
       }
 
       else
-        return 0;
+        return temp.size();
     }
   };
 
