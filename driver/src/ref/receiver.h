@@ -14,6 +14,11 @@
 #include <algorithm>
 #include <iterator>
 
+#include <thread>
+#include <chrono>
+
+#include <stdio.h>
+
 namespace SockReceiver {
   int receive_till_zero( SOCKET sock, char* buf, int& numbytes, int max_packet_size )
   {
@@ -88,7 +93,7 @@ namespace SockReceiver {
 
   class DriverReceiver{
   public:
-    DriverReceiver(int expected_pose_size, std::string addr="127.0.0.1", int port=6969) {
+    DriverReceiver(int expected_pose_size, const char* addr="127.0.0.1", int port=6969) {
       this->eps = expected_pose_size;
       this->threadKeepAlive = false;
 
@@ -101,6 +106,7 @@ namespace SockReceiver {
       int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
       if (iResult != NO_ERROR) {
           // log init error
+          // printf("init error: %d\n", iResult);
           throw std::runtime_error("failed to init winsock");
       }
 
@@ -109,6 +115,7 @@ namespace SockReceiver {
 
       if (this->mySoc == INVALID_SOCKET) {
           // log create error
+          // printf("create error\n");
           WSACleanup();
           throw std::runtime_error("failed to create socket");
       }
@@ -123,9 +130,11 @@ namespace SockReceiver {
       iResult = connect(this->mySoc, (SOCKADDR *) & addrDetails, sizeof (addrDetails));
       if (iResult == SOCKET_ERROR) {
           // log connect error
+          // printf("cennect error: %d\n", iResult);
           iResult = closesocket(this->mySoc);
           if (iResult == SOCKET_ERROR)
               // log closesocket error
+              // printf("closesocket error: %d\n", iResult);
           WSACleanup();
           throw std::runtime_error("failed to connect");
       }
@@ -135,45 +144,51 @@ namespace SockReceiver {
       this->stop();
     }
 
-    int start() {
+    void start() {
       this->threadKeepAlive = true;
-      this->send("hello\n");
+      this->send2("hello\n");
 
       this->m_pMyTread = new std::thread(this->my_thread_enter, this);
 
       if (!this->m_pMyTread || !this->threadKeepAlive) {
         // log failed to create recv thread
+        // printf("thread start error\n");
         this->close();
         throw std::runtime_error("failed to crate receiver thread or thread already exited");
       }
     }
 
-    int stop() {
+    void stop() {
+      this->close();
       this->threadKeepAlive = false;
       if (this->m_pMyTread) {
         this->m_pMyTread->join();
         delete this->m_pMyTread;
         this->m_pMyTread = nullptr;
       }
-      this->close();
     }
 
     void close() {
-      this->send("CLOSE\n");
-      int iResult = closesocket(this->mySoc);
-      if (iResult == SOCKET_ERROR) {
-          // log closesocket error
+      if (this->mySoc != NULL) {
+        int res = this->send2("CLOSE\n");
+        int iResult = closesocket(this->mySoc);
+        if (iResult == SOCKET_ERROR) {
+            // log closesocket error
+            // printf("closesocket error: %d\n", WSAGetLastError());
+            WSACleanup();
+            throw std::runtime_error("failed to closesocket");
+        }
+        else
           WSACleanup();
-          throw std::runtime_error("failed to closesocket");
       }
 
-      WSACleanup();
+      this->mySoc = NULL;
     }
 
     std::vector<double> get_pose() {return this->newPose;}
 
-    int send(std::string message) {
-      send(this->mySoc, message, (int)strlen(message), 0);
+    int send2(const char* message) {
+      return send(this->mySoc, message, (int)strlen(message), 0);
     }
 
   private:
@@ -185,7 +200,7 @@ namespace SockReceiver {
 
     SOCKET mySoc;
 
-    void my_thread_enter(DriverReceiver *ptr) {
+    static void my_thread_enter(DriverReceiver *ptr) {
       ptr->my_thread();
     }
 
@@ -206,9 +221,9 @@ namespace SockReceiver {
           remove_message_from_buffer(mybuff, numbit, msglen);
 
           packErr = this->_handle(packet);
-          if (!packErr) {
-            // log packet process error
-          }
+          // if (!packErr) {
+          //   // log packet process error
+          // }
 
           std::this_thread::sleep_for(std::chrono::microseconds(1));
 
