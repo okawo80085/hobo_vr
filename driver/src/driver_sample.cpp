@@ -840,7 +840,7 @@ void CServerDriver_Sample::myTrackingThread() {
     }
 
 
-    // std::this_thread::sleep_for(std::chrono::microseconds(100));
+    std::this_thread::sleep_for(std::chrono::microseconds(1000));
   }
 }
 
