@@ -10,7 +10,7 @@
 #include <thread>
 #include <vector>
 
-#define _WINSOCKAPI_ /* Prevent inclusion of winsock.h in windows.h */
+#include "ref/receiver.h"
 
 #if defined(_WINDOWS)
 #include <windows.h>
@@ -22,7 +22,6 @@
 #include <cstring>
 #include <ctime>
 
-#include "ref/com_recv_win.h"
 // #include "ref/controllerDriverRef.h"
 
 using namespace vr;
@@ -156,7 +155,7 @@ void CWatchdogDriver_Sample::Cleanup() {
 class HeadsetDriver : public vr::ITrackedDeviceServerDriver,
                       public vr::IVRDisplayComponent {
 public:
-  HeadsetDriver(SP::socketPoser *remotePoser) {
+  HeadsetDriver(SockReceiver::DriverReceiver *remotePoser) {
     this->remotePoser = remotePoser;
     m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
     m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
@@ -425,26 +424,21 @@ public:
 
   void RunFrame(std::vector<double> &lastRead) {
     pose.result = TrackingResult_Running_OK;
-    auto resp = remotePoser->returnStatus;
-    if (resp != 0) {
-      pose.result = TrackingResult_Uninitialized;
-    } else {
-      pose.vecPosition[0] = lastRead[0];
-      pose.vecPosition[1] = lastRead[1];
-      pose.vecPosition[2] = lastRead[2];
+    pose.vecPosition[0] = lastRead[0];
+    pose.vecPosition[1] = lastRead[1];
+    pose.vecPosition[2] = lastRead[2];
 
-      pose.qRotation =
-          HmdQuaternion_Init(lastRead[3], lastRead[4],
-                             lastRead[5], lastRead[6]);
+    pose.qRotation =
+        HmdQuaternion_Init(lastRead[3], lastRead[4],
+                           lastRead[5], lastRead[6]);
 
-      pose.vecVelocity[0] = lastRead[7];
-      pose.vecVelocity[1] = lastRead[8];
-      pose.vecVelocity[2] = lastRead[9];
+    pose.vecVelocity[0] = lastRead[7];
+    pose.vecVelocity[1] = lastRead[8];
+    pose.vecVelocity[2] = lastRead[9];
 
-      pose.vecAngularVelocity[0] = lastRead[10];
-      pose.vecAngularVelocity[1] = lastRead[11];
-      pose.vecAngularVelocity[2] = lastRead[12];
-    }
+    pose.vecAngularVelocity[0] = lastRead[10];
+    pose.vecAngularVelocity[1] = lastRead[11];
+    pose.vecAngularVelocity[2] = lastRead[12];
 
     if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
       vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
@@ -476,7 +470,7 @@ private:
   float m_fZoomWidth;
   float m_fZoomHeight;
 
-  SP::socketPoser *remotePoser;
+  SockReceiver::DriverReceiver *remotePoser;
 
   DriverPose_t pose;
 };
@@ -486,7 +480,7 @@ private:
 //-----------------------------------------------------------------------------
 class ControllerDriver : public vr::ITrackedDeviceServerDriver {
 public:
-  ControllerDriver(bool side, SP::socketPoser *remotePoser) {
+  ControllerDriver(bool side, SockReceiver::DriverReceiver *remotePoser) {
     this->remotePoser = remotePoser;
     m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
     m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
@@ -622,55 +616,51 @@ public:
     }
 
     poseController.result = TrackingResult_Running_OK;
-    auto resp = remotePoser->returnStatus;
-    if (resp != 0) {
-      poseController.result = TrackingResult_Uninitialized;
-    } else {
-      poseController.vecPosition[0] = lastRead[(i_indexOffset + 0)];
-      poseController.vecPosition[1] = lastRead[(i_indexOffset + 1)];
-      poseController.vecPosition[2] = lastRead[(i_indexOffset + 2)];
 
-      poseController.qRotation =
-          HmdQuaternion_Init(lastRead[(i_indexOffset + 3)],
-                             lastRead[(i_indexOffset + 4)],
-                             lastRead[(i_indexOffset + 5)],
-                             lastRead[(i_indexOffset + 6)]);
+    poseController.vecPosition[0] = lastRead[(i_indexOffset + 0)];
+    poseController.vecPosition[1] = lastRead[(i_indexOffset + 1)];
+    poseController.vecPosition[2] = lastRead[(i_indexOffset + 2)];
 
-      poseController.vecVelocity[0] = lastRead[(i_indexOffset + 7)];
-      poseController.vecVelocity[1] = lastRead[(i_indexOffset + 8)];
-      poseController.vecVelocity[2] = lastRead[(i_indexOffset + 9)];
+    poseController.qRotation =
+        HmdQuaternion_Init(lastRead[(i_indexOffset + 3)],
+                           lastRead[(i_indexOffset + 4)],
+                           lastRead[(i_indexOffset + 5)],
+                           lastRead[(i_indexOffset + 6)]);
 
-      poseController.vecAngularVelocity[0] =
-          lastRead[(i_indexOffset + 10)];
-      poseController.vecAngularVelocity[1] =
-          lastRead[(i_indexOffset + 11)];
-      poseController.vecAngularVelocity[2] =
-          lastRead[(i_indexOffset + 12)];
+    poseController.vecVelocity[0] = lastRead[(i_indexOffset + 7)];
+    poseController.vecVelocity[1] = lastRead[(i_indexOffset + 8)];
+    poseController.vecVelocity[2] = lastRead[(i_indexOffset + 9)];
 
-      vr::VRDriverInput()->UpdateBooleanComponent(
-          m_compGrip, lastRead[(i_indexOffset + 13)] > 0.1, 0);
-      vr::VRDriverInput()->UpdateBooleanComponent(
-          m_compSystem, lastRead[(i_indexOffset + 14)] > 0.1, 0);
-      vr::VRDriverInput()->UpdateBooleanComponent(
-          m_compAppMenu, lastRead[(i_indexOffset + 15)] > 0.1, 0);
-      vr::VRDriverInput()->UpdateBooleanComponent(
-          m_compTrackpadClick, lastRead[(i_indexOffset + 16)] > 0.1,
-          0);
+    poseController.vecAngularVelocity[0] =
+        lastRead[(i_indexOffset + 10)];
+    poseController.vecAngularVelocity[1] =
+        lastRead[(i_indexOffset + 11)];
+    poseController.vecAngularVelocity[2] =
+        lastRead[(i_indexOffset + 12)];
 
-      vr::VRDriverInput()->UpdateScalarComponent(
-          m_compTrigger, float(lastRead[(i_indexOffset + 17)]), 0);
-      vr::VRDriverInput()->UpdateScalarComponent(
-          m_compTrackpadX, float(lastRead[(i_indexOffset + 18)]), 0);
-      vr::VRDriverInput()->UpdateScalarComponent(
-          m_compTrackpadY, float(lastRead[(i_indexOffset + 19)]), 0);
+    vr::VRDriverInput()->UpdateBooleanComponent(
+        m_compGrip, lastRead[(i_indexOffset + 13)] > 0.1, 0);
+    vr::VRDriverInput()->UpdateBooleanComponent(
+        m_compSystem, lastRead[(i_indexOffset + 14)] > 0.1, 0);
+    vr::VRDriverInput()->UpdateBooleanComponent(
+        m_compAppMenu, lastRead[(i_indexOffset + 15)] > 0.1, 0);
+    vr::VRDriverInput()->UpdateBooleanComponent(
+        m_compTrackpadClick, lastRead[(i_indexOffset + 16)] > 0.1,
+        0);
 
-      vr::VRDriverInput()->UpdateBooleanComponent(
-          m_compTrackpadTouch, lastRead[(i_indexOffset + 20)] > 0.1,
-          0);
-      vr::VRDriverInput()->UpdateBooleanComponent(
-          m_compTriggerClick, lastRead[(i_indexOffset + 21)] > 0.1,
-          0);
-    }
+    vr::VRDriverInput()->UpdateScalarComponent(
+        m_compTrigger, float(lastRead[(i_indexOffset + 17)]), 0);
+    vr::VRDriverInput()->UpdateScalarComponent(
+        m_compTrackpadX, float(lastRead[(i_indexOffset + 18)]), 0);
+    vr::VRDriverInput()->UpdateScalarComponent(
+        m_compTrackpadY, float(lastRead[(i_indexOffset + 19)]), 0);
+
+    vr::VRDriverInput()->UpdateBooleanComponent(
+        m_compTrackpadTouch, lastRead[(i_indexOffset + 20)] > 0.1,
+        0);
+    vr::VRDriverInput()->UpdateBooleanComponent(
+        m_compTriggerClick, lastRead[(i_indexOffset + 21)] > 0.1,
+        0);
 
     if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
       vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
@@ -686,9 +676,9 @@ public:
         // actual haptic feedback
         if (remotePoser != NULL) {
           if (handSide_) {
-            remotePoser->socSend("driver:buzz right\n", 18);
+            remotePoser->send2("driver:buzz right\n");
           } else {
-            remotePoser->socSend("driver:buzz left\n", 17);
+            remotePoser->send2("driver:buzz left\n");
           }
         }
       }
@@ -718,7 +708,7 @@ private:
 
   DriverPose_t poseController;
   bool handSide_;
-  SP::socketPoser *remotePoser;
+  SockReceiver::DriverReceiver *remotePoser;
 };
 
 //-----------------------------------------------------------------------------
@@ -749,14 +739,14 @@ private:
   ControllerDriver *m_pRightController = nullptr;
   ControllerDriver *m_pLeftController = nullptr;
 
-  SP::socketPoser *remotePoser;
+  SockReceiver::DriverReceiver *remotePoser;
 
   bool m_bMyThreadKeepAlive;
   std::thread *m_pMyTread;
 };
 
 EVRInitError CServerDriver_Sample::Init(vr::IVRDriverContext *pDriverContext) {
-  remotePoser = new SP::socketPoser(57);
+  remotePoser = new SockReceiver::DriverReceiver(57);
   VR_INIT_SERVER_DRIVER_CONTEXT(pDriverContext);
   remotePoser->start();
 
@@ -798,7 +788,6 @@ void CServerDriver_Sample::Cleanup() {
     m_pMyTread = nullptr;
   }
 
-  remotePoser->socClose();
   delete m_pNullHmdLatest;
   delete m_pRightController;
   delete m_pLeftController;
@@ -823,40 +812,35 @@ void CServerDriver_Sample::myTrackingThread() {
 
   std::vector<double> tempPose;
   while (m_bMyThreadKeepAlive) {
-    int ret = 1;
-    if (remotePoser != NULL) {
-      ret = remotePoser->returnStatus;
-    }
 
-    if (ret == 0) {
-      tempPose = remotePoser->getPose();
-      if (!tempPose.empty())
-      {
-        if (m_pRightController != NULL) {
-          m_pRightController->RunFrame(tempPose);
-        }
-
-        if (m_pLeftController != NULL) {
-          m_pLeftController->RunFrame(tempPose);
-        }
-
-        if (m_pNullHmdLatest != NULL) {
-          m_pNullHmdLatest->RunFrame(tempPose);
-        }
+    tempPose = remotePoser->get_pose();
+    if (!tempPose.empty())
+    {
+      if (m_pRightController != NULL) {
+        m_pRightController->RunFrame(tempPose);
       }
 
-      vr::VREvent_t vrEvent;
-      while (vr::VRServerDriverHost()->PollNextEvent(&vrEvent, sizeof(vrEvent))) {
-        if (m_pRightController) {
-          m_pRightController->ProcessEvent(vrEvent);
-        }
-        if (m_pLeftController) {
-          m_pLeftController->ProcessEvent(vrEvent);
-        }
+      if (m_pLeftController != NULL) {
+        m_pLeftController->RunFrame(tempPose);
+      }
+
+      if (m_pNullHmdLatest != NULL) {
+        m_pNullHmdLatest->RunFrame(tempPose);
       }
     }
 
-    // std::this_thread::sleep_for(std::chrono::microseconds(100));
+    vr::VREvent_t vrEvent;
+    while (vr::VRServerDriverHost()->PollNextEvent(&vrEvent, sizeof(vrEvent))) {
+      if (m_pRightController) {
+        m_pRightController->ProcessEvent(vrEvent);
+      }
+      if (m_pLeftController) {
+        m_pLeftController->ProcessEvent(vrEvent);
+      }
+    }
+
+
+    std::this_thread::sleep_for(std::chrono::microseconds(1000));
   }
 }
 
