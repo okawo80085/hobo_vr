@@ -74,20 +74,17 @@ class DummyDriverReceiver(threading.Thread):
         self.sock.send(u.format_str_for_write(text))
 
     def _handlePacket(self, lastPacket):
-        ret = True
         lastPacket = lastPacket.decode('utf-8')
         if self.alive and not u.strings_share_characters(lastPacket.lower(), "qwrtyuiopsasdfghjklzxcvbnm><*[]{}()"):
             pose = u.get_numbers_from_text(lastPacket.strip('\n').strip(' '), " ")
 
             if len(pose) != self.eps:
                 print (f'pose size miss match, expected {self.eps}, got {len(pose)}')
-                ret = False
-                pose = [0 for _ in range(self.eps)]
+                return False
 
             else:
                 self.newPose = pose
-
-        return ret
+                return True
 
     def run(self):
         while self.alive:

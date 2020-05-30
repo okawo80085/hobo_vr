@@ -90,7 +90,7 @@ namespace SockReceiver {
   public:
     DriverReceiver(int expected_pose_size, std::string addr="127.0.0.1", int port=6969) {
       this->eps = expected_pose_size;
-      this->threadKeepAlive = true;
+      this->threadKeepAlive = false;
 
       for (int i=0; i<this->eps; i++) {
         this->newPose.push_back(0.0);
@@ -129,13 +129,49 @@ namespace SockReceiver {
           WSACleanup();
           throw std::runtime_error("failed to connect");
       }
-
-      this->send("hello\n");
     }
 
-    int start();
-    int stop();
+    ~DriverReceiver() {
+      this->stop();
+    }
+
+    int start() {
+      this->threadKeepAlive = true;
+      this->send("hello\n");
+
+      this->m_pMyTread = new std::thread(this->my_thread_enter, this);
+
+      if (!this->m_pMyTread || !this->threadKeepAlive) {
+        // log failed to create recv thread
+        this->close();
+        throw std::runtime_error("failed to crate receiver thread or thread already exited");
+      }
+    }
+
+    int stop() {
+      this->threadKeepAlive = false;
+      if (this->m_pMyTread) {
+        this->m_pMyTread->join();
+        delete this->m_pMyTread;
+        this->m_pMyTread = nullptr;
+      }
+      this->close();
+    }
+
+    void close() {
+      this->send("CLOSE\n");
+      int iResult = closesocket(this->mySoc);
+      if (iResult == SOCKET_ERROR) {
+          // log closesocket error
+          WSACleanup();
+          throw std::runtime_error("failed to closesocket");
+      }
+
+      WSACleanup();
+    }
+
     std::vector<double> get_pose() {return this->newPose;}
+
     int send(std::string message) {
       send(this->mySoc, message, (int)strlen(message), 0);
     }
@@ -145,12 +181,17 @@ namespace SockReceiver {
     int eps;
 
     bool threadKeepAlive;
+    std::thread *m_pMyTread;
 
     SOCKET mySoc;
 
+    void my_thread_enter(DriverReceiver *ptr) {
+      ptr->my_thread();
+    }
+
     void my_thread() {
       char mybuff[2048];
-      int numbit = 0, msglen;
+      int numbit = 0, msglen, packErr;
 
       // std::string b = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ{}[]()=+<>/,";
 
@@ -164,7 +205,13 @@ namespace SockReceiver {
 
           remove_message_from_buffer(mybuff, numbit, msglen);
 
-          this->_handle(packet);
+          packErr = this->_handle(packet);
+          if (!packErr) {
+            // log packet process error
+          }
+
+          std::this_thread::sleep_for(std::chrono::microseconds(1));
+
 
         } catch(...) {
           break;
@@ -173,18 +220,20 @@ namespace SockReceiver {
 
       this->threadKeepAlive = false;
 
+      // log end of recv thread
+
     }
 
-    void _handle(std::string packet) {
+    int _handle(std::string packet) {
       std::vector<double> temp = split_to_double(split_string(packet));
 
-      if (temp.size() == this->eps){
+      if (temp.size() == this->eps) {
         this->newPose = temp;
+        return 1;
       }
 
-      else {
-        // log packet process error
-      }
+      else
+        return 0;
     }
   };
 
