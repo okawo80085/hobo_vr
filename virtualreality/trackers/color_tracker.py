@@ -29,7 +29,7 @@ from docopt import docopt
 from ..util import utilz as u
 from .. import __version__
 from .. import templates
-from ..calibration.manual_color_mask_calibration import load_calibration
+from ..calibration.manual_color_mask_calibration import CalibrationData
 from ..server import server
 from ..templates import ControllerState
 
@@ -52,7 +52,7 @@ class Poser(templates.PoserTemplate):
         self.camera = camera
         self.width = width
         self.height = height
-        self.calibration = load_calibration(calibration_file)
+        self.calibration = CalibrationData.load_from_file(calibration_file)
 
     @templates.thread_register(1 / 90)
     async def mode_switcher(self):
