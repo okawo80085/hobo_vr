@@ -15,7 +15,9 @@
 #include <iterator>
 
 namespace SockReceiver {
-  int receive_till_zero( SOCKET sock, char* buf, int& numbytes, int max_packet_size ) {
+  int receive_till_zero( SOCKET sock, char* buf, int& numbytes, int max_packet_size )
+  {
+    // receives a message until an end token is reached
     // thanks to https://stackoverflow.com/a/13528453/10190971
     int i = 0;
     do {
@@ -34,21 +36,23 @@ namespace SockReceiver {
     } while( true );
   }
 
-  void remove_message_from_buffer( char* buf, int& numbytes, int msglen ) {
-    // thanks to https://stackoverflow.com/a/13528453/10190971
+  void remove_message_from_buffer( char* buf, int& numbytes, int msglen )
+  {
     // remove complete message from the buffer.
+    // thanks to https://stackoverflow.com/a/13528453/10190971
     memmove( buf, buf + msglen, numbytes - msglen );
     numbytes -= msglen;
   }
 
-  std::string bufferToString(char* buffer, int bufflen)
+  std::string buffer_to_string(char* buffer, int bufflen)
   {
-      std::string ret(buffer, bufflen);
+    std::string ret(buffer, bufflen);
 
-      return ret;
+    return ret;
   }
 
-  std::vector<std::string> split_string(std::string text){
+  std::vector<std::string> split_string(std::string text)
+  {
     std::istringstream iss(text);
 
     std::vector<std::string> tokens{std::istream_iterator<std::string>{iss},
@@ -57,19 +61,26 @@ namespace SockReceiver {
     return tokens;
   }
 
-  std::vector<double> split2double(std::vector<std::string> split) {
+  std::vector<double> split2double(std::vector<std::string> split)
+  {
+    // converts a vector of strings to a vector of doubles
     std::vector<double> out(split.size());
-    std::transform(split.begin(), split.end(), out.begin(), [](const std::string& val)
-    {
-      return std::stod(val);
-    });
+    try {
+      std::transform(split.begin(), split.end(), out.begin(), [](const std::string& val)
+      {
+        return std::stod(val);
+      });
+    } catch (...) {
+      out = {0.0, 0.0};
+    }
 
     return out;
   }
 
-  bool str_in_str(std::string a, std::string b) {
-    for (auto i : a) {
-      if (b.find(i) != std::string::npos) return true;
+  bool strings_share_characters(std::string a, std::string b)
+  {
+    for (auto i : b) {
+      if (a.find(i) != std::string::npos) return true;
     }
     return false;
   }

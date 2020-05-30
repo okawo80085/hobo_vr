@@ -123,8 +123,8 @@ def translate(points: Dict[str, Dict[str, float]], offsets: Sequence[float]) -> 
 
 def strings_share_characters(str1: str, str2: str) -> bool:
     """Determine if two strings share any characters."""
-    for i in str1:
-        if i in str2:
+    for i in str2:
+        if i in str1:
             return True
 
     return False
