@@ -324,7 +324,3 @@ def main():
         run_poser_only(args["--ip_address"], cam)
 
     print(args)
-
-
-if __name__ == "__main__":
-    main()

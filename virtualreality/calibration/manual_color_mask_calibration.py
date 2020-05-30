@@ -295,7 +295,3 @@ def main():
         load_file=args["--load_from_file"],
         save_file=args["--save"],
     )
-
-
-if __name__ == "__main__":
-    main()

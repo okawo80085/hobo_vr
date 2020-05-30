@@ -12,7 +12,7 @@ import moderngl
 import moderngl_window
 from moderngl_window import geometry
 
-from examples.base import CameraWindow
+from base import CameraWindow
 from virtualreality.util import driver
 
 myDriver = driver.DummyDriverReceiver(57) # receiver is global, too bad!

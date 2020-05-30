@@ -20,15 +20,15 @@ import serial
 import serial.threaded
 import pyrr
 from docopt import docopt
-from virtualreality.util import utilz as u
-from virtualreality.util.IMU import get_i2c_imu
-from virtualreality.util.kalman import EulerKalman
+from ..util import utilz as u
+from ..util.IMU import get_i2c_imu
+from ..util.kalman import EulerKalman
 import numpy as np
-from virtualreality import __version__
-from virtualreality import templates
-from virtualreality.server import server
-from virtualreality.templates import PoseEuler
-from virtualreality.calibration.manual_color_mask_calibration import CalibrationData, ColorRange
+from .. import __version__
+from .. import templates
+from ..server import server
+from ..templates import PoseEuler
+from ..calibration.manual_color_mask_calibration import CalibrationData, ColorRange
 
 
 def horizontal_asymptote(val, max_val, speed=1):
@@ -351,7 +351,3 @@ def main():
         run_poser_only(args["--ip_address"], calib)
 
     print(args)
-
-
-if __name__ == "__main__":
-    main()
