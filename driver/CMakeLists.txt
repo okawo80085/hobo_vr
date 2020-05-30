@@ -10,5 +10,7 @@ endif()
 
 add_subdirectory (src)
 
+add_subdirectory (example)
+
 enable_testing ()
 add_subdirectory (test)
