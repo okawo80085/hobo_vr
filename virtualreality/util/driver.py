@@ -32,7 +32,6 @@ class DummyDriverReceiver(threading.Thread):
         self.sock.connect((addr, port))
         self.sock.settimeout(2)
 
-        self.lastPacket = ''
         self.backBuffer = bytearray()
         self.readSize = 50
         self._terminator = b'\n'
