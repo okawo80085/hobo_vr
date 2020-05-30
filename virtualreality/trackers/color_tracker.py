@@ -9,8 +9,8 @@ Options:
    -c, --camera <camera>           Source of the camera to use for calibration [default: 0]
    -r, --resolution <res>          (in progress) Input resolution in width and height [default: -1x-1]
    -l, --load_calibration <file>   (in progress) Load color mask calibration settings [default: ranges.pickle]
-   -i, --ip_address <ip_address>  IP Address of the server to connect to [default: 127.0.0.1]
-   -s, --server                    Run the server alongside the tracker.
+   -i, --ip_address <ip_address>   IP Address of the server to connect to [default: 127.0.0.1]
+   -s, --standalone                Run the server alongside the tracker.
 """
 
 # undocumented reference
@@ -29,7 +29,7 @@ from docopt import docopt
 from ..util import utilz as u
 from .. import __version__
 from .. import templates
-from ..calibration.manual_color_mask_calibration import load_calibration
+from ..calibration.manual_color_mask_calibration import CalibrationData
 from ..server import server
 from ..templates import ControllerState
 
@@ -52,7 +52,7 @@ class Poser(templates.PoserTemplate):
         self.camera = camera
         self.width = width
         self.height = height
-        self.calibration = load_calibration(calibration_file)
+        self.calibration = CalibrationData.load_from_file(calibration_file)
 
     @templates.thread_register(1 / 90)
     async def mode_switcher(self):
@@ -318,13 +318,9 @@ def main():
     else:
         cam = args["--camera"]
 
-    if args["--server"]:
+    if args["--standalone"]:
         run_poser_and_server(args["--ip_address"], cam)
     else:
         run_poser_only(args["--ip_address"], cam)
 
     print(args)
-
-
-if __name__ == "__main__":
-    main()
