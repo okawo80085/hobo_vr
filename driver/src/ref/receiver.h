@@ -1,6 +1,8 @@
 #ifndef RECEIVER_H
 #define RECEIVER_H
 
+#include <tchar.h>
+
 #pragma once
 
 #include <Ws2tcpip.h>
@@ -93,7 +95,7 @@ namespace SockReceiver {
 
   class DriverReceiver{
   public:
-    DriverReceiver(int expected_pose_size, const char* addr="127.0.0.1", int port=6969) {
+    DriverReceiver(int expected_pose_size, int port=6969) {
       this->eps = expected_pose_size;
       this->threadKeepAlive = false;
 
@@ -129,7 +131,7 @@ namespace SockReceiver {
       // addr details
       sockaddr_in addrDetails;
       addrDetails.sin_family = AF_INET;
-      addrDetails.sin_addr.s_addr = inet_addr(addr);
+      InetPton(AF_INET, _T("127.0.0.1"), &addrDetails.sin_addr.s_addr);
       addrDetails.sin_port = htons(port);
 
       // connect socket
