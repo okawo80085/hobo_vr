@@ -1,3 +1,17 @@
+"""
+pyvr track.
+
+Usage:
+    pyvr track [options]
+
+Options:
+   -h, --help
+   -l, --load_calibration <file>    (in progress) Load color mask calibration settings [default: ranges.pickle]
+   -i, --ip_address <ip_address>    IP Address of the server to connect to [default: 127.0.0.1]
+   --calibration-data <calib_file>  Source of the camera to use for calibration
+   -s, --standalone                 Run the server alongside the tracker.
+"""
+
 import asyncio
 import math
 import sys
@@ -14,6 +28,7 @@ from .. import __version__
 from .. import templates
 from ..server import server
 from ..templates import PoseEuler
+from ..calibration.manual_color_mask_calibration import CalibrationData, ColorRange
 
 
 def horizontal_asymptote(val, max_val, speed=1):
@@ -304,15 +319,15 @@ class Poser(templates.PoserTemplate):
             await asyncio.sleep(1)
 
 
-def run_poser_only(addr="127.0.0.1", cam=4):
+def run_poser_only(addr, calib):
     """Run the poser only. The server must be started in another program."""
-    t = Poser(addr=addr, camera=cam)
+    t = Poser(addr=addr, calib=calib)
     asyncio.run(t.main())
 
 
-def run_poser_and_server(addr="127.0.0.1", cam=4):
+def run_poser_and_server(addr, calib):
     """Run the poser and server in one program."""
-    t = Poser(addr=addr, camera=cam)
+    t = Poser(addr=addr, calib=calib)
     server.run_til_dead(t)
 
 
@@ -320,25 +335,19 @@ def main():
     """Run color tracker entry point."""
     # allow calling from both python -m and from pyvr:
     argv = sys.argv[1:]
-    if sys.argv[1] != "track":
+    if len(argv) < 2 or sys.argv[1] != "track":
         argv = ["track"] + argv
 
     args = docopt(__doc__, version=f"pyvr version {__version__}", argv=argv)
 
-    width, height = args["--resolution"].split("x")
-
-    if args["--camera"].isdigit():
-        cam = int(args["--camera"])
+    if args["--calibration-data"]:
+        calib = CalibrationData.load_from_file(args["--calibration-data"])
     else:
-        cam = args["--camera"]
+        calib = CalibrationData.load_from_file('rgby_calibration.pickle')
 
-    if args["--server"]:
-        run_poser_and_server(args["--ip_address"], cam)
+    if args["--standalone"]:
+        run_poser_and_server(args["--ip_address"], calib)
     else:
-        run_poser_only(args["--ip_address"], cam)
+        run_poser_only(args["--ip_address"], calib)
 
     print(args)
-
-
-if __name__ == "__main__":
-    main()
