@@ -86,6 +86,8 @@ class DummyDriverReceiver(threading.Thread):
                 self.newPose = pose
                 return True
 
+        return False
+
     def run(self):
         while self.alive:
             try:
