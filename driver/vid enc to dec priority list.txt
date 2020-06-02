@@ -1,0 +1,76 @@
+Windows install:
+vcpkg install libvpx
+vcpkg install ffmpeg[vpx,opencl,nvcodec] (wait 30 minutes...)
+(may want to include some of these dlls for standalone windows release, if not detected in path)
+
+*pass pre/post transformed image to c++/python
+
+* TorchRender custom conv for image pyramids
+  * forward
+  * backward
+* rust custom conv for image pyramids
+
+*finish imu code
+
+*create preferred encoders flat buffer
+*test pass back and forth with pi
+*create detect pi code
+
+preferred encoders -> decoders, video:
+--------------------------
+hevc_nvenc -> hevc_cuvid
+nvenc_hevc -> hevc_cuvid
+nvenc_h264 -> h264_cuvid
+h264_nvenc -> h264_cuvid
+
+# WARN: GPU ENCODING DISABLED
+
+libvpx-vp9 -> vp9_cuvid
+libvpx -> vp8_cuvid
+mpeg4 -> mpeg4_cuvid
+mjpeg -> mjpeg_cuvid
+
+# WARN: GPU DECODING DISABLED
+
+libvpx-vp9 -> [libvpx-vp9, vp9]
+libvpx -> [libvpx, vp8]
+
+mpeg4 -> mpeg4
+msmpeg4v2 -> msmpeg4v2 
+msmpeg4 -> msmpeg4 
+
+flv -> flv
+
+wmv2 -> wmv2
+wmv1 -> wmv1
+
+# WARN: SLOW
+mjpeg -> mjpeg
+
+#WARN: EXTREMELY SLOW
+yuv4 -> yuv4
+
+preferred encoders -> decoders, audio:
+--------------------------
+
+libopus -> libopus
+
+vorbis -> vorbis
+
+aac -> aac
+
+eac3 -> eac3
+wmav2 -> wmav2
+w
+opus -> opus
+
+wmav1 -> wmav1
+ac3 -> ac3
+
+# WARN: SLOW
+flac -> flac
+wavpack -> wavpack
+truehd -> truehd
+
+#WARN: EXTREMELY SLOW
+pcm_f32le -> pcm_f32le
