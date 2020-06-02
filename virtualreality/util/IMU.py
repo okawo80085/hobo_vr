@@ -13,7 +13,11 @@ def unit_vector(vector):
     """ Returns the unit vector of the vector.  """
     # https://stackoverflow.com/a/13849249/782170
     vector = np.asarray(vector)
-    return vector / np.linalg.norm(vector)
+    norm = np.linalg.norm(vector)
+    if norm != 0:
+        return vector / norm
+    else:
+        return vector
 
 
 def angle_between(v1, v2):
@@ -29,7 +33,11 @@ def angle_between(v1, v2):
     # https://stackoverflow.com/a/13849249/782170
     v1_u = unit_vector(v1)
     v2_u = unit_vector(v2)
-    return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
+    cos_theta = np.clip(np.dot(v1_u, v2_u), -1.0, 1.0)
+    if cos_theta > 0:
+        return np.arccos(cos_theta)
+    else:
+        return np.arccos(cos_theta) - np.pi / 2.0
 
 
 def perpendicular_vector(v):
@@ -99,8 +107,9 @@ class IMU(object):
         self._mag_iron_offset_x = 23.5
         self._mag_iron_offset_y = 23.5
         self._mag_iron_offset_z = -45
-        self.prev_grav = None
-        self.prev_mag = None
+        self.prev_up = None
+        self.prev_north = None
+        self.prev_west = None
         self.prev_orientation_time = None
         self.prev_bias = None
 
@@ -123,7 +132,7 @@ class IMU(object):
     def get_orientation(self, convergence_acc: float, overshoot_acc: float, convergence_mag: float,
                         overshoot_mag: float):
         # https://www.sciencedirect.com/science/article/pii/S2405896317321201
-        if self.prev_grav is not None:
+        if self.prev_up is not None:
             t2 = time.time()
 
             k_acc, k_bias_acc = get_ki_kbias(convergence_acc, overshoot_acc, t2 - self.prev_orientation_time)
@@ -132,45 +141,52 @@ class IMU(object):
             grav = np.asarray(unit_vector(self.get_grav()))
             mag = unit_vector(np.asarray(self.get_mag()))
             east = unit_vector(np.cross(mag, grav))
+            west = -east
             north = -unit_vector(np.cross(east, grav))
+            up = -unit_vector(np.cross(north, east))
 
-            gyro = self.get_gyro()
+            gyro = -self.get_gyro()
             if self.prev_bias is not None:
-                gyro += self.prev_bias
+                if np.isnan(self.prev_bias).any():
+                    self.prev_bias = None
+                else:
+                    gyro += self.prev_bias
 
             gy = Quaternion.from_eulers(gyro * (t2 - self.prev_orientation_time))
-            pred_mag = (gy * Quaternion.from_axis(self.prev_mag) * ~gy)
-            pred_grav = (gy * Quaternion.from_axis(self.prev_grav) * ~gy)
-            pred_north = pred_mag - np.dot(pred_mag, pred_grav) * pred_grav
+            pred_west = (~gy * Quaternion(np.pad(self.prev_west, (0,1), 'constant', constant_values=0)) * gy)
+            pred_up = (~gy * Quaternion(np.pad(self.prev_up, (0,1), 'constant', constant_values=0)) * gy)
+            pred_north = (~gy * Quaternion(np.pad(self.prev_north, (0,1), 'constant', constant_values=0)) * gy)
 
             pred_north_v = np.asarray(pred_north.xyz)
-            pred_grav_v = np.asarray(pred_grav.xyz)
-            pred_mag_v = np.asarray(pred_mag.xyz)
+            pred_west_v = np.asarray(pred_west.xyz)
+            pred_up_v = np.asarray(pred_up.xyz)
 
             fix_north = Quaternion.from_axis(np.cross(north, pred_north_v) * k_mag)
-            fix_grav = Quaternion.from_axis(np.cross(grav, pred_grav_v) * k_acc)
+            fix_west = Quaternion.from_axis(np.cross(west, pred_west_v) * k_mag)
+            fix_up = Quaternion.from_axis(np.cross(up, pred_west_v) * k_acc)
 
-            angle_acc = angle_between(grav, pred_grav_v)
-            angle_mag = angle_between(mag, pred_mag_v)
-            x_acc = np.cross(grav, pred_grav_v)
-            x_mag = np.cross(mag, pred_mag_v)
-            pb0 = k_bias_acc*angle_acc*x_acc + k_bias_mag*angle_mag*x_mag
+            x_acc = np.cross(up, pred_up_v)
+            x_mag = np.cross(north, pred_north_v)
+            pb0 = k_bias_acc*x_acc + k_bias_mag*x_mag
             if self.prev_bias is not None:
                 self.prev_bias = self.prev_bias * (t2 - self.prev_orientation_time) + pb0
             else:
                 self.prev_bias = pb0
 
             true_north = unit_vector((pred_north * fix_north).xyz)
-            true_grav = unit_vector((pred_grav * fix_grav).xyz)
-            true_east = unit_vector(np.cross(true_north, true_grav))
-            true_up = -true_grav
-            true_west = -true_east
+            true_up = unit_vector((pred_up * fix_up).xyz)
+            true_west = unit_vector((pred_west * fix_west).xyz)
 
             rot = np.asarray([true_north, true_west, true_up]).transpose()
             q = Quaternion.from_matrix(rot)
 
-            self.prev_grav = true_grav
-            self.prev_mag = true_north
+            if not np.isnan(north).any():
+                self.prev_north = north
+            if not np.isnan(west).any():
+                self.prev_west = west
+            if not np.isnan(up).any():
+                self.prev_up = up
+
             self.prev_orientation_time = t2
 
             return q
@@ -184,8 +200,9 @@ class IMU(object):
             rot = np.asarray([north, -east, up]).transpose()
             q = Quaternion.from_matrix(rot)
             if (not np.isnan(grav).any()) and (not np.isnan(mag).any()):
-                self.prev_grav = grav
-                self.prev_mag = mag
+                self.prev_west = -east
+                self.prev_north = north
+                self.prev_up = up
                 self.prev_orientation_time = time.time()
             return q
 

@@ -126,7 +126,7 @@ def test_get_i2c_imu_continuous():
             pro.start()
             acc = (float(0),) * 3
             while True:
-                orient1 = pro.protocol.imu.get_orientation(*[.01 for _ in range(4)])
+                orient1 = pro.protocol.imu.get_orientation(*[.1 for _ in range(4)])
                 if np.isnan(acc).any():
                     acc = (float(0),) * 3
                 if not np.isnan(orient1).any():
@@ -145,4 +145,4 @@ def test_get_i2c_imu_continuous():
 
 
 if __name__ == "__main__":
-    test_get_i2c_imu_instant()
+    test_get_i2c_imu_continuous()
