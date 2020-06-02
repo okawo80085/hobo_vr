@@ -10,7 +10,7 @@ def test_get_i2c_imu():
     pro.start()
     orient1 = (float("nan"),) * 3
     while np.any(np.isnan(orient1)):
-        orient1 = pro.protocol.imu.get_orientation()
+        orient1 = pro.protocol.imu.get_instant_orientation()
     while True:
         # print(f"acc: {pro.protocol.imu.get_acc(Quaternion.from_euler(3*pi/2, pi/4, 0))}")
         # pro.protocol.imu.get_grav(stationary=True)
@@ -18,7 +18,7 @@ def test_get_i2c_imu():
         # print(f"gyro: {pro.protocol.imu.get_gyro()}")
         # print(f"mag: {pro.protocol.imu.get_mag()}")
         print(f"orient1: {orient1}")
-        print(f"orient2: {pro.protocol.imu.get_orientation(orient1)}")
+        print(f"orient2: {pro.protocol.imu.get_instant_orientation(orient1)}")
 
 
 if __name__ == "__main__":
