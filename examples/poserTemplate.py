@@ -5,7 +5,7 @@ to get detailed overview of virtualreality.templates.PoserTemplate run this in y
 	help(virtualreality.templates.PoserTemplate)
 
 more examples/references:
-	https://github.com/okawo80085/hobo_vr/blob/master/poseTracker.py
+	https://github.com/okawo80085/hobo_vr/blob/master/virtualreality/trackers/color_tracker.py
 
 """
 

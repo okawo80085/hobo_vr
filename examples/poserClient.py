@@ -10,7 +10,7 @@ to get more info on virtualreality.templates.PoserTemplate run this in your pyth
 or visit https://github.com/okawo80085/hobo_vr/blob/master/examples/poserTemplate.py
 
 more examples/references:
-    https://github.com/okawo80085/hobo_vr/blob/master/poseTracker.py
+    https://github.com/okawo80085/hobo_vr/blob/master/virtualreality/trackers/color_tracker.py
 
 """
 
@@ -22,7 +22,7 @@ import pyrr
 from virtualreality import templates
 from virtualreality.server import server
 
-poser = templates.PoserClient()
+poser = templates.PoserClient(send_delay=1/10000)
 
 @poser.thread_register(1/60)
 async def example_thread():

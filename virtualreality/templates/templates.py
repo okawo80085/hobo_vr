@@ -309,7 +309,7 @@ class PoserTemplate:
         asyncio.run(poser.main())
 
     more examples:
-        https://github.com/okawo80085/hobo_vr/blob/master/poseTracker.py
+        https://github.com/okawo80085/hobo_vr/blob/master/virtualreality/trackers/color_tracker.py
         https://github.com/okawo80085/hobo_vr/blob/master/examples/poserTemplate.py
 
     """

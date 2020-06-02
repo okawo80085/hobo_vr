@@ -1,7 +1,12 @@
 """
-Shadow mapping example from:
-https://www.opengl-tutorial.org/intermediate-tutorials/tutorial-16-shadow-mapping/
+dummy driver debugger
+
+press c to toggle first person control
+
+press esc to exit
+
 """
+
 import math
 from pathlib import Path
 from pyrr import Matrix44, matrix44, Vector3
