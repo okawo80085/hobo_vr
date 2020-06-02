@@ -22,7 +22,7 @@ import pyrr
 from virtualreality import templates
 from virtualreality.server import server
 
-poser = templates.PoserClient(send_delay=1/10000)
+poser = templates.PoserClient()
 
 @poser.thread_register(1/60)
 async def example_thread():
