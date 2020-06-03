@@ -73,6 +73,39 @@ class CalibrationData(object):
         with open(save_file, "wb") as file:
             pickle.dump(self, file)
 
+def colordata_to_blob(colordata, mapdata):
+    '''
+    translates CalibrationData object to BlobTracker format masks
+
+    :colordata: CalibrationData object
+    :mapdata: a map dict with key representing the mask name and value representing the mask number
+
+    '''
+    out = {}
+
+    for key, clr_range_index in mapdata.items():
+        temp = colordata.color_ranges[clr_range_index]
+        out[key] = {
+                'h':(temp.hue_center, temp.hue_range),
+                's':(temp.sat_center, temp.sat_range),
+                'v':(temp.val_center, temp.val_range),
+                    }
+
+    return out
+
+def load_mapdata_from_file(path):
+    '''
+    loads mapdata from file, for use in colordata_to_blob
+    '''
+    with open(path, 'rb') as file:
+        return pickle.load(file)
+
+def save_mapdata_to_file(path, mapdata):
+    '''
+    save mapdata to file, for use in colordata_to_blob
+    '''
+    with open(path, "wb") as file:
+        pickle.dump(mapdata, file)
 
 def list_supported_capture_properties(cap: cv2.VideoCapture):
     """List the properties supported by the capture device."""

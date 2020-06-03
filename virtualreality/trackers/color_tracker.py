@@ -6,11 +6,12 @@ Usage:
 
 Options:
    -h, --help
-   -c, --camera <camera>           Source of the camera to use for calibration [default: 0]
-   -r, --resolution <res>          (in progress) Input resolution in width and height [default: -1x-1]
-   -l, --load_calibration <file>   (in progress) Load color mask calibration settings [default: ranges.pickle]
-   -i, --ip_address <ip_address>   IP Address of the server to connect to [default: 127.0.0.1]
-   -s, --standalone                Run the server alongside the tracker.
+   -c, --camera <camera>                    Source of the camera to use for calibration [default: 0]
+   -r, --resolution <res>                   (in progress) Input resolution in width and height [default: -1x-1]
+   -l, --load_calibration <file>            (optional) Load color mask calibration settings
+   -m, --load_calibration_map <map_file>    (optional) Load color mask calibration map settings
+   -i, --ip_address <ip_address>            IP Address of the server to connect to [default: 127.0.0.1]
+   -s, --standalone                         Run the server alongside the tracker.
 """
 
 # undocumented reference
@@ -30,6 +31,8 @@ from ..util import utilz as u
 from .. import __version__
 from .. import templates
 from ..calibration.manual_color_mask_calibration import CalibrationData
+from ..calibration.manual_color_mask_calibration import colordata_to_blob
+from ..calibration.manual_color_mask_calibration import load_mapdata_from_file
 from ..server import server
 from ..templates import ControllerState
 
@@ -37,7 +40,7 @@ from ..templates import ControllerState
 class Poser(templates.PoserTemplate):
     """A pose estimator."""
 
-    def __init__(self, *args, camera=4, width=-1, height=-1, calibration_file=None, **kwargs):
+    def __init__(self, *args, camera=4, width=-1, height=-1, calibration_file=None, calibration_map_file=None, **kwargs):
         """Create a pose estimator."""
         super().__init__(*args, **kwargs)
 
@@ -52,7 +55,30 @@ class Poser(templates.PoserTemplate):
         self.camera = camera
         self.width = width
         self.height = height
-        self.calibration = CalibrationData.load_from_file(calibration_file)
+
+        if calibration_file is not None:
+            try:
+                if calibration_map_file is not None:
+                    self.calibration = colordata_to_blob(CalibrationData.load_from_file(calibration_file), load_mapdata_from_file(calibration_map_file))
+
+                else:
+                    raise Exception('no map file provided')
+
+            except Exception as e:
+                print (f'calibration file provided, but {repr(e)}, ignoring calibration file..')
+                self.calibration = {
+                                "blue": {"h": (98, 10), "s": (200, 55), "v": (250, 32)},
+                                "green": {"h": (68, 15), "s": (135, 53), "v": (255, 50)},
+                                    }
+
+        else:
+            self.calibration = {
+                            "blue": {"h": (98, 10), "s": (200, 55), "v": (250, 32)},
+                            "green": {"h": (68, 15), "s": (135, 53), "v": (255, 50)},
+                                }
+
+        print (f'current color masks {self.calibration}')
+
 
     @templates.thread_register(1 / 90)
     async def mode_switcher(self):
@@ -85,10 +111,7 @@ class Poser(templates.PoserTemplate):
             offsets = [0.6981317007977318, 0, 0]
             t1 = u.BlobTracker(
                 self.camera,
-                color_masks={
-                    "blue": {"h": (98, 10), "s": (200, 55), "v": (250, 32)},
-                    "green": {"h": (68, 15), "s": (135, 53), "v": (255, 50)},
-                },
+                color_masks=self.calibration,
             )
 
         except Exception as e:
@@ -290,15 +313,15 @@ class Poser(templates.PoserTemplate):
             await asyncio.sleep(1)
 
 
-def run_poser_only(addr="127.0.0.1", cam=4):
+def run_poser_only(addr="127.0.0.1", cam=4, colordata=None, mapdata=None):
     """Run the poser only. The server must be started in another program."""
-    t = Poser(addr=addr, camera=cam)
+    t = Poser(addr=addr, camera=cam, calibration_file=colordata, calibration_map_file=mapdata)
     asyncio.run(t.main())
 
 
-def run_poser_and_server(addr="127.0.0.1", cam=4):
+def run_poser_and_server(addr="127.0.0.1", cam=4, colordata=None, mapdata=None):
     """Run the poser and server in one program."""
-    t = Poser(addr=addr, camera=cam)
+    t = Poser(addr=addr, camera=cam, calibration_file=colordata, calibration_map_file=mapdata)
     server.run_til_dead(t)
 
 
@@ -313,14 +336,16 @@ def main():
 
     width, height = args["--resolution"].split("x")
 
+    print (args)
+
     if args["--camera"].isdigit():
         cam = int(args["--camera"])
     else:
         cam = args["--camera"]
 
     if args["--standalone"]:
-        run_poser_and_server(args["--ip_address"], cam)
+        run_poser_and_server(args["--ip_address"], cam, args['--load_calibration'], args['--load_calibration_map'])
     else:
-        run_poser_only(args["--ip_address"], cam)
+        run_poser_only(args["--ip_address"], cam, args['--load_calibration'], args['--load_calibration_map'])
 
     print(args)
