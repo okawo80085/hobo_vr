@@ -266,7 +266,7 @@ class PureIMUProtocol(serial.threaded.Packetizer):
     def handle_packet(self, packet):
         pkt_data = u.get_numbers_from_text(packet)
         if len(pkt_data) >= 9:
-            self._last_data = u.get_numbers_from_text(packet)[0:9]
+            self._last_data = pkt_data[:9]
             self.imu._acc_x = self._last_data[0]
             self.imu._acc_y = self._last_data[1]
             self.imu._acc_z = self._last_data[2]
