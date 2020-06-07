@@ -3,29 +3,33 @@ import time
 
 import threading
 
+
 class BluetoothReceiver(threading.Thread):
-    '''
-    addr = '98:D3:51:FD:EB:C4' # some device address
-    port = 1
+    """
+    no docs... too bad!
 
-    t = BluetoothReceiver(addr, port)
+    oh yeah, here is an example:
+        addr = '98:D3:51:FD:EB:C4' # some device address, whatever
+        port = 1
 
-    with t:
-        for _ in range(1000):
-            print (t.last_read)
-            time.sleep(1/100) # time delay, doesn't affect receiving, whatever whatever
-    '''
+        t = BluetoothReceiver(addr, port)
+
+        with t:
+            for _ in range(1000):
+                print (t.last_read)
+                time.sleep(1/100) # time delay, doesn't affect receiving, whatever whatever
+    """
 
     def __init__(self, addr, port):
-        '''
+        """
         here is a riddle for you: what does init do?
-        '''
+        """
         super().__init__()
         self.backBuffer = bytearray()
-        self._last_read = b''
-        self._terminator = b'\n'
+        self._last_read = b""
+        self._terminator = b"\n"
 
-        self.sock = bluetooth.BluetoothSocket( bluetooth.RFCOMM )
+        self.sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
         self.sock.connect((addr, port))
 
         self.readSize = 100
@@ -59,6 +63,10 @@ class BluetoothReceiver(threading.Thread):
     @property
     def last_read(self):
         return self._last_read
+
+    def send(self, data):
+        """sends data or something idk"""
+        self.sock.send(data)
 
     def run(self):
         while self.alive:
