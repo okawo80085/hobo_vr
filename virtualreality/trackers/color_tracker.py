@@ -25,6 +25,7 @@ import numpy as np
 import serial
 import serial.threaded
 import pyrr
+from pyrr import Quaternion
 from docopt import docopt
 
 from ..util import utilz as u
@@ -155,7 +156,7 @@ class Poser(templates.PoserTemplate):
 
                 while self.coro_keep_alive["serial_listener_2"][0]:
                     try:
-                        gg = u.get_numbers_from_text(protocol.last_read)
+                        gg = u.get_numbers_from_text(protocol.last_read, ',')
 
                         if len(gg) > 0:
                             (w, x, y, z, trgr, grp, util, sys, menu, padClk, padY, padX,) = gg
