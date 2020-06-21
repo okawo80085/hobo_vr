@@ -235,7 +235,7 @@ class Poser(templates.PoserTemplate):
                                 self.useVelocity = True
 
                             elif util:
-                                my_off = ~Quaternion([0, z, 0, w])
+                                my_off = Quaternion([0, z, 0, w]).inverse.normalised
                                 self._serialResetYaw = True
 
                         if abs(self.temp_pose.trackpad_x) > 0.09 or abs(self.temp_pose.trackpad_y) > 0.09:
@@ -274,7 +274,7 @@ class Poser(templates.PoserTemplate):
                             my_q = Quaternion([-y, z, -x, w])
 
                             if self._serialResetYaw:
-                                my_off = ~Quaternion([0, z, 0, w])
+                                my_off = Quaternion([0, z, 0, w]).inverse.normalised
 
                             my_q = my_off * my_q
                             self.pose.r_w = round(my_q[3], 5)
