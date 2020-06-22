@@ -1,4 +1,4 @@
-squaternion
+pyrr
 keyboard
 opencv-python
 numpy
@@ -6,3 +6,5 @@ pykalman
 pyserial
 imutils
 docopt
+displayarray
+scipy
