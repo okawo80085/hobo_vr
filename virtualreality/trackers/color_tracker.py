@@ -147,6 +147,8 @@ class Poser(templates.PoserTemplate):
         velocity_until_reset = 0
         temp_for_offz = {"x": 0, "y": 0, "z": 0}
 
+        irl_rot_off = Quaternion.from_z_rotation(np.pi/2) # imu on this controller is rotated 90 degrees irl for me
+
         my_off = Quaternion()
         with serial.Serial(self.serialPaths["green"], 115200, timeout=1 / 4) as ser:
             with serial.threaded.ReaderThread(ser, u.SerialReaderFactory) as protocol:
@@ -206,7 +208,7 @@ class Poser(templates.PoserTemplate):
 
                             my_q = Quaternion([-y, z, -x, w])
 
-                            my_q = my_off * my_q
+                            my_q = my_off * my_q * irl_rot_off
                             self.temp_pose.r_w = round(my_q[3], 5)
                             self.temp_pose.r_x = round(my_q[0], 5)
                             self.temp_pose.r_y = round(my_q[1], 5)
