@@ -324,5 +324,3 @@ def main():
         run_poser_and_server(args["--ip_address"], cam, args['--load_calibration'], args['--load_calibration_map'])
     else:
         run_poser_only(args["--ip_address"], cam, args['--load_calibration'], args['--load_calibration_map'])
-
-    print(args)
