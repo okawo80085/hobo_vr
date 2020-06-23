@@ -9,10 +9,11 @@ import numpy as np
 from displayarray import read_updates
 from displayarray.input import mouse_loop
 from displayarray.window import SubscriberWindows
-
+from displayarray.effects.overlay import overlay_transparent
+from displayarray.effects.transform import transform_about_center
 from virtualreality.calibration.ai_tracker_training.audio import get_audio_thread, menu_music, easy_music, normal_music, \
     hard_music, easy_bpm, normal_bpm, hard_bpm
-from virtualreality.calibration.ai_tracker_training.video import overlay_transparent, transform_about_center, menu_np
+from virtualreality.calibration.ai_tracker_training.video import menu_np
 from virtualreality.util.IMU import get_coms_in_range, get_i2c_imu, IMU
 
 ourpath = pathlib.Path(__file__).parent
