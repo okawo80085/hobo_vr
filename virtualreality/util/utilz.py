@@ -274,7 +274,7 @@ class SerialReaderFactory(serial.threaded.LineReader):
 
     def connection_lost(self, exc):
         """Notify the user that the connection was lost."""
-        print(f"SerialReaderFactory: port closed {repr(exc)}")
+        print(f"SerialReaderFactory: port {repr(self.transport.serial.port)} closed {repr(exc)}")
 
 
 class BlobTracker(threading.Thread):

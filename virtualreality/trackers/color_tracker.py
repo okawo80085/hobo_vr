@@ -47,7 +47,7 @@ class Poser(templates.PoserTemplate):
 
         self.temp_pose = ControllerState()
 
-        self.serialPaths = {"green": "/dev/ttyUSB1", "blue": "/dev/ttyUSB0"}
+        self.serialPaths = {"cont_r": "/dev/ttyUSB2","cont_l": "/dev/ttyUSB1", "hmd": "/dev/ttyUSB0"}
 
         self.mode = 0
         self._serialResetYaw = False
@@ -87,16 +87,26 @@ class Poser(templates.PoserTemplate):
         while self.coro_keep_alive["mode_switcher"][0]:
             try:
                 if self.mode == 1:
-                    self.pose_controller_l.trackpad_touch = 0
-                    self.pose_controller_l.trackpad_x = 0
-                    self.pose_controller_l.trackpad_y = 0
-                    self.pose_controller_r = copy(self.temp_pose)
+                    self.pose_controller_r.trackpad_touch = self.temp_pose.trackpad_touch
+                    self.pose_controller_r.trackpad_click = self.temp_pose.trackpad_click
+                    self.pose_controller_r.trackpad_x = self.temp_pose.trackpad_x
+                    self.pose_controller_r.trackpad_y = self.temp_pose.trackpad_y
+                    self.pose_controller_r.trigger_value = self.temp_pose.trigger_value
+                    self.pose_controller_r.trigger_click = self.temp_pose.trigger_click
+                    self.pose_controller_r.system = self.temp_pose.system
+                    self.pose_controller_r.grip = self.temp_pose.grip
+                    self.pose_controller_r.menu = self.temp_pose.menu
 
                 else:
-                    self.pose_controller_r.trackpad_touch = 0
-                    self.pose_controller_r.trackpad_x = 0
-                    self.pose_controller_r.trackpad_y = 0
-                    self.pose_controller_l = copy(self.temp_pose)
+                    self.pose_controller_l.trackpad_touch = self.temp_pose.trackpad_touch
+                    self.pose_controller_l.trackpad_click = self.temp_pose.trackpad_click
+                    self.pose_controller_l.trackpad_x = self.temp_pose.trackpad_x
+                    self.pose_controller_l.trackpad_y = self.temp_pose.trackpad_y
+                    self.pose_controller_l.trigger_value = self.temp_pose.trigger_value
+                    self.pose_controller_l.trigger_click = self.temp_pose.trigger_click
+                    self.pose_controller_l.system = self.temp_pose.system
+                    self.pose_controller_l.grip = self.temp_pose.grip
+                    self.pose_controller_l.menu = self.temp_pose.menu
 
                 await asyncio.sleep(self.coro_keep_alive["mode_switcher"][1])
 
@@ -105,7 +115,7 @@ class Poser(templates.PoserTemplate):
                 self.coro_keep_alive["mode_switcher"][0] = False
                 break
 
-    @templates.thread_register(1 / 60)
+    @templates.thread_register(1 / 65)
     async def get_location(self):
         """Get locations from blob trackers."""
         try:
@@ -126,13 +136,17 @@ class Poser(templates.PoserTemplate):
 
                     u.rotate(poses, offsets)
 
-                    self.temp_pose.x = round(-poses["green"]["x"], 6)
-                    self.temp_pose.y = round(poses["green"]["y"] + 1, 6)
-                    self.temp_pose.z = round(poses["green"]["z"], 6)
+                    self.pose_controller_l.x = round(-poses["green"]["x"], 6)
+                    self.pose_controller_l.y = round(poses["green"]["y"] + 1, 6)
+                    self.pose_controller_l.z = round(poses["green"]["z"], 6)
+
+                    self.pose_controller_r.x = round(-poses["yellow"]["x"], 6)
+                    self.pose_controller_r.y = round(poses["yellow"]["y"] + 1, 6)
+                    self.pose_controller_r.z = round(poses["yellow"]["z"], 6)
 
                     self.pose.x = round(-poses["blue"]["x"] - 0.01, 6)
                     self.pose.y = round(poses["blue"]["y"] + 1 - 0.07, 6)
-                    self.pose.z = round(poses["blue"]["z"], 6)
+                    self.pose.z = round(poses["blue"]["z"] + 0.05, 6)
 
                     await asyncio.sleep(self.coro_keep_alive["get_location"][1])
 
@@ -143,14 +157,10 @@ class Poser(templates.PoserTemplate):
     @templates.thread_register(1 / 100)
     async def serial_listener_2(self):
         """Get controller data from serial."""
-        past_velocity = [0, 0, 0]
-        velocity_until_reset = 0
-        temp_for_offz = {"x": 0, "y": 0, "z": 0}
-
         irl_rot_off = Quaternion.from_z_rotation(np.pi/2) # imu on this controller is rotated 90 degrees irl for me
 
         my_off = Quaternion()
-        with serial.Serial(self.serialPaths["green"], 115200, timeout=1 / 4) as ser:
+        with serial.Serial(self.serialPaths["cont_l"], 115200, timeout=1 / 4) as ser:
             with serial.threaded.ReaderThread(ser, u.SerialReaderFactory) as protocol:
                 for _ in range(10):
                     protocol.write_line("nut")
@@ -163,56 +173,13 @@ class Poser(templates.PoserTemplate):
                         if len(gg) > 0:
                             (w, x, y, z, trgr, grp, util, sys, menu, padClk, padY, padX,) = gg
 
-                            # if velocity_until_reset < 20:
-
-                            #     u.rotate_y(
-                            #         {"": temp_for_offz}, math.radians(-yaw_offset),
-                            #     )
-                            #     past_velocity = [
-                            #         temp_for_offz["x"],
-                            #         temp_for_offz["y"],
-                            #         temp_for_offz["z"],
-                            #     ]
-                            #     temp_for_offz["x"] = round(
-                            #         past_velocity[0]
-                            #         - ax * self.coro_keep_alive["serial_listener_2"][1] * 0.005,
-                            #         4,
-                            #     )
-                            #     temp_for_offz["y"] = round(
-                            #         past_velocity[1]
-                            #         - ay * self.coro_keep_alive["serial_listener_2"][1] * 0.005,
-                            #         4,
-                            #     )
-                            #     temp_for_offz["z"] = round(
-                            #         past_velocity[2]
-                            #         - az * self.coro_keep_alive["serial_listener_2"][1] * 0.005,
-                            #         4,
-                            #     )
-                            #     u.rotate_y(
-                            #         {"": temp_for_offz}, math.radians(yaw_offset),
-                            #     )
-
-                            #     if self.useVelocity:
-                            #         self.temp_pose.vel_x = temp_for_offz["x"]
-                            #         self.temp_pose.vel_y = temp_for_offz["y"]
-                            #         self.temp_pose.vel_z = temp_for_offz["z"]
-
-                            #     velocity_until_reset += 1
-
-                            # else:
-                            #     velocity_until_reset = 0
-                            #     temp_for_offz = {"x": 0, "y": 0, "z": 0}
-                            #     self.temp_pose.vel_x = 0
-                            #     self.temp_pose.vel_y = 0
-                            #     self.temp_pose.vel_z = 0
-
                             my_q = Quaternion([-y, z, -x, w])
 
                             my_q = my_off * my_q * irl_rot_off
-                            self.temp_pose.r_w = round(my_q[3], 5)
-                            self.temp_pose.r_x = round(my_q[0], 5)
-                            self.temp_pose.r_y = round(my_q[1], 5)
-                            self.temp_pose.r_z = round(my_q[2], 5)
+                            self.pose_controller_l.r_w = round(my_q[3], 5)
+                            self.pose_controller_l.r_x = round(my_q[0], 5)
+                            self.pose_controller_l.r_y = round(my_q[1], 5)
+                            self.pose_controller_l.r_z = round(my_q[2], 5)
 
                             self.temp_pose.trigger_value = trgr
                             self.temp_pose.grip = grp
@@ -229,12 +196,6 @@ class Poser(templates.PoserTemplate):
 
                             elif self.temp_pose.trackpad_x < -0.6 and util:
                                 self.mode = 0
-
-                            elif self.temp_pose.trackpad_y < -0.6 and util:
-                                self.useVelocity = False
-
-                            elif self.temp_pose.trackpad_y > 0.6 and util:
-                                self.useVelocity = True
 
                             elif util:
                                 my_off = Quaternion([0, z, 0, w]).inverse.normalised
@@ -258,11 +219,46 @@ class Poser(templates.PoserTemplate):
                         print(f"{self.serial_listener_2.__name__}: {e}")
                         break
 
+
+    @templates.thread_register(1 / 100)
+    async def serial_listener3(self):
+        """Get orientation data from serial."""
+        irl_rot_off = Quaternion.from_x_rotation(np.pi/3) # imu on this controller is rotated 90 degrees irl for me
+
+        my_off = Quaternion()
+        with serial.Serial(self.serialPaths["cont_r"], 115200, timeout=1 / 5) as ser2:
+            with serial.threaded.ReaderThread(ser2, u.SerialReaderFactory) as protocol:
+                protocol.write_line("nut")
+                await asyncio.sleep(5)
+
+                while self.coro_keep_alive["serial_listener3"][0]:
+                    try:
+                        gg = u.get_numbers_from_text(protocol.last_read, ',')
+
+                        if len(gg) > 0:
+                            w, x, y, z = gg
+                            my_q = Quaternion([-y, z, -x, w])
+
+                            if self._serialResetYaw:
+                                my_off = Quaternion([0, z, 0, w]).inverse.normalised
+
+                            my_q = my_off * my_q * irl_rot_off
+                            self.pose_controller_r.r_w = round(my_q[3], 5)
+                            self.pose_controller_r.r_x = round(my_q[0], 5)
+                            self.pose_controller_r.r_y = round(my_q[1], 5)
+                            self.pose_controller_r.r_z = round(my_q[2], 5)
+
+                        await asyncio.sleep(self.coro_keep_alive["serial_listener3"][1])
+
+                    except Exception as e:
+                        print(f"{self.serial_listener.__name__}: {e}")
+                        break
+
     @templates.thread_register(1 / 100)
     async def serial_listener(self):
         """Get orientation data from serial."""
         my_off = Quaternion()
-        with serial.Serial(self.serialPaths["blue"], 115200, timeout=1 / 5) as ser2:
+        with serial.Serial(self.serialPaths["hmd"], 115200, timeout=1 / 5) as ser2:
             with serial.threaded.ReaderThread(ser2, u.SerialReaderFactory) as protocol:
                 protocol.write_line("nut")
                 await asyncio.sleep(5)
