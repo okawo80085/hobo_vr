@@ -240,7 +240,7 @@ class ControllerState(Pose):
         self.system: int = system  # 0 or 1
         self.menu: int = menu  # 0 or 1
         self.trackpad_click: int = trackpad_click  # 0 or 1
-        self.trigger_value: int = trigger_value  # 0 or 1
+        self.trigger_value: int = trigger_value  # from 0 to 1
         self.trackpad_x: float = trackpad_x  # from -1 to 1
         self.trackpad_y: float = trackpad_y  # from -1 to 1
         self.trackpad_touch: int = trackpad_touch  # 0 or 1
@@ -263,22 +263,20 @@ class PoserTemplate:
     """
     Poser base class.
 
-    self.main() -
-
     supplies 3 tracked device pose dicts:
         self.pose - hmd pose, position, orientation, velocity and angular velocity only
-        self.poseControllerR - same as hmd pose +controller inputs for controller 1
-        self.poseControllerL - same as hmd pose +controller inputs for controller 2
+        self.pose_controller_r - same as hmd pose +controller inputs for controller 1
+        self.pose_controller_l - same as hmd pose +controller inputs for controller 2
     
     more info on poses/message format:
         https://github.com/okawo80085/hobo_vr/wiki/poser-message-format
 
     supplies a last message from server buffer:
-        self.lastRead - string containing the last message from the server
+        self.last_read - string containing the last message from the server
 
     supplies threading vars:
         self.coro_list - list of all methods recognized as threads
-        self.coro_keepAlive - dict of all registered threads, containing self.coro_keepAlive['threadMethodName'] = [KeepAliveBool, SleepDelay], the dict is populated at self.main() call
+        self.coro_keep_alive - dict of all registered threads, containing self.coro_keepAlive['threadMethodName'] = [KeepAliveBool, SleepDelay], the dict is populated at self.main() call
 
     this base class also has 3 built in threads, it is not recommended you override any of them:
         self.send - sends all pose data to the server
@@ -299,10 +297,10 @@ class PoserTemplate:
 
             @thread_register(0.5)
             async def example_thread(self):
-                while self.coro_keepAlive['example_thread'][0]:
+                while self.coro_keep_alive['example_thread'][0]:
                     self.pose['x'] += 0.04
 
-                    await asyncio.sleep(self.coro_keepAlive['example_thread'][1])
+                    await asyncio.sleep(self.coro_keep_alive['example_thread'][1])
 
         poser = MyPoser()
 
@@ -416,8 +414,11 @@ class PoserTemplate:
 
         print("closing...")
         for key in self.coro_keep_alive:
-            self.coro_keep_alive[key][0] = False
-            print(f"{key} stop sent...")
+            if self.coro_keep_alive[key][0]:
+                self.coro_keep_alive[key][0] = False
+                print(f"{key} stop sent...")
+            else:
+                print(f"{key} already stopped")
 
         await asyncio.sleep(1)
 
