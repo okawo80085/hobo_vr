@@ -21,15 +21,15 @@ from aioconsole import ainput
 
 poser = templates.PoserClient()
 
-START_POS = np.array([2, -0.5, 2], dtype=np.float64) # [x, y, z]
+START_POS = np.array([-0.124638+(3.3/2), -1.439744, 0.623368+1], dtype=np.float64) # [x, y, z]
 
-ROOM_CENTER = np.array([0, -2, 1.5], dtype=np.float64) # [x, y, z]
+ROOM_CENTER = np.array([-0.124638, -3.439744, 0.623368], dtype=np.float64) # [x, y, z]
 
 
 STEP = 0.1
 STEP_MUL = -1
 
-NUM_ITER = 20
+NUM_ITER = 33
 
 APPLY_DIM = np.array([
             [1, 0, 0],
@@ -88,7 +88,6 @@ async def example_thread():
 
             await asyncio.sleep(poser.coro_keep_alive["example_thread"][1])
 
-    print ('drawing boundaries done')
 
     poser.pose_controller_r.trigger_value = 0
     poser.pose_controller_r.trigger_click = 0
@@ -98,6 +97,7 @@ async def example_thread():
 
     poser.coro_keep_alive["example_thread"][0] = False
     await asyncio.sleep(1/10)
+    print ('drawing boundaries done')
 
     poser.coro_keep_alive["close"][0] = False # close poser
 
