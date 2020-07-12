@@ -335,6 +335,8 @@ class BlobTracker(threading.Thread):
         if not self.can_track:
             self._vs.end()
             self._vs = None
+            raise RuntimeError('invalid video source')
+
 
         self.frame_height, self.frame_width, _ = frame.shape if self.can_track else (0, 0, 0)
 

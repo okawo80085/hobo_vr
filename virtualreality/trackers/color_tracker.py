@@ -27,6 +27,7 @@ import serial.threaded
 import pyrr
 from pyrr import Quaternion
 from docopt import docopt
+import glob
 
 from ..util import utilz as u
 from .. import __version__
@@ -37,6 +38,12 @@ from ..calibration.manual_color_mask_calibration import load_mapdata_from_file
 from ..server import server
 from ..templates import ControllerState
 
+def check_serial_dict(ser_dict, key):
+    if key in ser_dict:
+        if ser_dict[key] in glob.glob("/dev/tty[A-Za-z]*"):
+            return True
+
+    return False
 
 class Poser(templates.PoserTemplate):
     """A pose estimator."""
@@ -51,7 +58,7 @@ class Poser(templates.PoserTemplate):
 
         self.mode = 0
         self._serialResetYaw = False
-        self.useVelocity = False
+        self.usePos = True
 
         self.camera = camera
         self.width = width
@@ -126,7 +133,8 @@ class Poser(templates.PoserTemplate):
             )
 
         except Exception as e:
-            print(f"failed to init location tracker: {repr(e)}")
+            print(f"failed to init get_location: {e}")
+            self.coro_keep_alive["get_location"][0] = False
             return
 
         with t1:
@@ -136,17 +144,18 @@ class Poser(templates.PoserTemplate):
 
                     u.rotate(poses, offsets)
 
-                    self.pose_controller_l.x = round(-poses["green"]["x"], 6)
-                    self.pose_controller_l.y = round(poses["green"]["y"] + 1, 6)
-                    self.pose_controller_l.z = round(poses["green"]["z"], 6)
+                    if self.usePos:
+                        self.pose_controller_l.x = round(-poses["green"]["x"], 6)
+                        self.pose_controller_l.y = round(poses["green"]["y"], 6)
+                        self.pose_controller_l.z = round(poses["green"]["z"], 6)
 
-                    self.pose_controller_r.x = round(-poses["yellow"]["x"], 6)
-                    self.pose_controller_r.y = round(poses["yellow"]["y"] + 1, 6)
-                    self.pose_controller_r.z = round(poses["yellow"]["z"], 6)
+                        self.pose_controller_r.x = round(-poses["yellow"]["x"], 6)
+                        self.pose_controller_r.y = round(poses["yellow"]["y"], 6)
+                        self.pose_controller_r.z = round(poses["yellow"]["z"], 6)
 
-                    self.pose.x = round(-poses["blue"]["x"] - 0.01, 6)
-                    self.pose.y = round(poses["blue"]["y"] + 1 - 0.07, 6)
-                    self.pose.z = round(poses["blue"]["z"] + 0.05, 6)
+                        self.pose.x = round(-poses["blue"]["x"] - 0.01, 6)
+                        self.pose.y = round(poses["blue"]["y"] - 0.07, 6)
+                        self.pose.z = round(poses["blue"]["z"] + 0.05, 6)
 
                     await asyncio.sleep(self.coro_keep_alive["get_location"][1])
 
@@ -154,19 +163,26 @@ class Poser(templates.PoserTemplate):
                     print("stopping get_location:", e)
                     break
 
+        self.coro_keep_alive["get_location"][0] = False
+
     @templates.thread_register(1 / 100)
-    async def serial_listener_2(self):
+    async def serial_listener2(self):
         """Get controller data from serial."""
         irl_rot_off = Quaternion.from_z_rotation(np.pi/2) # imu on this controller is rotated 90 degrees irl for me
 
         my_off = Quaternion()
+
+        if not check_serial_dict(self.serialPaths, 'cont_l'):
+            print ('failed to init serial_listener2: bad serial dict for key \'cont_l\'')
+            self.coro_keep_alive["serial_listener2"][0] = False
+            return
+
         with serial.Serial(self.serialPaths["cont_l"], 115200, timeout=1 / 4) as ser:
             with serial.threaded.ReaderThread(ser, u.SerialReaderFactory) as protocol:
-                for _ in range(10):
-                    protocol.write_line("nut")
-                    await asyncio.sleep(1)
+                protocol.write_line("nut")
+                await asyncio.sleep(5)
 
-                while self.coro_keep_alive["serial_listener_2"][0]:
+                while self.coro_keep_alive["serial_listener2"][0]:
                     try:
                         gg = u.get_numbers_from_text(protocol.last_read, ',')
 
@@ -197,6 +213,12 @@ class Poser(templates.PoserTemplate):
                             elif self.temp_pose.trackpad_x < -0.6 and util:
                                 self.mode = 0
 
+                            elif self.temp_pose.trackpad_y > 0.6 and util:
+                                self.usePos = True
+
+                            elif self.temp_pose.trackpad_y < -0.6 and util:
+                                self.usePos = False
+
                             elif util:
                                 my_off = Quaternion([0, z, 0, w]).inverse.normalised
                                 self._serialResetYaw = True
@@ -213,12 +235,12 @@ class Poser(templates.PoserTemplate):
                         else:
                             self.temp_pose.trigger_click = 0
 
-                        await asyncio.sleep(self.coro_keep_alive["serial_listener_2"][1])
+                        await asyncio.sleep(self.coro_keep_alive["serial_listener2"][1])
 
                     except Exception as e:
-                        print(f"{self.serial_listener_2.__name__}: {e}")
+                        print(f"{self.serial_listener2.__name__}: {e}")
                         break
-
+        self.coro_keep_alive["serial_listener2"][0] = False
 
     @templates.thread_register(1 / 100)
     async def serial_listener3(self):
@@ -226,6 +248,12 @@ class Poser(templates.PoserTemplate):
         irl_rot_off = Quaternion.from_x_rotation(np.pi/3) # imu on this controller is rotated 90 degrees irl for me
 
         my_off = Quaternion()
+
+        if not check_serial_dict(self.serialPaths, 'cont_r'):
+            print ('failed to init serial_listener3: bad serial dict for key \'cont_r\'')
+            self.coro_keep_alive["serial_listener3"][0] = False
+            return
+
         with serial.Serial(self.serialPaths["cont_r"], 115200, timeout=1 / 5) as ser2:
             with serial.threaded.ReaderThread(ser2, u.SerialReaderFactory) as protocol:
                 protocol.write_line("nut")
@@ -253,11 +281,19 @@ class Poser(templates.PoserTemplate):
                     except Exception as e:
                         print(f"{self.serial_listener.__name__}: {e}")
                         break
+        self.coro_keep_alive["serial_listener3"][0] = False
 
     @templates.thread_register(1 / 100)
     async def serial_listener(self):
         """Get orientation data from serial."""
         my_off = Quaternion()
+
+        if not check_serial_dict(self.serialPaths, 'hmd'):
+            print ('failed to init serial_listener: bad serial dict for key \'hmd\'')
+            self.coro_keep_alive["serial_listener"][0] = False
+            return
+
+
         with serial.Serial(self.serialPaths["hmd"], 115200, timeout=1 / 5) as ser2:
             with serial.threaded.ReaderThread(ser2, u.SerialReaderFactory) as protocol:
                 protocol.write_line("nut")
@@ -285,6 +321,7 @@ class Poser(templates.PoserTemplate):
                     except Exception as e:
                         print(f"{self.serial_listener.__name__}: {e}")
                         break
+        self.coro_keep_alive["serial_listener"][0] = False
 
 def run_poser_only(addr="127.0.0.1", cam=4, colordata=None, mapdata=None):
     """Run the poser only. The server must be started in another program."""
