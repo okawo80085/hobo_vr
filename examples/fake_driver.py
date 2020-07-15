@@ -20,7 +20,7 @@ from moderngl_window import geometry
 from base import CameraWindow
 from virtualreality.util import driver
 
-myDriver = driver.DummyDriverReceiver2('h13 c22 c22') # receiver is global, too bad!
+myDriver = driver.DummyDriverReceiver2('h13 c22 c22 t13 t13 t13') # receiver is global, too bad!
 
 class Device_hmd(moderngl_window.WindowConfig):
     def __init__(self, ctx, color):

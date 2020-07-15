@@ -5,7 +5,7 @@ import warnings
 
 from ..util import utilz as u
 from .poses import *
-
+import re
 
 
 class UduPoserTemplate:
@@ -90,25 +90,31 @@ class UduPoserTemplate:
             "recv": [True, recv_delay],
         }
 
+        re_s = re.search('([hct][ ]{0,1})+', expected_pose_struct)
+
+        if not expected_pose_struct or re_s is None:
+            raise RuntimeError('empty pose struct')
+
+        if re_s.group() != expected_pose_struct:
+            raise RuntimeError(f'invalid pose struct: {repr(expected_pose_struct)}')
+
         self.poses = []
-        self.device_types = expected_pose_struct
+        self.device_types = expected_pose_struct.split(' ')
 
-        if not self.device_types:
-            raise RuntimeError(f'empty pose struct')
-
-        new_struct = ''
+        new_struct = []
         for i in self.device_types:
             if i == 'h' or i == 't':
-                self.poses.append(tt.Pose())
-                print (f'added an hmd/tracker device')
-                new_struct += f'{i}{len(self.poses[-1])}'
+                self.poses.append(Pose())
+                new_struct.append(f'{i}{len(self.poses[-1])}')
 
             elif i == 'c':
-                self.poses.append(tt.ControllerState())
-                print (f'added a controller device')
-                new_struct += f'{i}{len(self.poses[-1])}'
+                self.poses.append(ControllerState())
+                new_struct.append(f'{i}{len(self.poses[-1])}')
+
+        new_struct = ' '.join(new_struct)
 
         print (f'total of {len(self.poses)} devices have been added, a new pose struct has been generated: {repr(new_struct)}')
+        print ('full device list is available through self.poses')
 
         self.last_read = ""
 
@@ -135,7 +141,7 @@ class UduPoserTemplate:
 
                 poses = []
                 for i in range(len(self.device_types)):
-                    poses += [str(i) for i in tt.get_slot_values(self.poses[i])]
+                    poses += [str(j) for j in get_slot_values(self.poses[i])]
 
                 msg = u.format_str_for_write(' '.join(poses))
 
