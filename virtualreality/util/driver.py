@@ -114,12 +114,12 @@ class DummyDriverReceiver(threading.Thread):
         self.alive = False
 
 
-class DummyDriverReceiver2(threading.Thread):
+class UduDummyDriverReceiver(threading.Thread):
     """
     no docs, again... too bad!
 
     example:
-    t = DummyDriverReceiver2('h13 c22 c22', addr='192.168.31.60', port=6969)
+    t = UduDummyDriverReceiver('h13 c22 c22', addr='192.168.31.60', port=6969)
 
     with t:
         t.send('hello') # driver id message
