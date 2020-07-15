@@ -1,3 +1,5 @@
+'''a colection of receivers used in drivers, for debugging, actually used receiver is writen in c++'''
+
 import socket
 import time
 import threading

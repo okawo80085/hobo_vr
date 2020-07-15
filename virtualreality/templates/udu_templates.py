@@ -1,4 +1,4 @@
-"""Templates for pose estimators, or posers."""
+"""Templates for pose estimators, or posers. unlimited devices upgrade version."""
 import asyncio
 import numbers
 import warnings
@@ -6,15 +6,15 @@ import warnings
 from ..util import utilz as u
 from .poses import *
 
-class PoserTemplate:
+
+
+class UduPoserTemplate:
     """
     Poser base class.
 
-    supplies 3 tracked device pose dicts:
-        self.pose - hmd pose, position, orientation, velocity and angular velocity only
-        self.pose_controller_r - same as hmd pose +controller inputs for controller 1
-        self.pose_controller_l - same as hmd pose +controller inputs for controller 2
-    
+    supplies a list of poses:
+        self.poses - pose object will correspond to value of expected_pose_struct, keep in mind that only 3 types of devices are supported(h-hmd, c-controller, t-tracker)
+
     more info on poses/message format:
         https://github.com/okawo80085/hobo_vr/wiki/poser-message-format
 
@@ -60,11 +60,12 @@ class PoserTemplate:
     """
 
     def __init__(
-        self, *, addr="127.0.0.1", port=6969, send_delay=1 / 100, recv_delay=1 / 1000, **kwargs,
+        self, expected_pose_struct, *, addr="127.0.0.1", port=6969, send_delay=1 / 100, recv_delay=1 / 1000, **kwargs,
     ):
         """
         Create the poser template.
 
+        :param expected_pose_struct: is the expected pose struct, should match this regex: ([hct][ ]{0,1})+
         :param addr: is the address of the server to connect to, stored in self.addr
         :param port: is the port of the server to connect to, stored in self.port
         :param send_delay: sleep delay for the self.send thread(in seconds)
@@ -89,9 +90,26 @@ class PoserTemplate:
             "recv": [True, recv_delay],
         }
 
-        self.pose = Pose()
-        self.pose_controller_r = ControllerState(pose=(0.5, 1, -1, 1, 0, 0, 0))
-        self.pose_controller_l = ControllerState(pose=(0.5, 1.1, -1, 1, 0, 0, 0))
+        self.poses = []
+        self.device_types = expected_pose_struct
+
+        if not self.device_types:
+            raise RuntimeError(f'empty pose struct')
+
+        new_struct = ''
+        for i in self.device_types:
+            if i == 'h' or i == 't':
+                self.poses.append(tt.Pose())
+                print (f'added an hmd/tracker device')
+                new_struct += f'{i}{len(self.poses[-1])}'
+
+            elif i == 'c':
+                self.poses.append(tt.ControllerState())
+                print (f'added a controller device')
+                new_struct += f'{i}{len(self.poses[-1])}'
+
+        print (f'total of {len(self.poses)} devices have been added, a new pose struct has been generated: {repr(new_struct)}')
+
         self.last_read = ""
 
     async def _socket_init(self):
@@ -114,13 +132,12 @@ class PoserTemplate:
         """Send all poses thread."""
         while self.coro_keep_alive["send"][0]:
             try:
-                msg = u.format_str_for_write(
-                    " ".join(
-                        [str(i) for i in get_slot_values(self.pose)]
-                        + [str(i) for i in get_slot_values(self.pose_controller_r)]
-                        + [str(i) for i in get_slot_values(self.pose_controller_l)]
-                    )
-                )
+
+                poses = []
+                for i in range(len(self.device_types)):
+                    poses += [str(i) for i in tt.get_slot_values(self.poses[i])]
+
+                msg = u.format_str_for_write(' '.join(poses))
 
                 self.writer.write(msg)
 
@@ -188,41 +205,7 @@ class PoserTemplate:
         )
 
 
-def thread_register(sleepDelay, runInDefaultExecutor=False):
-    """
-    Register thread for PoserTemplate base class.
-
-    sleepDelay - sleep delay in seconds
-    runInDefaultExecutor - bool, set True if you want the function to be executed in asyncio's default pool executor
-    """
-
-    def _thread_reg(func):
-        def _thread_reg_wrapper(self, *args, **kwargs):
-
-            if not asyncio.iscoroutinefunction(func) and not runInDefaultExecutor:
-                raise ValueError(f"{repr(func)} is not a coroutine function and runInDefaultExecutor is set to False")
-
-            if func.__name__ not in self.coro_keep_alive and func.__name__ in self.coro_list:
-                self.coro_keep_alive[func.__name__] = [True, sleepDelay]
-
-            else:
-                warnings.warn("thread register ignored, thread already exists", RuntimeWarning)
-
-            if runInDefaultExecutor:
-                loop = asyncio.get_running_loop()
-
-                return loop.run_in_executor(None, func, self, *args, **kwargs)
-
-            return func(self, *args, **kwargs)
-
-        setattr(_thread_reg_wrapper, "__name__", func.__name__)
-
-        return _thread_reg_wrapper
-
-    return _thread_reg
-
-
-class PoserClient(PoserTemplate):
+class UduPoserClient(UduPoserTemplate):
     """
     PoserClient.
 
