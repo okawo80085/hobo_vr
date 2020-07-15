@@ -22,6 +22,75 @@ from virtualreality.util import driver
 
 myDriver = driver.DummyDriverReceiver2('h13 c22 c22') # receiver is global, too bad!
 
+class Device_hmd(moderngl_window.WindowConfig):
+    def __init__(self, ctx, color):
+        self.ctx = ctx
+        self.color = color
+
+        self.meshes = [
+            geometry.cube(size=np.array((7, 5, 1))/2, center=(0, 0, 0)),
+            geometry.cube(size=np.array((2, 2, 1))/2, center=(0, 0, 2))
+            ]
+
+        self.basic_light_prog = self.load_program('programs/shadow_mapping/directional_light.glsl')
+        self.basic_light_prog['shadowMap'].value = 0
+        self.basic_light_prog['color'].value = self.color
+
+    def render(self, prog):
+        for i in self.meshes:
+            i.render(prog)
+
+    def write_bl(self, pose, camera, m_shadow_bias, lightDir):
+        x, y, z, w, rx, ry, rz = pose[:7]
+        # y = -y
+        ry = -ry
+        rx = -rx
+        rz = -rz
+
+        rotz = Matrix44.from_quaternion([rx, ry, rz, w], dtype='f4')
+        mat1 = Matrix44.from_translation([x*10, y*10, z*10], dtype='f4')
+
+        self.basic_light_prog['m_model'].write(mat1*rotz)
+        self.basic_light_prog['m_proj'].write(camera.projection.matrix)
+        self.basic_light_prog['m_camera'].write(camera.matrix)
+        self.basic_light_prog['m_shadow_bias'].write(m_shadow_bias)
+        self.basic_light_prog['lightDir'].write(lightDir)
+
+class Device_cntrlr(moderngl_window.WindowConfig):
+    def __init__(self, ctx, color):
+        self.ctx = ctx
+        self.color = color
+
+        self.meshes = [
+            geometry.cube(size=np.array((2, 2, 5))/2, center=(0, 0, 0)),
+            geometry.cube(size=np.array((1, 1, 1))/2, center=(2, 0, 0)),
+            geometry.cube(size=np.array((1, 1, 1))/2, center=(0, 0, 4))
+            ]
+
+        self.basic_light_prog = self.load_program('programs/shadow_mapping/directional_light.glsl')
+        self.basic_light_prog['shadowMap'].value = 0
+        self.basic_light_prog['color'].value = self.color
+
+    def render(self, prog):
+        for i in self.meshes:
+            i.render(prog)
+
+    def write_bl(self, pose, camera, m_shadow_bias, lightDir):
+        x, y, z, w, rx, ry, rz = pose[:7]
+        # y = -y
+        ry = -ry
+        rx = -rx
+        rz = -rz
+
+        rotz = Matrix44.from_quaternion([rx, ry, rz, w], dtype='f4')
+        mat1 = Matrix44.from_translation([x*10, y*10, z*10], dtype='f4')
+
+        self.basic_light_prog['m_model'].write(mat1*rotz)
+        self.basic_light_prog['m_proj'].write(camera.projection.matrix)
+        self.basic_light_prog['m_camera'].write(camera.matrix)
+        self.basic_light_prog['m_shadow_bias'].write(m_shadow_bias)
+        self.basic_light_prog['lightDir'].write(lightDir)
+
 
 class ShadowMapping(CameraWindow):
     title = "Shadow Mapping"
@@ -46,17 +115,6 @@ class ShadowMapping(CameraWindow):
         )
 
         # Scene geometry
-        self.hmd = geometry.cube(size=np.array((7, 5, 1))/2, center=(0, 0, 0))
-        self.hmd2 = geometry.cube(size=np.array((2, 2, 1))/2, center=(0, 0, 2))
-
-        self.handL = geometry.cube(size=np.array((2, 2, 5))/2, center=(0, 0, 0))
-        self.handL2 = geometry.cube(size=np.array((1, 1, 1))/2, center=(2, 0, 0))
-        self.handL3 = geometry.cube(size=np.array((1, 1, 1))/2, center=(0, 0, 4))
-
-        self.handR = geometry.cube(size=np.array((2, 2, 5))/2, center=(0, 0, 0))
-        self.handR2 = geometry.cube(size=np.array((1, 1, 1))/2, center=(2, 0, 0))
-        self.handR3 = geometry.cube(size=np.array((1, 1, 1))/2, center=(0, 0, 4))
-
         self.floor = geometry.cube(size=np.array((100, 0.3, 100)), center=(0, -16, 0))
 
         # self.sun = geometry.sphere(radius=1.0)
@@ -74,18 +132,7 @@ class ShadowMapping(CameraWindow):
 
 
         self.shadowmap_program = self.load_program('programs/shadow_mapping/shadowmap.glsl')
-        self.basic_lightL = self.load_program('programs/shadow_mapping/directional_light.glsl')
-        self.basic_lightL['shadowMap'].value = 0
-        self.basic_lightL['color'].value = 0.0, 1.0, 0.0, 1.0
-
-        self.basic_lightR = self.load_program('programs/shadow_mapping/directional_light.glsl')
-        self.basic_lightR['shadowMap'].value = 0
-        self.basic_lightR['color'].value = 0.0, 0.0, 1.0, 1.0
-
-        self.basic_lightHmd = self.load_program('programs/shadow_mapping/directional_light.glsl')
-        self.basic_lightHmd['shadowMap'].value = 0
-        self.basic_lightHmd['color'].value = 1.0, 0.0, 0.0, 1
-
+ 
         self.basic_lightFloor = self.load_program('programs/shadow_mapping/directional_light.glsl')
         self.basic_lightFloor['shadowMap'].value = 0
         self.basic_lightFloor['color'].value = 1.0, 1.0, 1.0, 1
@@ -100,14 +147,22 @@ class ShadowMapping(CameraWindow):
         time = 2
         self.lightpos = Vector3((math.sin(time) * 20, 5, math.cos(time) * 20), dtype='f4')
 
+        self.device_list = []
+        np.random.seed(69)
+        for i in myDriver.device_order:
+            if i == 'h':
+                self.device_list.append(Device_hmd(self.ctx, tuple(np.random.randint(100, size=(4,))/100)))
+
+            elif i == 'c':
+                self.device_list.append(Device_cntrlr(self.ctx, tuple(np.random.randint(100, size=(4,))/100)))
+
+
     def render(self, time, frametime):
         self.ctx.enable_only(moderngl.DEPTH_TEST | moderngl.CULL_FACE)
         scene_pos = Vector3((0, -5, -32), dtype='f4')
 
-        hmd, cntl1, cntl2 = myDriver.get_pose()
-        # hmd = data[:13]
-        # cntl1 = data[13:13+22]
-        # cntl2 = data[13+22:13+22+22]
+        all_poses = myDriver.get_pose()
+        # hmd, cntl1, cntl2 = all_poses
 
         # --- PASS 1: Render shadow map
         self.offscreen.clear()
@@ -118,16 +173,8 @@ class ShadowMapping(CameraWindow):
         depth_mvp = depth_projection * depth_view
         self.shadowmap_program['mvp'].write(depth_mvp)
 
-        self.handL.render(self.shadowmap_program)
-        self.handL2.render(self.shadowmap_program)
-        self.handL3.render(self.shadowmap_program)
-
-        self.handR.render(self.shadowmap_program)
-        self.handR2.render(self.shadowmap_program)
-        self.handR3.render(self.shadowmap_program)
-
-        self.hmd.render(self.shadowmap_program)
-        self.hmd2.render(self.shadowmap_program)
+        for i in range(len(myDriver.device_order)):
+            self.device_list[i].render(self.shadowmap_program)
 
         self.floor.render(self.shadowmap_program)
 
@@ -148,63 +195,19 @@ class ShadowMapping(CameraWindow):
 
         self.offscreen_depth.use(location=0)
 
-        x, y, z, w, rx, ry, rz = cntl2[:7]
-        # y = -y
-        ry = -ry
-        rx = -rx
-        rz = -rz
+        for i in range(len(myDriver.device_order)):
+            self.device_list[i].write_bl(
+                all_poses[i],
+                self.camera,
+                matrix44.multiply(depth_mvp, bias_matrix),
+                self.lightpos
+                )
 
-        rotz = Matrix44.from_quaternion([rx, ry, rz, w], dtype='f4')
-        mat1 = Matrix44.from_translation([x*10, y*10, z*10], dtype='f4')
-
-        self.basic_lightL['m_model'].write(mat1*rotz)
-        self.basic_lightL['m_proj'].write(self.camera.projection.matrix)
-        self.basic_lightL['m_camera'].write(self.camera.matrix)
-        self.basic_lightL['m_shadow_bias'].write(matrix44.multiply(depth_mvp, bias_matrix))
-        self.basic_lightL['lightDir'].write(self.lightpos)
-
-        x, y, z, w, rx, ry, rz = cntl1[:7]
-        # y = -y
-        ry = -ry
-        rx = -rx
-        rz = -rz
-
-        rotz = Matrix44.from_quaternion([rx, ry, rz, w], dtype='f4')
-        mat1 = Matrix44.from_translation([x*10, y*10, z*10], dtype='f4')
-
-        self.basic_lightR['m_model'].write(mat1*rotz)
-        self.basic_lightR['m_proj'].write(self.camera.projection.matrix)
-        self.basic_lightR['m_camera'].write(self.camera.matrix)
-        self.basic_lightR['m_shadow_bias'].write(matrix44.multiply(depth_mvp, bias_matrix))
-        self.basic_lightR['lightDir'].write(self.lightpos)
+        for i in range(len(myDriver.device_order)):
+            self.device_list[i].render(self.device_list[i].basic_light_prog)
 
 
-        x, y, z, w, rx, ry, rz = hmd[:7]
-        # y = -y
-        ry = -ry
-        rx = -rx
-        rz = -rz
-
-        rotz = Matrix44.from_quaternion([rx, ry, rz, w], dtype='f4')
-        mat1 = Matrix44.from_translation([x*10, y*10, z*10], dtype='f4')
-
-        self.basic_lightHmd['m_model'].write(mat1*rotz)
-        self.basic_lightHmd['m_proj'].write(self.camera.projection.matrix)
-        self.basic_lightHmd['m_camera'].write(self.camera.matrix)
-        self.basic_lightHmd['m_shadow_bias'].write(matrix44.multiply(depth_mvp, bias_matrix))
-        self.basic_lightHmd['lightDir'].write(self.lightpos)
-
-        self.handL.render(self.basic_lightL)
-        self.handL2.render(self.basic_lightL)
-        self.handL3.render(self.basic_lightL)
-
-        self.handR.render(self.basic_lightR)
-        self.handR2.render(self.basic_lightR)
-        self.handR3.render(self.basic_lightR)
-
-        self.hmd.render(self.basic_lightHmd)
-        self.hmd2.render(self.basic_lightHmd)
-
+        # floor
         self.basic_lightFloor['m_model'].write(Matrix44.from_translation((0, 0, 0), dtype='f4'))
         self.basic_lightFloor['m_proj'].write(self.camera.projection.matrix)
         self.basic_lightFloor['m_camera'].write(self.camera.matrix)
