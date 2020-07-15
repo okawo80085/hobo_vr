@@ -20,7 +20,7 @@ from moderngl_window import geometry
 from base import CameraWindow
 from virtualreality.util import driver
 
-myDriver = driver.DummyDriverReceiver2('h13 c22 c22') # receiver is global, too bad!
+myDriver = driver.DummyDriverReceiver2('h13 c22 t22') # receiver is global, too bad!
 
 class Device_hmd(moderngl_window.WindowConfig):
     def __init__(self, ctx, color):
@@ -91,6 +91,43 @@ class Device_cntrlr(moderngl_window.WindowConfig):
         self.basic_light_prog['m_shadow_bias'].write(m_shadow_bias)
         self.basic_light_prog['lightDir'].write(lightDir)
 
+class Device_trkr(moderngl_window.WindowConfig):
+    def __init__(self, ctx, color):
+        self.ctx = ctx
+        self.color = color
+
+        self.meshes = [
+            geometry.cube(size=np.array((2, 2, 1))/2, center=(0, 0, 0)),
+            geometry.cube(size=np.array((1, 1, 1))/2, center=(2, 0, 0)),
+            geometry.cube(size=np.array((1, 1, 1))/2, center=(0, 1.5, 0)),
+            geometry.cube(size=np.array((1, 1, 1))/2, center=(0, 0, 3)),
+            ]
+
+        self.basic_light_prog = self.load_program('programs/shadow_mapping/directional_light.glsl')
+        self.basic_light_prog['shadowMap'].value = 0
+        self.basic_light_prog['color'].value = self.color
+
+    def render(self, prog):
+        for i in self.meshes:
+            i.render(prog)
+
+    def write_bl(self, pose, camera, m_shadow_bias, lightDir):
+        x, y, z, w, rx, ry, rz = pose[:7]
+        # y = -y
+        ry = -ry
+        rx = -rx
+        rz = -rz
+
+        rotz = Matrix44.from_quaternion([rx, ry, rz, w], dtype='f4')
+        mat1 = Matrix44.from_translation([x*10, y*10, z*10], dtype='f4')
+
+        self.basic_light_prog['m_model'].write(mat1*rotz)
+        self.basic_light_prog['m_proj'].write(camera.projection.matrix)
+        self.basic_light_prog['m_camera'].write(camera.matrix)
+        self.basic_light_prog['m_shadow_bias'].write(m_shadow_bias)
+        self.basic_light_prog['lightDir'].write(lightDir)
+
+
 
 class ShadowMapping(CameraWindow):
     title = "Shadow Mapping"
@@ -156,6 +193,8 @@ class ShadowMapping(CameraWindow):
             elif i == 'c':
                 self.device_list.append(Device_cntrlr(self.ctx, tuple(np.random.randint(100, size=(4,))/100)))
 
+            elif i == 't':
+                self.device_list.append(Device_trkr(self.ctx, tuple(np.random.randint(100, size=(4,))/100)))
 
     def render(self, time, frametime):
         self.ctx.enable_only(moderngl.DEPTH_TEST | moderngl.CULL_FACE)
