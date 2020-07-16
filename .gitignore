@@ -30,3 +30,4 @@ dist
 driver/src/t
 *.mp3
 *.avi
+*.out

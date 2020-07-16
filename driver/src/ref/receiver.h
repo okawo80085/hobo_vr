@@ -1,12 +1,16 @@
 #ifndef RECEIVER_H
 #define RECEIVER_H
 
-#include <tchar.h>
-
 #pragma once
+
+#if defined(_WINDOWS)
+
+#include <tchar.h>
 
 #include <Ws2tcpip.h>
 #include <winsock2.h>
+
+#endif
 
 #pragma comment(lib, "Ws2_32.lib")
 

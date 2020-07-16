@@ -1,82 +1,68 @@
-#include <arpa/inet.h>
-#include <cstdio>
-#include <cstring>
-#include <iostream>
-#include <sstream>
-#include <sys/socket.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
-#define PORT 6969
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h> 
 
-using namespace std;
-
-double *convert2ss(char *buffer, int *len) {
-  int spacesCount = 0;
-  for (int i = 0; i < *len; i++) {
-    if (buffer[i] == ' ') {
-      spacesCount++;
-    }
-  }
-  spacesCount++;
-
-  string numbers[spacesCount];
-  for (int i = 0; i < spacesCount; i++) {
-    numbers[i] = "";
-  }
-  int index = 0;
-
-  for (int i = 0; i < *len; i++) {
-    if (buffer[i] == ' ') {
-      index++;
-    } else {
-      numbers[index] += buffer[i];
-    }
-  }
-  double *numz = new double[spacesCount];
-  for (int i = 0; i < spacesCount; i++) {
-    stringstream yeet(numbers[i]);
-    yeet >> numz[i];
-  }
-  *len = spacesCount;
-  return numz;
+void error(const char *msg)
+{
+    perror(msg);
+    exit(0);
 }
 
-int main() {
-  int sock = 0;
-  struct sockaddr_in serv_addr;
-  char *hello = "Hello from client\n";
-  char buffer[1024] = {0};
-  if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-    printf("\n Socket creation error \n");
-    return -1;
-  }
+int main(int argc, char *argv[])
+{
+    int sockfd, portno, n;
+    struct sockaddr_in serv_addr;
+    struct hostent *server;
 
-  serv_addr.sin_family = AF_INET;
-  serv_addr.sin_port = htons(PORT);
+    char buffer[256];
+    if (argc < 3) {
+       fprintf(stderr,"usage %s hostname port\n", argv[0]);
+       exit(0);
+    }
 
-  // Convert IPv4 and IPv6 addresses from text to binary form
-  if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
-    printf("\nInvalid address/ Address not supported \n");
-    return -1;
-  }
+    // ###########socket init############
+    portno = atoi(argv[2]);
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) 
+        error("ERROR opening socket");
+    server = gethostbyname(argv[1]);
+    if (server == NULL) {
+        fprintf(stderr,"ERROR, no such host\n");
+        exit(0);
+    }
+    bzero((char *) &serv_addr, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    bcopy((char *)server->h_addr, 
+         (char *)&serv_addr.sin_addr.s_addr,
+         server->h_length);
+    serv_addr.sin_port = htons(portno);
+    if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) 
+        error("ERROR connecting");
+    // ##################################
 
-  if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-    printf("\nConnection Failed \n");
-    return -1;
-  }
-  send(sock, hello, strlen(hello), 0);
-  printf("Hello message sent\n");
-  auto valread = read(sock, buffer, 1024);
-  if (valread < 0)
-    return -1;
 
-  int bufLen = 1024;
-  char buffer[1024] = {0};
-  double *z = convert2ss(buffer, &bufLen);
-  for (int i = 0; i < bufLen; i++) {
-    cout << z[i] + 5 << ", ";
-  }
-  delete z;
-  z = nullptr;
-  cout << '\n';
-  return 0;
+
+    // ##########msg send################
+    printf("Please enter the message: ");
+    bzero(buffer,256);
+    fgets(buffer,255,stdin);
+    n = write(sockfd,buffer,strlen(buffer));
+    if (n < 0) 
+         error("ERROR writing to socket");
+    // ##################################
+
+    // ##########msg read################
+    bzero(buffer,256);
+    n = read(sockfd,buffer,255);
+    if (n < 0) 
+         error("ERROR reading from socket");
+    printf("%s\n",buffer);
+    close(sockfd);
+    // ##################################
+    return 0;
 }
