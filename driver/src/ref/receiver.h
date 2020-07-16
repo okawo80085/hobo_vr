@@ -9,10 +9,19 @@
 
 #include <Ws2tcpip.h>
 #include <winsock2.h>
+#pragma comment(lib, "Ws2_32.lib")
+
+#else
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
+#include <unistd.h>
+#include <cstring>
 
 #endif
 
-#pragma comment(lib, "Ws2_32.lib")
 
 #include <vector>
 #include <string>
@@ -26,8 +35,13 @@
 #include <stdio.h>
 
 namespace SockReceiver {
+#if defined(_WINDOWS)
   int receive_till_zero( SOCKET sock, char* buf, int& numbytes, int max_packet_size )
   {
+#else
+  int receive_till_zero( int sock, char* buf, int& numbytes, int max_packet_size )
+  {
+#endif
     // receives a message until an end token is reached
     // thanks to https://stackoverflow.com/a/13528453/10190971
     int i = 0;
@@ -39,7 +53,12 @@ namespace SockReceiver {
           return i + 1; // return length of message
         }
       }
+
+#if defined(_WINDOWS)
       int n = recv( sock, buf + numbytes, max_packet_size - numbytes, 0 );
+#else
+      int n = read( sock, buf + numbytes, max_packet_size - numbytes);
+#endif
       if( n == -1 ) {
         return -1; // operation failed!
       }
@@ -97,7 +116,7 @@ namespace SockReceiver {
   }
 
 
-  class DriverReceiver{
+class DriverReceiver{
   public:
     DriverReceiver(int expected_pose_size, int port=6969) {
       this->eps = expected_pose_size;
@@ -222,7 +241,7 @@ namespace SockReceiver {
     bool threadKeepAlive;
     std::thread *m_pMyTread;
 
-    SOCKET mySoc;
+    int mySoc;
 
     static void my_thread_enter(DriverReceiver *ptr) {
       ptr->my_thread();

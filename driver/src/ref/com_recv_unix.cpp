@@ -62,6 +62,11 @@ int main(int argc, char *argv[])
     if (n < 0) 
          error("ERROR reading from socket");
     printf("%s\n",buffer);
+    // ##################################
+
+
+    // ##########close connection########
+    n = write(sockfd,"CLOSE\n",strlen("CLOSE\n"));
     close(sockfd);
     // ##################################
     return 0;
