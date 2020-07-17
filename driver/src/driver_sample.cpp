@@ -14,6 +14,11 @@
 
 #if defined(_WINDOWS)
 #include <windows.h>
+
+#else
+
+#define _stricmp strcasecmp
+
 #endif
 
 #include <cmath>
@@ -799,6 +804,8 @@ void CServerDriver_Sample::Cleanup() {
 }
 
 void CServerDriver_Sample::myTrackingThread() {
+#if defined(_WINDOWS)
+
   DWORD dwError, dwThreadPri;
 
   if(!SetThreadPriority(GetCurrentThread(), 15))
@@ -809,6 +816,8 @@ void CServerDriver_Sample::myTrackingThread() {
 
   dwThreadPri = GetThreadPriority(GetCurrentThread());
   DriverLog("current tracking thread priority: %d", dwThreadPri);
+#endif
+
 
   std::vector<double> tempPose;
   while (m_bMyThreadKeepAlive) {
