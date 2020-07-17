@@ -13,9 +13,9 @@
 
 #else
 
-#include <sys/types.h>
+// #include <sys/types.h>
 #include <sys/socket.h>
-#include <netinet/in.h>
+// #include <netinet/in.h>
 #include <netdb.h>
 #include <unistd.h>
 #include <cstring>
@@ -125,7 +125,7 @@ class DriverReceiver{
       for (int i=0; i<this->eps; i++) {
         this->newPose.push_back(0.0);
       }
-
+#if defined(_WINDOWS)
       // init winsock
       WSADATA wsaData;
       int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -175,6 +175,7 @@ class DriverReceiver{
         WSACleanup();
         throw std::runtime_error("failed to connect");
       }
+#endif
     }
 
     ~DriverReceiver() {
@@ -190,7 +191,7 @@ class DriverReceiver{
       if (!this->m_pMyTread || !this->threadKeepAlive) {
         // log failed to create recv thread
         // printf("thread start error\n");
-        this->close();
+        this->close_me();
 #ifdef DRIVERLOG_H
         DriverLog("receiver thread start error\n");
 #endif
@@ -199,18 +200,21 @@ class DriverReceiver{
     }
 
     void stop() {
-      this->close();
       this->threadKeepAlive = false;
       if (this->m_pMyTread) {
         this->m_pMyTread->join();
         delete this->m_pMyTread;
         this->m_pMyTread = nullptr;
       }
+      this->close_me();
     }
 
-    void close() {
+    void close_me() {
       if (this->mySoc != NULL) {
         int res = this->send2("CLOSE\n");
+
+#if defined(_WINDOWS)
+
         int iResult = closesocket(this->mySoc);
         if (iResult == SOCKET_ERROR) {
           // log closesocket error
@@ -218,11 +222,18 @@ class DriverReceiver{
 #ifdef DRIVERLOG_H
           DriverLog("receiver closesocket error: %d\n", WSAGetLastError());
 #endif
+
           WSACleanup();
           throw std::runtime_error("failed to closesocket");
         }
         else
           WSACleanup();
+
+#else
+
+      close(this->mySoc);
+
+#endif
       }
 
       this->mySoc = NULL;
@@ -231,7 +242,11 @@ class DriverReceiver{
     std::vector<double> get_pose() {return this->newPose;}
 
     int send2(const char* message) {
+#if defined(_WINDOWS)
       return send(this->mySoc, message, (int)strlen(message), 0);
+#else
+      return write(this->mySoc, message, (int)strlen(message));
+#endif
     }
 
   private:
@@ -241,7 +256,11 @@ class DriverReceiver{
     bool threadKeepAlive;
     std::thread *m_pMyTread;
 
+#if defined(_WINDOWS)
+    SOCKET mySoc;
+#else
     int mySoc;
+#endif
 
     static void my_thread_enter(DriverReceiver *ptr) {
       ptr->my_thread();
