@@ -118,6 +118,7 @@ namespace SockReceiver {
 
 class DriverReceiver{
   public:
+#if defined(_WINDOWS)
     DriverReceiver(int expected_pose_size, int port=6969) {
       this->eps = expected_pose_size;
       this->threadKeepAlive = false;
@@ -125,7 +126,8 @@ class DriverReceiver{
       for (int i=0; i<this->eps; i++) {
         this->newPose.push_back(0.0);
       }
-#if defined(_WINDOWS)
+
+
       // init winsock
       WSADATA wsaData;
       int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -175,8 +177,63 @@ class DriverReceiver{
         WSACleanup();
         throw std::runtime_error("failed to connect");
       }
-#endif
     }
+#else
+    DriverReceiver(int expected_pose_size, char *port="6969", char* addr="127.0.01") {
+      this->eps = expected_pose_size;
+      this->threadKeepAlive = false;
+
+      for (int i=0; i<this->eps; i++) {
+        this->newPose.push_back(0.0);
+      }
+
+      // placeholders
+      int portno, n;
+      struct sockaddr_in serv_addr;
+      struct hostent *server;
+
+      server = gethostbyname(addr); // oh and did i mention that this is also convoluted as shit in winsock?
+      portno = atoi(port);
+
+      this->mySoc = socket(AF_INET, SOCK_STREAM, 0); // create socket, surprisingly winsock didn't fuck this up
+
+      if (this->mySoc < 0) {
+        //log and throw
+#ifdef DRIVERLOG_H
+          DriverLog("receiver opening socket error");
+#endif
+          this->mySoc = NULL;
+          throw std::runtime_error("failed to open socket");
+      }
+
+      if (server == NULL){
+        //log and throw
+#ifdef DRIVERLOG_H
+          DriverLog("receiver bad host");
+#endif
+          this->mySoc = NULL;
+          throw std::runtime_error("bad host addr");
+      }
+
+      bzero((char *) &serv_addr, sizeof(serv_addr));
+      serv_addr.sin_family = AF_INET;
+
+      // a long ass function call just to copy the addr into a socket addr struct, still better then winsock
+      bcopy((char *)server->h_addr, 
+           (char *)&serv_addr.sin_addr.s_addr,
+           server->h_length);
+      serv_addr.sin_port = htons(portno); // copy port to the same struct
+
+      if (connect(this->mySoc,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) { // connect and check if successful
+        //log and throw
+#ifdef DRIVERLOG_H
+          DriverLog("receiver failed to connect to host");
+#endif
+          this->mySoc = NULL;
+          throw std::runtime_error("connection error");
+      }
+    }
+#endif
 
     ~DriverReceiver() {
       this->stop();
