@@ -12,6 +12,7 @@ t.py
 t2.py
 *.pyc
 *.jpg
+*.png
 t2.py
 openvr*.h
 !sample/bin
