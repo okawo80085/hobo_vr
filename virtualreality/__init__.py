@@ -2,6 +2,9 @@
 import logging
 import os
 
+from . import util
+from . import templates
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
  
@@ -16,9 +19,5 @@ logger_formatter = logging.Formatter('[%(asctime)s] %(name)s %(levelname)s - %(m
 logger_handler.setFormatter(logger_formatter)
 
 logger.addHandler(logger_handler)
-
-
-from . import util
-from . import templates
 
 __version__ = "0.1"
