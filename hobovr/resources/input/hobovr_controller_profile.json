@@ -1,16 +1,16 @@
 {
-	"jsonid": "input_profile",
-	"legacy_binding": "{hobovr}/input/legacy_binding_hobovr_controller.json",
-	"controller_type": "hobovr_controller",
-	"input_bindingui_mode": "controller_handed",
-	"input_bindingui_left": {
-		"transform" : "scale(-1,1)",
-		"image": "{hobovr}/icons/hobo_controller.svg"
-	},
-	"input_bindingui_right": {
-		"image": "{hobovr}/icons/hobo_controller.svg"
-	},
-	"input_source" :
+    "jsonid": "input_profile",
+    "legacy_binding": "{hobovr}/input/legacy_binding_hobovr_controller.json",
+    "controller_type": "hobovr_controller",
+    "input_bindingui_mode": "controller_handed",
+    "input_bindingui_left": {
+        "transform" : "scale(-1,1)",
+        "image": "{hobovr}/icons/hobovr_controller.svg"
+    },
+    "input_bindingui_right": {
+        "image": "{hobovr}/icons/hobovr_controller.svg"
+    },
+    "input_source" :
   {
     "/input/trackpad" : { 
         "type" : "trackpad",
