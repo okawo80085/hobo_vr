@@ -235,6 +235,10 @@ public:
         vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
 
     vr::VRProperties()->SetStringProperty(
+        m_ulPropertyContainer, Prop_InputProfilePath_String,
+        "{hobovr}/input/hobovr_hmd_profile.json");
+
+    vr::VRProperties()->SetStringProperty(
         m_ulPropertyContainer, Prop_ModelNumber_String, m_sModelNumber.c_str());
     vr::VRProperties()->SetStringProperty(m_ulPropertyContainer,
                                           Prop_RenderModelName_String,
