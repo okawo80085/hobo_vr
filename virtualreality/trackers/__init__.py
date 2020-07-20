@@ -5,7 +5,7 @@ import os
 logger = logging.getLogger(__name__)
 
 #logfile
-log_path = os.path.join(os.path.dirname(__file__), "../logs/server.log")
+log_path = os.path.join(os.path.dirname(__file__), "../logs/trackers.log")
 logger_handler = logging.FileHandler(log_path)
 logger_handler.setLevel(logging.DEBUG)
 
