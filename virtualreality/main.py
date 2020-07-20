@@ -13,6 +13,7 @@ usage: pyvr <command> [<args>...]
 options:
    -h, --help
 """
+import logging
 
 from docopt import docopt
 
@@ -20,8 +21,11 @@ from virtualreality import __version__
 
 
 def main():
+    logger = logging.getLogger()
     """Pyvr entry point."""
     args = docopt(__doc__, version=f"pyvr version {__version__}", options_first=True)
+
+    logger.debug("command: {}".format(args["<command>"]))
 
     if args["<command>"] == "calibrate":
         from virtualreality.calibration.manual_color_mask_calibration import main
