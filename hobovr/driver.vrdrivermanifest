@@ -1,0 +1,11 @@
+{
+	"alwaysActivate": false,
+	"name" : "hobo_vr",
+	"directory" : "",
+	"resourceOnly" : false,
+
+	"hmd_presence" :
+	[
+		"*.*"
+	]
+}

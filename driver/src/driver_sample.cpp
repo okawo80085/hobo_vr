@@ -105,22 +105,22 @@ CWatchdogDriver_Sample g_watchdogDriverNull;
 
 bool g_bExiting = false;
 
-void WatchdogThreadFunction() {
-  while (!g_bExiting) {
-#if defined(_WINDOWS)
-    // on windows send the event when the Y key is pressed.
-    if ((0x01 & GetAsyncKeyState(VK_MULTIPLY)) != 0) {
-      // Y key was pressed.
-      vr::VRWatchdogHost()->WatchdogWakeUp(vr::TrackedDeviceClass_HMD);
-    }
-    std::this_thread::sleep_for(std::chrono::microseconds(500));
-#else
-    // for the other platforms, just send one every five seconds
-    std::this_thread::sleep_for(std::chrono::seconds(5));
-    vr::VRWatchdogHost()->WatchdogWakeUp(vr::TrackedDeviceClass_HMD);
-#endif
-  }
-}
+// void WatchdogThreadFunction() {
+//   while (!g_bExiting) {
+// #if defined(_WINDOWS)
+//     // on windows send the event when the Y key is pressed.
+//     if ((0x01 & GetAsyncKeyState(VK_MULTIPLY)) != 0) {
+//       // Y key was pressed.
+//       vr::VRWatchdogHost()->WatchdogWakeUp(vr::TrackedDeviceClass_HMD);
+//     }
+//     std::this_thread::sleep_for(std::chrono::microseconds(500));
+// #else
+//     // for the other platforms, just send one every five seconds
+//     std::this_thread::sleep_for(std::chrono::seconds(5));
+//     vr::VRWatchdogHost()->WatchdogWakeUp(vr::TrackedDeviceClass_HMD);
+// #endif
+//   }
+// }
 
 EVRInitError
 CWatchdogDriver_Sample::Init(vr::IVRDriverContext *pDriverContext) {
@@ -133,11 +133,11 @@ CWatchdogDriver_Sample::Init(vr::IVRDriverContext *pDriverContext) {
   // something else from the
   // the hardware that signals that the VR system should start up.
   g_bExiting = false;
-  m_pWatchdogThread = new std::thread(WatchdogThreadFunction);
-  if (!m_pWatchdogThread) {
-    DriverLog("Unable to create watchdog thread\n");
-    return VRInitError_Driver_Failed;
-  }
+  // m_pWatchdogThread = new std::thread(WatchdogThreadFunction);
+  // if (!m_pWatchdogThread) {
+  //   DriverLog("Unable to create watchdog thread\n");
+  //   return VRInitError_Driver_Failed;
+  // }
 
   return VRInitError_None;
 }
@@ -257,77 +257,6 @@ public:
     // avoid "not fullscreen" warnings from vrmonitor
     vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
                                         Prop_IsOnDesktop_Bool, false);
-
-    // Icons can be configured in code or automatically configured by an
-    // external file "drivername\resources\driver.vrresources".
-    // Icon properties NOT configured in code (post Activate) are then
-    // auto-configured by the optional presence of a driver's
-    // "drivername\resources\driver.vrresources".
-    // In this manner a driver can configure their icons in a flexible data
-    // driven fashion by using an external file.
-    //
-    // The structure of the driver.vrresources file allows a driver to
-    // specialize their icons based on their HW.
-    // Keys matching the value in "Prop_ModelNumber_String" are considered
-    // first, since the driver may have model specific icons.
-    // An absence of a matching "Prop_ModelNumber_String" then considers the
-    // ETrackedDeviceClass ("HMD", "Controller", "GenericTracker",
-    // "TrackingReference")
-    // since the driver may have specialized icons based on those device class
-    // names.
-    //
-    // An absence of either then falls back to the "system.vrresources" where
-    // generic device class icons are then supplied.
-    //
-    // Please refer to "bin\drivers\sample\resources\driver.vrresources" which
-    // contains this sample configuration.
-    //
-    // "Alias" is a reserved key and specifies chaining to another json block.
-    //
-    // In this sample configuration file (overly complex FOR EXAMPLE PURPOSES
-    // ONLY)....
-    //
-    // "Model-v2.0" chains through the alias to "Model-v1.0" which chains
-    // through the alias to "Model-v Defaults".
-    //
-    // Keys NOT found in "Model-v2.0" would then chase through the "Alias" to be
-    // resolved in "Model-v1.0" and either resolve their or continue through the
-    // alias.
-    // Thus "Prop_NamedIconPathDeviceAlertLow_String" in each model's block
-    // represent a specialization specific for that "model".
-    // Keys in "Model-v Defaults" are an example of mapping to the same states,
-    // and here all map to "Prop_NamedIconPathDeviceOff_String".
-    //
-    bool bSetupIconUsingExternalResourceFile = true;
-    if (!bSetupIconUsingExternalResourceFile) {
-      // Setup properties directly in code.
-      // Path values are of the form {drivername}\icons\some_icon_filename.png
-      vr::VRProperties()->SetStringProperty(
-          m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceOff_String,
-          "{sample}/icons/headset_sample_status_off.png");
-      vr::VRProperties()->SetStringProperty(
-          m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceSearching_String,
-          "{sample}/icons/headset_sample_status_searching.gif");
-      vr::VRProperties()->SetStringProperty(
-          m_ulPropertyContainer,
-          vr::Prop_NamedIconPathDeviceSearchingAlert_String,
-          "{sample}/icons/headset_sample_status_searching_alert.gif");
-      vr::VRProperties()->SetStringProperty(
-          m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceReady_String,
-          "{sample}/icons/headset_sample_status_ready.png");
-      vr::VRProperties()->SetStringProperty(
-          m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceReadyAlert_String,
-          "{sample}/icons/headset_sample_status_ready_alert.png");
-      vr::VRProperties()->SetStringProperty(
-          m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceNotReady_String,
-          "{sample}/icons/headset_sample_status_error.png");
-      vr::VRProperties()->SetStringProperty(
-          m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceStandby_String,
-          "{sample}/icons/headset_sample_status_standby.png");
-      vr::VRProperties()->SetStringProperty(
-          m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceAlertLow_String,
-          "{sample}/icons/headset_sample_status_ready_low.png");
-    }
 
     return VRInitError_None;
   }
@@ -492,11 +421,10 @@ public:
 
     if (side) {
       m_sSerialNumber = "nut666";
-      m_sModelNumber = "MyController666";
     } else {
       m_sSerialNumber = "nut999";
-      m_sModelNumber = "MyController999";
     }
+    m_sModelNumber = "hobovr_controller_m1";
 
     poseController.poseTimeOffset = 0;
     poseController.poseIsValid = true;
@@ -549,7 +477,7 @@ public:
     // be for legacy or other apps
     vr::VRProperties()->SetStringProperty(
         m_ulPropertyContainer, Prop_InputProfilePath_String,
-        "{sample}/input/hobo_controller_profile.json");
+        "{hobovr}/input/hobovr_controller_profile.json");
 
     // create all the input components
     vr::VRDriverInput()->CreateBooleanComponent(
