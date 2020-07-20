@@ -2,28 +2,28 @@
 	"jsonid" : "vrresources",
 	"statusicons" : {
 	"HMD" : {
-			"Prop_NamedIconPathDeviceOff_String" : "{htc}/icons/headset_status_off.png",
-			"Prop_NamedIconPathDeviceSearching_String" : "{htc}/icons/headset_status_searching.gif",
-			"Prop_NamedIconPathDeviceSearchingAlert_String" : "{htc}/icons/headset_status_searching_alert.gif",
-			"Prop_NamedIconPathDeviceReady_String" : "{htc}/icons/headset_status_ready.png",
-			"Prop_NamedIconPathDeviceReadyAlert_String" : "{htc}/icons/headset_status_ready_alert.png",
-			"Prop_NamedIconPathDeviceNotReady_String" : "{htc}/icons/headset_status_error.png",
-			"Prop_NamedIconPathDeviceStandby_String" : "{htc}/icons/headset_status_standby.png",
-			"Prop_NamedIconPathDeviceStandbyAlert_String" : "{htc}/icons/headset_status_standby_alert.png",
+			"Prop_NamedIconPathDeviceOff_String" : "{hobovr}/icons/headset_status_off.png",
+			"Prop_NamedIconPathDeviceSearching_String" : "{hobovr}/icons/headset_status_searching.gif",
+			"Prop_NamedIconPathDeviceSearchingAlert_String" : "{hobovr}/icons/headset_status_searching_alert.gif",
+			"Prop_NamedIconPathDeviceReady_String" : "{hobovr}/icons/headset_status_ready.png",
+			"Prop_NamedIconPathDeviceReadyAlert_String" : "{hobovr}/icons/headset_status_ready_alert.png",
+			"Prop_NamedIconPathDeviceNotReady_String" : "{hobovr}/icons/headset_status_error.png",
+			"Prop_NamedIconPathDeviceStandby_String" : "{hobovr}/icons/headset_status_standby.png",
+			"Prop_NamedIconPathDeviceStandbyAlert_String" : "{hobovr}/icons/headset_status_standby_alert.png",
 			"Prop_NamedIconPathDeviceAlertLow_String" : "",
-			"Prop_NamedIconPathTrackingReferenceDeviceOff_String" : "{htc}/icons/base_status_off.png",
-			"Prop_NamedIconPathControllerLeftDeviceOff_String" : "{htc}/icons/controller_status_off.png",
-			"Prop_NamedIconPathControllerRightDeviceOff_String" : "{htc}/icons/controller_status_off.png"
+			"Prop_NamedIconPathTrackingReferenceDeviceOff_String" : "{hobovr}/icons/base_status_off.png",
+			"Prop_NamedIconPathControllerLeftDeviceOff_String" : "{hobovr}/icons/controller_status_off.png",
+			"Prop_NamedIconPathControllerRightDeviceOff_String" : "{hobovr}/icons/controller_status_off.png"
 		},
 		"Controller" : {
-			"Prop_NamedIconPathDeviceOff_String" : "{htc}/icons/controller_status_off.png",
-			"Prop_NamedIconPathDeviceSearching_String" : "{htc}/icons/controller_status_searching.gif",
-			"Prop_NamedIconPathDeviceSearchingAlert_String" : "{htc}/icons/controller_status_searching_alert.gif",
-			"Prop_NamedIconPathDeviceReady_String" : "{htc}/icons/controller_status_ready.png",
-			"Prop_NamedIconPathDeviceReadyAlert_String" : "{htc}/icons/controller_status_ready_alert.png",
-			"Prop_NamedIconPathDeviceNotReady_String" : "{htc}/icons/controller_status_error.png",
-			"Prop_NamedIconPathDeviceStandby_String" : "{htc}/icons/controller_status_off.png",
-			"Prop_NamedIconPathDeviceAlertLow_String" : "{htc}/icons/controller_status_ready_low.png"
+			"Prop_NamedIconPathDeviceOff_String" : "{hobovr}/icons/controller_status_off.png",
+			"Prop_NamedIconPathDeviceSearching_String" : "{hobovr}/icons/controller_status_searching.gif",
+			"Prop_NamedIconPathDeviceSearchingAlert_String" : "{hobovr}/icons/controller_status_searching_alert.gif",
+			"Prop_NamedIconPathDeviceReady_String" : "{hobovr}/icons/controller_status_ready.png",
+			"Prop_NamedIconPathDeviceReadyAlert_String" : "{hobovr}/icons/controller_status_ready_alert.png",
+			"Prop_NamedIconPathDeviceNotReady_String" : "{hobovr}/icons/controller_status_error.png",
+			"Prop_NamedIconPathDeviceStandby_String" : "{hobovr}/icons/controller_status_off.png",
+			"Prop_NamedIconPathDeviceAlertLow_String" : "{hobovr}/icons/controller_status_ready_low.png"
 		},
 		"LeftController" : {
 			"Alias" : "Controller"
