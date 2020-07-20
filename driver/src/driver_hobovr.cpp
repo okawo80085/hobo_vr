@@ -103,7 +103,7 @@ private:
 
 CWatchdogDriver_Sample g_watchdogDriverNull;
 
-bool g_bExiting = false;
+// bool g_bExiting = false;
 
 // void WatchdogThreadFunction() {
 //   while (!g_bExiting) {
@@ -132,7 +132,7 @@ CWatchdogDriver_Sample::Init(vr::IVRDriverContext *pDriverContext) {
   // be pressed. A real driver should wait for a system button event or
   // something else from the
   // the hardware that signals that the VR system should start up.
-  g_bExiting = false;
+  // g_bExiting = false;
   // m_pWatchdogThread = new std::thread(WatchdogThreadFunction);
   // if (!m_pWatchdogThread) {
   //   DriverLog("Unable to create watchdog thread\n");
@@ -143,12 +143,12 @@ CWatchdogDriver_Sample::Init(vr::IVRDriverContext *pDriverContext) {
 }
 
 void CWatchdogDriver_Sample::Cleanup() {
-  g_bExiting = true;
-  if (m_pWatchdogThread) {
-    m_pWatchdogThread->join();
-    delete m_pWatchdogThread;
-    m_pWatchdogThread = nullptr;
-  }
+  // g_bExiting = true;
+  // if (m_pWatchdogThread) {
+  //   m_pWatchdogThread->join();
+  //   delete m_pWatchdogThread;
+  //   m_pWatchdogThread = nullptr;
+  // }
 
   CleanupDriverLog();
 }
@@ -483,7 +483,7 @@ public:
         m_ulPropertyContainer, Prop_InputProfilePath_String,
         "{hobovr}/input/hobovr_controller_profile.json");
 
-    // create all the input components
+    // create all the bool input components
     vr::VRDriverInput()->CreateBooleanComponent(
         m_ulPropertyContainer, "/input/grip/click", &m_compGrip);
     vr::VRDriverInput()->CreateBooleanComponent(
@@ -537,15 +537,10 @@ public:
       pchResponseBuffer[0] = 0;
   }
 
-  virtual DriverPose_t GetPose() { return poseController; }
+  virtual DriverPose_t GetPose() { return poseController; } // this is called like once 
 
   void RunFrame(std::vector<double> &lastRead) {
-    // Your driver would read whatever hardware state is associated with its
-    // input components and pass that
-    // in to UpdateBooleanComponent. This could happen in RunFrame or on a
-    // thread of your own that's reading USB
-    // state. There's no need to update input state unless it changes, but it
-    // doesn't do any harm to do so.
+    // update all the things
 
     int i_indexOffset = 13;
     if (!handSide_) {
@@ -576,13 +571,13 @@ public:
         lastRead[(i_indexOffset + 12)];
 
     vr::VRDriverInput()->UpdateBooleanComponent(
-        m_compGrip, lastRead[(i_indexOffset + 13)] > 0.1, 0);
+        m_compGrip, lastRead[(i_indexOffset + 13)] > 0.4, 0);
     vr::VRDriverInput()->UpdateBooleanComponent(
-        m_compSystem, lastRead[(i_indexOffset + 14)] > 0.1, 0);
+        m_compSystem, lastRead[(i_indexOffset + 14)] > 0.4, 0);
     vr::VRDriverInput()->UpdateBooleanComponent(
-        m_compAppMenu, lastRead[(i_indexOffset + 15)] > 0.1, 0);
+        m_compAppMenu, lastRead[(i_indexOffset + 15)] > 0.4, 0);
     vr::VRDriverInput()->UpdateBooleanComponent(
-        m_compTrackpadClick, lastRead[(i_indexOffset + 16)] > 0.1,
+        m_compTrackpadClick, lastRead[(i_indexOffset + 16)] > 0.4,
         0);
 
     vr::VRDriverInput()->UpdateScalarComponent(
@@ -593,10 +588,10 @@ public:
         m_compTrackpadY, float(lastRead[(i_indexOffset + 19)]), 0);
 
     vr::VRDriverInput()->UpdateBooleanComponent(
-        m_compTrackpadTouch, lastRead[(i_indexOffset + 20)] > 0.1,
+        m_compTrackpadTouch, lastRead[(i_indexOffset + 20)] > 0.4,
         0);
     vr::VRDriverInput()->UpdateBooleanComponent(
-        m_compTriggerClick, lastRead[(i_indexOffset + 21)] > 0.1,
+        m_compTriggerClick, lastRead[(i_indexOffset + 21)] > 0.4,
         0);
 
     if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
@@ -609,8 +604,7 @@ public:
     switch (vrEvent.eventType) {
     case vr::VREvent_Input_HapticVibration: {
       if (vrEvent.data.hapticVibration.componentHandle == m_compHaptic) {
-        // This is where you would send a signal to your hardware to trigger
-        // actual haptic feedback
+        // haptic!
         if (remotePoser != NULL) {
           if (handSide_) {
             remotePoser->send2("driver:buzz right\n");
@@ -651,9 +645,9 @@ private:
 //-----------------------------------------------------------------------------
 // Purpose: serverDriver
 //-----------------------------------------------------------------------------
-class CServerDriver_Sample : public IServerTrackedDeviceProvider {
+class CServerDriver_hobovr : public IServerTrackedDeviceProvider {
 public:
-  CServerDriver_Sample() {
+  CServerDriver_hobovr() {
     m_bMyThreadKeepAlive = false;
     m_pMyTread = nullptr;
   }
@@ -666,7 +660,7 @@ public:
   virtual void EnterStandby() {}
   virtual void LeaveStandby() {}
   virtual void RunFrame() {}
-  static void myThreadEnter(CServerDriver_Sample *pClass) {
+  static void myThreadEnter(CServerDriver_hobovr *pClass) {
     pClass->myTrackingThread();
   }
   void myTrackingThread();
@@ -682,7 +676,7 @@ private:
   std::thread *m_pMyTread;
 };
 
-EVRInitError CServerDriver_Sample::Init(vr::IVRDriverContext *pDriverContext) {
+EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
   remotePoser = new SockReceiver::DriverReceiver(57);
   VR_INIT_SERVER_DRIVER_CONTEXT(pDriverContext);
   remotePoser->start();
@@ -715,7 +709,7 @@ EVRInitError CServerDriver_Sample::Init(vr::IVRDriverContext *pDriverContext) {
   return VRInitError_None;
 }
 
-void CServerDriver_Sample::Cleanup() {
+void CServerDriver_hobovr::Cleanup() {
   CleanupDriverLog();
 
   m_bMyThreadKeepAlive = false;
@@ -735,7 +729,7 @@ void CServerDriver_Sample::Cleanup() {
   m_pLeftController = NULL;
 }
 
-void CServerDriver_Sample::myTrackingThread() {
+void CServerDriver_hobovr::myTrackingThread() {
 #if defined(_WINDOWS)
 
   DWORD dwError, dwThreadPri;
@@ -785,7 +779,7 @@ void CServerDriver_Sample::myTrackingThread() {
   }
 }
 
-CServerDriver_Sample g_serverDriverNull;
+CServerDriver_hobovr g_serverDriverNull;
 
 //-----------------------------------------------------------------------------
 // Purpose: driverFactory

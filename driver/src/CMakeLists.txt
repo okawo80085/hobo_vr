@@ -5,7 +5,7 @@ set(TARGET_NAME driver_hobovr)
 add_library(${TARGET_NAME} SHARED
   driverlog.cpp
   driverlog.h
-  driver_sample.cpp
+  driver_hobovr.cpp
 )
 
 add_definitions(-DDRIVER_SAMPLE_EXPORTS)

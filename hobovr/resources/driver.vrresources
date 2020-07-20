@@ -1,7 +1,7 @@
 {
 	"jsonid" : "vrresources",
 	"statusicons" : {
-	"HMD" : {
+		"HMD" : {
 			"Prop_NamedIconPathDeviceOff_String" : "{hobovr}/icons/headset_status_off.png",
 			"Prop_NamedIconPathDeviceSearching_String" : "{hobovr}/icons/headset_status_searching.gif",
 			"Prop_NamedIconPathDeviceSearchingAlert_String" : "{hobovr}/icons/headset_status_searching_alert.gif",
