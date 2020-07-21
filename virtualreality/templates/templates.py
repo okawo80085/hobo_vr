@@ -123,6 +123,7 @@ class PoserTemplate:
                 )
 
                 self.writer.write(msg)
+                await self.writer.drain()
 
                 await asyncio.sleep(self.coro_keep_alive["send"][1])
             except Exception as e:
@@ -171,6 +172,7 @@ class PoserTemplate:
 
         self.writer.write(u.format_str_for_write("CLOSE"))
         self.writer.close()
+        await self.writer.wait_closed()
 
         print("done")
 
