@@ -1,4 +1,4 @@
-//============ Copyright (c) Valve Corporation, All rights reserved.
+//============ Copyright (c) okawo, All rights reserved.
 //============
 
 //#include "openvr.h"
