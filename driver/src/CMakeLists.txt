@@ -8,7 +8,7 @@ add_library(${TARGET_NAME} SHARED
   driver_hobovr.cpp
 )
 
-add_definitions(-DDRIVER_SAMPLE_EXPORTS)
+add_definitions(-DDRIVER_HOBOVR_EXPORTS)
 
 target_link_libraries(${TARGET_NAME}
   ${OPENVR_LIBRARIES}

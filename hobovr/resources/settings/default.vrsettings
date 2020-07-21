@@ -1,5 +1,5 @@
 {
-   "driver_sample" : {
+   "driver_hobovr" : {
       "enable" : true,
       "serialNumber" : "1234",
       "modelNumber" : "generic_hmd",

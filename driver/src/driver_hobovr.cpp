@@ -67,24 +67,24 @@ inline void HmdMatrix_SetIdentity(HmdMatrix34_t *pMatrix) {
 }
 
 // keys for use with the settings API
-static const char *const k_pch_Sample_Section = "driver_sample";
-static const char *const k_pch_Sample_SerialNumber_String = "serialNumber";
-static const char *const k_pch_Sample_ModelNumber_String = "modelNumber";
-static const char *const k_pch_Sample_WindowX_Int32 = "windowX";
-static const char *const k_pch_Sample_WindowY_Int32 = "windowY";
-static const char *const k_pch_Sample_WindowWidth_Int32 = "windowWidth";
-static const char *const k_pch_Sample_WindowHeight_Int32 = "windowHeight";
-static const char *const k_pch_Sample_RenderWidth_Int32 = "renderWidth";
-static const char *const k_pch_Sample_RenderHeight_Int32 = "renderHeight";
-static const char *const k_pch_Sample_SecondsFromVsyncToPhotons_Float =
+static const char *const k_pch_Hobovr_Section = "driver_hobovr";
+static const char *const k_pch_Hobovr_SerialNumber_String = "serialNumber";
+static const char *const k_pch_Hobovr_ModelNumber_String = "modelNumber";
+static const char *const k_pch_Hobovr_WindowX_Int32 = "windowX";
+static const char *const k_pch_Hobovr_WindowY_Int32 = "windowY";
+static const char *const k_pch_Hobovr_WindowWidth_Int32 = "windowWidth";
+static const char *const k_pch_Hobovr_WindowHeight_Int32 = "windowHeight";
+static const char *const k_pch_Hobovr_RenderWidth_Int32 = "renderWidth";
+static const char *const k_pch_Hobovr_RenderHeight_Int32 = "renderHeight";
+static const char *const k_pch_Hobovr_SecondsFromVsyncToPhotons_Float =
     "secondsFromVsyncToPhotons";
-static const char *const k_pch_Sample_DisplayFrequency_Float =
+static const char *const k_pch_Hobovr_DisplayFrequency_Float =
     "displayFrequency";
 
-static const char *const k_pch_Sample_DistortionK1_Float = "DistortionK1";
-static const char *const k_pch_Sample_DistortionK2_Float = "DistortionK2";
-static const char *const k_pch_Sample_ZoomWidth_Float = "ZoomWidth";
-static const char *const k_pch_Sample_ZoomHeight_Float = "ZoomHeight";
+static const char *const k_pch_Hobovr_DistortionK1_Float = "DistortionK1";
+static const char *const k_pch_Hobovr_DistortionK2_Float = "DistortionK2";
+static const char *const k_pch_Hobovr_ZoomWidth_Float = "ZoomWidth";
+static const char *const k_pch_Hobovr_ZoomHeight_Float = "ZoomHeight";
 
 //-----------------------------------------------------------------------------
 // Purpose: watchdogDriver
@@ -170,41 +170,41 @@ public:
                                          k_pch_SteamVR_IPD_Float);
 
     char buf[1024];
-    vr::VRSettings()->GetString(k_pch_Sample_Section,
-                                k_pch_Sample_SerialNumber_String, buf,
+    vr::VRSettings()->GetString(k_pch_Hobovr_Section,
+                                k_pch_Hobovr_SerialNumber_String, buf,
                                 sizeof(buf));
     m_sSerialNumber = buf;
 
-    vr::VRSettings()->GetString(k_pch_Sample_Section,
-                                k_pch_Sample_ModelNumber_String, buf,
+    vr::VRSettings()->GetString(k_pch_Hobovr_Section,
+                                k_pch_Hobovr_ModelNumber_String, buf,
                                 sizeof(buf));
     m_sModelNumber = buf;
 
-    m_nWindowX = vr::VRSettings()->GetInt32(k_pch_Sample_Section,
-                                            k_pch_Sample_WindowX_Int32);
-    m_nWindowY = vr::VRSettings()->GetInt32(k_pch_Sample_Section,
-                                            k_pch_Sample_WindowY_Int32);
-    m_nWindowWidth = vr::VRSettings()->GetInt32(k_pch_Sample_Section,
-                                                k_pch_Sample_WindowWidth_Int32);
+    m_nWindowX = vr::VRSettings()->GetInt32(k_pch_Hobovr_Section,
+                                            k_pch_Hobovr_WindowX_Int32);
+    m_nWindowY = vr::VRSettings()->GetInt32(k_pch_Hobovr_Section,
+                                            k_pch_Hobovr_WindowY_Int32);
+    m_nWindowWidth = vr::VRSettings()->GetInt32(k_pch_Hobovr_Section,
+                                                k_pch_Hobovr_WindowWidth_Int32);
     m_nWindowHeight = vr::VRSettings()->GetInt32(
-        k_pch_Sample_Section, k_pch_Sample_WindowHeight_Int32);
-    m_nRenderWidth = vr::VRSettings()->GetInt32(k_pch_Sample_Section,
-                                                k_pch_Sample_RenderWidth_Int32);
+        k_pch_Hobovr_Section, k_pch_Hobovr_WindowHeight_Int32);
+    m_nRenderWidth = vr::VRSettings()->GetInt32(k_pch_Hobovr_Section,
+                                                k_pch_Hobovr_RenderWidth_Int32);
     m_nRenderHeight = vr::VRSettings()->GetInt32(
-        k_pch_Sample_Section, k_pch_Sample_RenderHeight_Int32);
+        k_pch_Hobovr_Section, k_pch_Hobovr_RenderHeight_Int32);
     m_flSecondsFromVsyncToPhotons = vr::VRSettings()->GetFloat(
-        k_pch_Sample_Section, k_pch_Sample_SecondsFromVsyncToPhotons_Float);
+        k_pch_Hobovr_Section, k_pch_Hobovr_SecondsFromVsyncToPhotons_Float);
     m_flDisplayFrequency = vr::VRSettings()->GetFloat(
-        k_pch_Sample_Section, k_pch_Sample_DisplayFrequency_Float);
+        k_pch_Hobovr_Section, k_pch_Hobovr_DisplayFrequency_Float);
 
     m_fDistortionK1 = vr::VRSettings()->GetFloat(
-        k_pch_Sample_Section, k_pch_Sample_DistortionK1_Float);
+        k_pch_Hobovr_Section, k_pch_Hobovr_DistortionK1_Float);
     m_fDistortionK2 = vr::VRSettings()->GetFloat(
-        k_pch_Sample_Section, k_pch_Sample_DistortionK2_Float);
-    m_fZoomWidth = vr::VRSettings()->GetFloat(k_pch_Sample_Section,
-                                              k_pch_Sample_ZoomWidth_Float);
-    m_fZoomHeight = vr::VRSettings()->GetFloat(k_pch_Sample_Section,
-                                               k_pch_Sample_ZoomHeight_Float);
+        k_pch_Hobovr_Section, k_pch_Hobovr_DistortionK2_Float);
+    m_fZoomWidth = vr::VRSettings()->GetFloat(k_pch_Hobovr_Section,
+                                              k_pch_Hobovr_ZoomWidth_Float);
+    m_fZoomHeight = vr::VRSettings()->GetFloat(k_pch_Hobovr_Section,
+                                               k_pch_Hobovr_ZoomHeight_Float);
 
     DriverLog("Serial Number: %s\n", m_sSerialNumber.c_str());
     DriverLog("Model Number: %s\n", m_sModelNumber.c_str());
