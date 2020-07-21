@@ -59,7 +59,7 @@ async def read3(reader: StreamReader, read_len: int = 20) -> str:
     while b"\n" not in temp and temp != b"":
         temp = await reader.read(read_len)
         data.extend(temp)
-        time.sleep(0)  # allows thread switching
+        # time.sleep(0)  # allows thread switching
 
     return data
 
