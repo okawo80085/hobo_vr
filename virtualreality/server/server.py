@@ -1,8 +1,5 @@
 """Server loop that communicates between the driver and posers."""
 import asyncio
-import logging
-
-logger = logging.getLogger(__name__)
 
 from ..templates import PoserTemplate
 from ..util import utilz as u
@@ -44,15 +41,15 @@ async def handle_echo(reader, writer):
 
             data = await u.read3(reader)
             if addr not in conz:
-                logger.info("New connection from {}".format(addr))
+                print("New connection from {}".format(addr))
                 isDriver = False
                 isPoser = False
                 if data == b"hello\n":
-                    logger.info("driver connected")
+                    print("driver connected")
                     isDriver = True
 
                 if data == b"poser here\n":
-                    logger.info("poser connected")
+                    print("poser connected")
                     isPoser = True
 
                 conz[addr] = (reader, writer, isDriver or isPoser, isPoser)
@@ -62,15 +59,16 @@ async def handle_echo(reader, writer):
 
             sendOK = await broadcast(conz, data, addr, conz[addr][2])
 
-            logger.debug("Received %r from %r %r" % (data, addr, sendOK))
+            if PRINT_MESSAGES:
+                print("Received %r from %r %r" % (data, addr, sendOK))
 
             await asyncio.sleep(0.00001)
 
         except Exception as e:
-            logger.error("Losing connection to {}, reason: {}".format(addr, e))
+            print("Losing connection to {}, reason: {}".format(addr, e))
             break
 
-    logging.info(f"Connection to {addr} closed")
+    print(f"Connection to {addr} closed")
     writer.close()
     if addr in conz:
         del conz[addr]
@@ -86,7 +84,7 @@ def run_til_dead(poser: PoserTemplate = None):
         poser_result = asyncio.run_coroutine_threadsafe(poser.main(), loop)
 
     # Serve requests until Ctrl+C is pressed
-    logger.info("Serving on {}".format(server.sockets[0].getsockname()))
+    print("Serving on {}".format(server.sockets[0].getsockname()))
     try:
         loop.run_forever()
     except KeyboardInterrupt:
