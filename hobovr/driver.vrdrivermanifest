@@ -1,0 +1,11 @@
+{
+	"alwaysActivate": false,
+	"name" : "hobovr",
+	"directory" : "",
+	"resourceOnly" : false,
+
+	"hmd_presence" :
+	[
+		"*.*"
+	]
+}

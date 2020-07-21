@@ -1,82 +1,105 @@
-#include <arpa/inet.h>
-#include <cstdio>
-#include <cstring>
-#include <iostream>
-#include <sstream>
-#include <sys/socket.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
-#define PORT 6969
+#include <string.h>
+#include <string>
+// #include <sys/types.h>
+#include <sys/socket.h>
+// #include <netinet/in.h>
+#include <netdb.h> 
 
-using namespace std;
-
-double *convert2ss(char *buffer, int *len) {
-  int spacesCount = 0;
-  for (int i = 0; i < *len; i++) {
-    if (buffer[i] == ' ') {
-      spacesCount++;
-    }
-  }
-  spacesCount++;
-
-  string numbers[spacesCount];
-  for (int i = 0; i < spacesCount; i++) {
-    numbers[i] = "";
-  }
-  int index = 0;
-
-  for (int i = 0; i < *len; i++) {
-    if (buffer[i] == ' ') {
-      index++;
-    } else {
-      numbers[index] += buffer[i];
-    }
-  }
-  double *numz = new double[spacesCount];
-  for (int i = 0; i < spacesCount; i++) {
-    stringstream yeet(numbers[i]);
-    yeet >> numz[i];
-  }
-  *len = spacesCount;
-  return numz;
+void error(const char *msg)
+{
+    perror(msg);
+    exit(0);
 }
 
-int main() {
-  int sock = 0;
-  struct sockaddr_in serv_addr;
-  char *hello = "Hello from client\n";
-  char buffer[1024] = {0};
-  if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-    printf("\n Socket creation error \n");
-    return -1;
-  }
+int main(int argc, char *argv[])
+{
 
-  serv_addr.sin_family = AF_INET;
-  serv_addr.sin_port = htons(PORT);
+    char buffer[256];
+    if (argc < 3) {
+       fprintf(stderr,"usage %s hostname port\n", argv[0]);
+       exit(0);
+    }
 
-  // Convert IPv4 and IPv6 addresses from text to binary form
-  if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
-    printf("\nInvalid address/ Address not supported \n");
-    return -1;
-  }
+    // ###########socket init############
+    char* my_addr = "127.0.0.1"; // just a simple char array, why does this have to be some incompatible with everything type in winsock?
+    char* my_port = "6969"; // same as my_addr
 
-  if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-    printf("\nConnection Failed \n");
-    return -1;
-  }
-  send(sock, hello, strlen(hello), 0);
-  printf("Hello message sent\n");
-  auto valread = read(sock, buffer, 1024);
-  if (valread < 0)
-    return -1;
 
-  int bufLen = 1024;
-  char buffer[1024] = {0};
-  double *z = convert2ss(buffer, &bufLen);
-  for (int i = 0; i < bufLen; i++) {
-    cout << z[i] + 5 << ", ";
-  }
-  delete z;
-  z = nullptr;
-  cout << '\n';
-  return 0;
+    // make port and addr
+    int sockfd; // the socket obj is just an int
+    int portno, n;
+    struct sockaddr_in serv_addr;
+    struct hostent *server;
+
+    server = gethostbyname(my_addr); // oh and did i mention that this is also convoluted as shit in winsock?
+    portno = atoi(my_port);
+
+
+    sockfd = socket(AF_INET, SOCK_STREAM, 0); // create socket, surprisingly winsock didn't fuck this up
+    if (sockfd < 0) 
+        error("ERROR opening socket");
+
+    if (server == NULL) {
+        fprintf(stderr,"ERROR, no such host\n");
+        exit(0);
+    }
+
+    bzero((char *) &serv_addr, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+
+    // a long ass function call just to copy the addr into a socket addr struct, still better then winsock
+    bcopy((char *)server->h_addr, 
+         (char *)&serv_addr.sin_addr.s_addr,
+         server->h_length);
+    serv_addr.sin_port = htons(portno); // copy port to the same struct
+    if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) // connect and check if successful
+        error("ERROR connecting");
+    // ##################################
+
+
+
+    // ##########msg send################
+    printf("Please enter the message: ");
+    bzero(buffer,256);
+    fgets(buffer,255,stdin);// fill buffer with input from console
+
+    n = write(sockfd,buffer,strlen(buffer)); // send buffer
+    if (n < 0)
+         error("ERROR writing to socket");
+    // ##################################
+
+    // ##########msg read################
+    bzero(buffer,256);
+    n = read(sockfd,buffer,255); // read 255 into buffer
+    if (n < 0) 
+         error("ERROR reading from socket");
+    printf("%s\n",buffer);
+    // ##################################
+
+
+    // ##########close connection########
+    n = write(sockfd,"CLOSE\n",strlen("CLOSE\n")); // hobo_vr server close message
+    close(sockfd); // close socket, why does this have to take like a million lines with winsock?
+    // ##################################
+    return 0;
 }
+
+// overall way fucking simpler then the winsock
+// winsock is a crime to humanity, avoid it at all costs
+// i wouldn't use it too, but this shit has to work on windows
+// and of course microsoft had to make winsock the way they did
+
+// did i mention that unix sockets have built in buffer type conversion read?
+// you can no joke pass a float buffer 
+// and it will fill it floats interpreted from the message!
+
+// but oh no microsoft had to be not like everyone else
+// they had had to make it harder for everyone
+// and lock it to char only buffers for winsock
+
+
+
+// fuck winsock

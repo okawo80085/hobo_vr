@@ -20,49 +20,60 @@ async def broadcast(everyone, data, me, VIP):
     :param VIP:
     :return:
     """
-    for key, acc in everyone.items():
-        try:
-            if me != key and (VIP == acc[2] or acc[3]):
-                acc[1].write(data)
-                await acc[1].drain()
+    try:
+        for key, acc in list(everyone.items()):
+            try:
+                if me != key and (VIP == acc[2] or acc[3]):
+                    acc[1].write(data)
+                    await acc[1].drain()
 
-        except:
-            # print (key, 'reason:', e)
-            pass
+            except:
+                # print (key, 'reason:', e)
+                pass
 
-    return True
+    except RuntimeError as e:
+        return e
+
+    return False
 
 
 async def handle_echo(reader, writer):
     """Handle communication between poser and driver."""
     addr = writer.get_extra_info("peername")
+    data = await u.read3(reader)
+    if addr not in conz:
+        print("New connection from {}".format(addr))
+        isDriver = False
+        isPoser = False
+        if data == b"hello\n":
+            print("driver connected")
+            isDriver = True
+
+        if data == b"poser here\n":
+            print("poser connected")
+            isPoser = True
+
+        conz[addr] = (reader, writer, isDriver or isPoser, isPoser)
+
+    if not len(data) or data == b"CLOSE\n":
+        return
+
     while 1:
         try:
-
             data = await u.read3(reader)
-            if addr not in conz:
-                print("New connection from {}".format(addr))
-                isDriver = False
-                isPoser = False
-                if data == b"hello\n":
-                    print("driver connected")
-                    isDriver = True
-
-                if data == b"poser here\n":
-                    print("poser connected")
-                    isPoser = True
-
-                conz[addr] = (reader, writer, isDriver or isPoser, isPoser)
 
             if not len(data) or data == b"CLOSE\n":
                 break
 
-            sendOK = await broadcast(conz, data, addr, conz[addr][2])
+            sendOknt = await broadcast(conz, data, addr, conz[addr][2])
 
             if PRINT_MESSAGES:
-                print("Received %r from %r %r" % (data, addr, sendOK))
+                print("Received %r from %r %r" % (data, addr, sendOknt))
 
-            await asyncio.sleep(0.00001)
+            if sendOknt:
+                print (f'packet from {addr} lost, reason: {sendOknt}')
+
+            # await asyncio.sleep(0.00001)
 
         except Exception as e:
             print("Losing connection to {}, reason: {}".format(addr, e))

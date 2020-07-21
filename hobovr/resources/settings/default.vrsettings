@@ -1,0 +1,19 @@
+{
+   "driver_hobovr" : {
+      "enable" : true,
+      "serialNumber" : "1234",
+      "modelNumber" : "hobovr_hmd_m1",
+      "windowX" : 10,
+      "windowY" : 10,
+      "windowWidth" : 3840,
+      "windowHeight" : 2160,
+      "renderWidth" : 1920,
+      "renderHeight" : 1080,
+      "secondsFromVsyncToPhotons" : 0.02,
+      "displayFrequency" : 100.0,
+      "DistortionK1" : 0.4,
+      "DistortionK2" : 0.5,
+      "ZoomWidth" : 1,
+      "ZoomHeight" : 1
+   }
+}

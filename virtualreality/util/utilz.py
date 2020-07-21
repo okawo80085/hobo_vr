@@ -12,6 +12,9 @@ import serial.threaded
 from pykalman import KalmanFilter
 from displayarray import read_updates
 
+from itertools import islice, takewhile
+import re
+
 
 def format_str_for_write(input_str: str) -> bytes:
     """Format a string for writing to SteamVR's stream."""
@@ -56,7 +59,7 @@ async def read3(reader: StreamReader, read_len: int = 20) -> str:
     while b"\n" not in temp and temp != b"":
         temp = await reader.read(read_len)
         data.extend(temp)
-        time.sleep(0)  # allows thread switching
+        # time.sleep(0)  # allows thread switching
 
     return data
 
@@ -146,6 +149,22 @@ def get_numbers_from_text(text, separator="\t"):
 
         return []
 
+def get_pose_struct_from_text(text):
+    '''returns struct from :text:, :text: has to be styled so that it matches this regex: ([hct][0-9]+[ ]{0,1})+'''
+    res = re.search('([hct][0-9]+[ ]{0,1})+', text)
+    if res != None:
+        if res.group(0) == text:
+            return tuple(i[0] for i in text.split(' ')), tuple(int(i[1:]) for i in text.split(' '))
+    return (), ()
+
+def parse_poses_from_packet(packet, struct):
+    '''parses all poses from a :packet:, provided a packet :struct:'''
+    it = iter(packet)
+    return [tuple(islice(it, 0, i)) for i in struct]
+
+def get_poses_shape(poses):
+    '''returns a shape of :poses: parsed by parse_poses_from_packet'''
+    return tuple(len(i) for i in poses)
 
 def has_nan_in_pose(pose):
     """Determine if any numbers in pose are invalid."""

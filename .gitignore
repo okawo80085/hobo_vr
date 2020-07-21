@@ -1,4 +1,5 @@
 *.json
+!hobovr/*/*/*.json
 !CMakeLists.txt
 x64
 Release
@@ -12,14 +13,18 @@ t.py
 t2.py
 *.pyc
 *.jpg
+*.png
 t2.py
 openvr*.h
-!sample/bin
+!hobovr/bin
 t.cpp
 tLOL
 *.p
 !images/*.jpg
 !images/*.svg
+!hobovr/resources/icons/*.jpg
+!hobovr/resources/icons/*.svg
+!hobovr/resources/icons/*.png
 *.drawio
 *.egg-info
 build
@@ -30,3 +35,4 @@ dist
 driver/src/t
 *.mp3
 *.avi
+*.out

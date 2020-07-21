@@ -1,0 +1,88 @@
+{
+    "jsonid": "input_profile",
+    "legacy_binding": "{hobovr}/input/legacy_binding_hobovr_controller.json",
+    "controller_type": "hobovr_controller",
+    "input_bindingui_mode": "controller_handed",
+    "input_bindingui_left": {
+        "transform" : "scale(-1,1)",
+        "image": "{hobovr}/icons/hobovr_controller.svg"
+    },
+    "input_bindingui_right": {
+        "image": "{hobovr}/icons/hobovr_controller.svg"
+    },
+    "input_source" :
+  {
+    "/input/trackpad" : { 
+        "type" : "trackpad",
+    "click" : true,
+    "touch" : true,
+        "binding_image_point" : [ 66, 59 ],
+        "order" : 2
+    },
+    "/input/trigger" : {
+        "type" : "trigger",
+    "click" : true,
+    "value" : true,
+        "binding_image_point" : [ 41, 64 ],
+        "order" : 1
+    },
+    "/input/grip" : {
+        "type" : "button",
+    "click" : true,
+        "binding_image_point" : [ 52, 87 ],
+        "order" : 3
+    },
+    "/input/application_menu" : {
+        "type" : "button",
+    "click" : true,
+        "binding_image_point" : [ 64, 35 ],
+        "order" : 4
+    },
+    "/input/system" : {
+        "type" : "button",
+    "click" : true,
+        "binding_image_point" : [ 67, 81 ],
+        "order" : 5
+    },
+    "/input/skeleton/right" : {
+        "type" : "skeleton",
+    "side" : "right",
+    "skeleton" : "/skeleton/hand/right",
+        "binding_image_point" : [ 62, 16 ]
+    },
+    "/input/skeleton/left" : {
+        "type" : "skeleton",
+    "side" : "left",
+    "skeleton" : "/skeleton/hand/left",
+        "binding_image_point" : [ 62, 16 ]
+    },
+    "/pose/raw" : {
+        "type" : "pose",
+        "binding_image_point" : [ 62, 16 ]
+    },
+    "/pose/base" : {
+        "type" : "pose",
+        "binding_image_point" : [ 65, 150 ]
+    },
+    "/pose/handgrip" : {
+        "type" : "pose",
+        "binding_image_point" : [ 52, 86 ]
+    },
+    "/pose/tip" : {
+        "type" : "pose",
+        "binding_image_point" : [ 62, 16 ]
+    },
+    "/pose/front" : {
+        "type" : "pose",
+        "binding_image_point" : [ 62, 16 ]
+    },
+    "/pose/gdc2015" : {
+        "type" : "pose",
+        "binding_image_point" : [ 62, 16 ]
+    },
+    "/output/haptic" : {
+        "type" : "vibration",
+        "binding_image_point" : [ 66, 59 ]
+    }
+  }
+}
