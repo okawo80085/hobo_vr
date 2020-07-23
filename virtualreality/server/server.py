@@ -85,10 +85,10 @@ async def handle_echo(reader, writer):
         del conz[addr]
 
 
-def run_til_dead(poser: PoserTemplate = None):
+def run_til_dead(poser: PoserTemplate = None, conn_handle=handle_echo):
     """Run the server until it dies."""
     loop = asyncio.get_event_loop()
-    coro = asyncio.start_server(handle_echo, *DOMAIN, loop=loop)
+    coro = asyncio.start_server(conn_handle, *DOMAIN, loop=loop)
     server = loop.run_until_complete(coro)
 
     if poser is not None:
