@@ -36,3 +36,7 @@ driver/src/t
 *.mp3
 *.avi
 *.out
+!hobovr/*
+!hobovr/*/*
+!hobovr/*/*/*
+!hobovr/*/*/*/*
