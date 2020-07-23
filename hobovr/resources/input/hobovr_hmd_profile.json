@@ -9,6 +9,7 @@
   {
     "/input/system" : {
         "type" : "button",
+        "click" : true,
         "binding_image_point" : [ 180, 110 ]
     },
     "/pose/raw" : {

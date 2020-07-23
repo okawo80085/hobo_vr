@@ -183,6 +183,7 @@ class UduPoserTemplate:
             await asyncio.sleep(10)
 
         print("closing...")
+        self.coro_keep_alive["close"][0] = False
         for key in self.coro_keep_alive:
             if self.coro_keep_alive[key][0]:
                 self.coro_keep_alive[key][0] = False
@@ -194,6 +195,7 @@ class UduPoserTemplate:
 
         self.writer.write(u.format_str_for_write("CLOSE"))
         self.writer.close()
+        await self.writer.wait_closed()
 
         print("done")
 

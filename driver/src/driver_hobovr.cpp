@@ -235,10 +235,6 @@ public:
         vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
 
     vr::VRProperties()->SetStringProperty(
-        m_ulPropertyContainer, Prop_InputProfilePath_String,
-        "{hobovr}/input/hobovr_hmd_profile.json");
-
-    vr::VRProperties()->SetStringProperty(
         m_ulPropertyContainer, Prop_ModelNumber_String, m_sModelNumber.c_str());
     vr::VRProperties()->SetStringProperty(m_ulPropertyContainer,
                                           Prop_RenderModelName_String,
@@ -262,6 +258,13 @@ public:
     vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
                                         Prop_IsOnDesktop_Bool, false);
 
+    vr::VRProperties()->SetStringProperty(
+        m_ulPropertyContainer, Prop_InputProfilePath_String,
+        "{hobovr}/input/hobovr_hmd_profile.json");
+
+    vr::VRDriverInput()->CreateBooleanComponent(
+        m_ulPropertyContainer, "/input/system/click", &m_compSystem);
+
     return VRInitError_None;
   }
 
@@ -275,6 +278,10 @@ public:
     if (!_stricmp(pchComponentNameAndVersion,
                   vr::IVRDisplayComponent_Version)) {
       return (vr::IVRDisplayComponent *)this;
+    }
+    else if (!_stricmp(pchComponentNameAndVersion,
+                  vr::ITrackedDeviceServerDriver_Version)) {
+      return (vr::ITrackedDeviceServerDriver *)this;
     }
 
     // override this to add a component to a driver
@@ -389,6 +396,9 @@ public:
 private:
   vr::TrackedDeviceIndex_t m_unObjectId;
   vr::PropertyContainerHandle_t m_ulPropertyContainer;
+
+  vr::VRInputComponentHandle_t m_compSystem;
+
 
   std::string m_sSerialNumber;
   std::string m_sModelNumber;
@@ -524,6 +534,11 @@ public:
   virtual void EnterStandby() {}
 
   void *GetComponent(const char *pchComponentNameAndVersion) {
+    if (!_stricmp(pchComponentNameAndVersion,
+                  vr::ITrackedDeviceServerDriver_Version)) {
+      return (vr::ITrackedDeviceServerDriver *)this;
+    }
+
     // override this to add a component to a driver
     return NULL;
   }

@@ -161,6 +161,7 @@ class PoserTemplate:
             await asyncio.sleep(10)
 
         print("closing...")
+        self.coro_keep_alive["close"][0] = False
         for key in self.coro_keep_alive:
             if self.coro_keep_alive[key][0]:
                 self.coro_keep_alive[key][0] = False
