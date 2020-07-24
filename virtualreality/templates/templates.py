@@ -88,11 +88,12 @@ class PoserTemplate:
             "send": [True, send_delay],
             "recv": [True, recv_delay],
         }
+        self.last_read = ""
+        self.id_message = 'holla'
 
         self.pose = Pose()
         self.pose_controller_r = ControllerState(pose=(0.5, 1, -1, 1, 0, 0, 0))
         self.pose_controller_l = ControllerState(pose=(0.5, 1.1, -1, 1, 0, 0, 0))
-        self.last_read = ""
 
     async def _socket_init(self):
         """
@@ -108,7 +109,7 @@ class PoserTemplate:
         # connect to the server
         self.reader, self.writer = await asyncio.open_connection(self.addr, self.port, loop=asyncio.get_event_loop())
         # send poser id message
-        self.writer.write(u.format_str_for_write("poser here"))
+        self.writer.write(u.format_str_for_write(self.id_message))
 
     async def send(self):
         """Send all poses thread."""
@@ -151,7 +152,6 @@ class PoserTemplate:
 
             while self.coro_keep_alive["close"][0]:
                 if keyboard.is_pressed("q"):
-                    self.coro_keep_alive["close"][0] = False
                     break
 
                 await asyncio.sleep(self.coro_keep_alive["close"][1])
@@ -169,13 +169,17 @@ class PoserTemplate:
             else:
                 print(f"{key} already stopped")
 
-        await asyncio.sleep(1)
+        await asyncio.sleep(0.5)
 
-        self.writer.write(u.format_str_for_write("CLOSE"))
-        self.writer.close()
-        await self.writer.wait_closed()
+        try:
+            self.writer.write(u.format_str_for_write("CLOSE"))
+            self.writer.close()
+            await self.writer.wait_closed()
 
-        print("done")
+        except Exception as e:
+            print (f'failed to close connection: {e}')
+
+        print("finished")
 
     async def main(self):
         """

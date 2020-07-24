@@ -89,6 +89,9 @@ class UduPoserTemplate:
             "send": [True, send_delay],
             "recv": [True, recv_delay],
         }
+        self.last_read = ""
+        self.id_message = 'holla'
+
 
         re_s = re.search('([hct][ ]{0,1})+', expected_pose_struct)
 
@@ -116,7 +119,6 @@ class UduPoserTemplate:
         print (f'total of {len(self.poses)} devices have been added, a new pose struct has been generated: {repr(new_struct)}')
         print ('full device list is available through self.poses')
 
-        self.last_read = ""
 
     async def _socket_init(self):
         """
@@ -132,7 +134,7 @@ class UduPoserTemplate:
         # connect to the server
         self.reader, self.writer = await asyncio.open_connection(self.addr, self.port, loop=asyncio.get_event_loop())
         # send poser id message
-        self.writer.write(u.format_str_for_write("poser here"))
+        self.writer.write(u.format_str_for_write(self.id_message))
 
     async def send(self):
         """Send all poses thread."""
@@ -173,7 +175,6 @@ class UduPoserTemplate:
 
             while self.coro_keep_alive["close"][0]:
                 if keyboard.is_pressed("q"):
-                    self.coro_keep_alive["close"][0] = False
                     break
 
                 await asyncio.sleep(self.coro_keep_alive["close"][1])
@@ -191,13 +192,17 @@ class UduPoserTemplate:
             else:
                 print(f"{key} already stopped")
 
-        await asyncio.sleep(1)
+        await asyncio.sleep(0.5)
 
-        self.writer.write(u.format_str_for_write("CLOSE"))
-        self.writer.close()
-        await self.writer.wait_closed()
+        try:
+            self.writer.write(u.format_str_for_write("CLOSE"))
+            self.writer.close()
+            await self.writer.wait_closed()
 
-        print("done")
+        except Exception as e:
+            print (f'failed to close connection: {e}')
+
+        print("finished")
 
     async def main(self):
         """
