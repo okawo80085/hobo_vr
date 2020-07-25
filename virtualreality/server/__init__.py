@@ -1,5 +1,4 @@
 """Virtualreality Pose Server"""
-import os
 from . import server
 from ..logging import log
 
@@ -10,4 +9,4 @@ logger = log.setup_custom_logger(name=__name__,
     file="../logs/server.log",
     console_logging=True)
 
-logger.debug("created log file")
+logger.debug("created server.log log file")
