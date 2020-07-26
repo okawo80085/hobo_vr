@@ -145,17 +145,17 @@ class Poser(templates.PoserTemplate):
                     u.rotate(poses, offsets)
 
                     if self.usePos:
-                        self.pose_controller_l.x = round(-poses["green"]["x"], 6)
-                        self.pose_controller_l.y = round(poses["green"]["y"], 6)
-                        self.pose_controller_l.z = round(poses["green"]["z"], 6)
+                        self.pose_controller_l.x = round(-poses["green"]["x"] * 0.9, 6)
+                        self.pose_controller_l.y = round(poses["green"]["y"] * 0.85, 6)
+                        self.pose_controller_l.z = round(poses["green"]["z"] * 1.8, 6)
 
-                        self.pose_controller_r.x = round(-poses["yellow"]["x"], 6)
-                        self.pose_controller_r.y = round(poses["yellow"]["y"], 6)
-                        self.pose_controller_r.z = round(poses["yellow"]["z"], 6)
+                        self.pose_controller_r.x = round(-poses["yellow"]["x"] * 0.9, 6)
+                        self.pose_controller_r.y = round(poses["yellow"]["y"] * 0.85, 6)
+                        self.pose_controller_r.z = round(poses["yellow"]["z"] * 1.8, 6)
 
-                        self.pose.x = round(-poses["blue"]["x"] - 0.01, 6)
-                        self.pose.y = round(poses["blue"]["y"] - 0.07, 6)
-                        self.pose.z = round(poses["blue"]["z"] + 0.05, 6)
+                        self.pose.x = round(-poses["blue"]["x"] * 0.9 - 0.01, 6)
+                        self.pose.y = round(poses["blue"]["y"] * 0.85 - 0.07, 6)
+                        self.pose.z = round(poses["blue"]["z"] * 2 + 0.05, 6)
 
                     await asyncio.sleep(self.coro_keep_alive["get_location"][1])
 
@@ -191,7 +191,7 @@ class Poser(templates.PoserTemplate):
 
                             my_q = Quaternion([-y, z, -x, w])
 
-                            my_q = my_off * my_q * irl_rot_off
+                            my_q = Quaternion(my_off * my_q * irl_rot_off).normalised
                             self.pose_controller_l.r_w = round(my_q[3], 5)
                             self.pose_controller_l.r_x = round(my_q[0], 5)
                             self.pose_controller_l.r_y = round(my_q[1], 5)
@@ -270,7 +270,7 @@ class Poser(templates.PoserTemplate):
                             if self._serialResetYaw:
                                 my_off = Quaternion([0, z, 0, w]).inverse.normalised
 
-                            my_q = my_off * my_q * irl_rot_off
+                            my_q = Quaternion(my_off * my_q * irl_rot_off).normalised
                             self.pose_controller_r.r_w = round(my_q[3], 5)
                             self.pose_controller_r.r_x = round(my_q[0], 5)
                             self.pose_controller_r.r_y = round(my_q[1], 5)
@@ -310,7 +310,7 @@ class Poser(templates.PoserTemplate):
                             if self._serialResetYaw:
                                 my_off = Quaternion([0, z, 0, w]).inverse.normalised
 
-                            my_q = my_off * my_q
+                            my_q = Quaternion(my_off * my_q).normalised
                             self.pose.r_w = round(my_q[3], 5)
                             self.pose.r_x = round(my_q[0], 5)
                             self.pose.r_y = round(my_q[1], 5)

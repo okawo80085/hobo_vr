@@ -5,87 +5,79 @@ from ..templates import PoserTemplate
 from ..util import utilz as u
 
 DOMAIN = (None, 6969)
-conz = {}
 
-PRINT_MESSAGES = False
+class Server:
+    def __init__(self):
+        '''
+        im not sure about this on chief,
+        looks like a destructor to me
+        '''
+        self.conz = []
+        self.debug = False
 
+        self._driver_idz = [b'hello\n',]
+        self._poser_idz = [b'holla\n',]
+        self._terminator = b'\n'
+        self._close_msg = b'CLOSE\n'
 
-async def broadcast(everyone, data, me, VIP):
-    """
-    Broadcast a message to all trackers.
+    def __repr__(self):
+        '''do i need to explain this?'''
+        return f'<{self.__class__.__module__}.{self.__class__.__name__} debug={self.debug} active_conz={len(self.conz)} object at {hex(id(self))}>'
 
-    :param everyone:
-    :param data:
-    :param me:
-    :param VIP:
-    :return:
-    """
-    try:
-        for key, acc in list(everyone.items()):
-            try:
-                if me != key and (VIP == acc[2] or acc[3]):
-                    acc[1].write(data)
-                    await acc[1].drain()
-
-            except:
-                # print (key, 'reason:', e)
-                pass
-
-    except RuntimeError as e:
-        return e
-
-    return False
-
-
-async def handle_echo(reader, writer):
-    """Handle communication between poser and driver."""
-    addr = writer.get_extra_info("peername")
-    data = await u.read3(reader)
-    if addr not in conz:
-        print("New connection from {}".format(addr))
-        isDriver = False
-        isPoser = False
-        if data == b"hello\n":
-            print("driver connected")
-            isDriver = True
-
-        if data == b"poser here\n":
-            print("poser connected")
-            isPoser = True
-
-        conz[addr] = (reader, writer, isDriver or isPoser, isPoser)
-
-    if not len(data) or data == b"CLOSE\n":
-        return
-
-    while 1:
+    async def send_to_all(self, msg, me):
+        '''send a message to all registered connections that are not self and have the corresponding id'''
         try:
-            data = await u.read3(reader)
+            for i in self.conz:
+                if i != me and (i[2] == me[2] or i[3]):
+                    i[1].write(msg)
+                    await i[1].drain()
+        except Exception as e:
+            print (f'message lost: {e}')
 
-            if not len(data) or data == b"CLOSE\n":
+
+    async def __call__(self, reader, writer):
+        '''this is will run for each incoming connection'''
+        addr = writer.get_extra_info("peername")
+
+        id_msg, first_msg = (await reader.read(50)).split(self._terminator)
+
+        me = (addr, writer, id_msg in self._driver_idz or id_msg in self._poser_idz, id_msg in self._poser_idz, f'lol{len(self.conz)}')
+        if me not in self.conz:
+            print (f'new connection from {addr}')
+            self.conz.append(me)
+
+        if first_msg:
+            await self.send_to_all(first_msg, me)
+
+        while 1:
+            try:
+                # data = await u.read3(reader, read_len=256)
+                data = await reader.read(300)
+
+                if not data or self._close_msg in data:
+                    break
+
+                await self.send_to_all(data, me)
+
+                if self.debug:
+                    print (f'{repr(data)} from {addr}')
+
+            except Exception as e:
+                print (f'{addr} broke: {e}')
                 break
 
-            sendOknt = await broadcast(conz, data, addr, conz[addr][2])
+        if me in self.conz:
+            self.conz.remove(me)
 
-            if PRINT_MESSAGES:
-                print("Received %r from %r %r" % (data, addr, sendOknt))
-
-            if sendOknt:
-                print (f'packet from {addr} lost, reason: {sendOknt}')
-
-            # await asyncio.sleep(0.00001)
-
+        try:
+            writer.close()
+            await writer.wait_closed()
         except Exception as e:
-            print("Losing connection to {}, reason: {}".format(addr, e))
-            break
+            print (f'failed to close {addr}: {e}')
 
-    print(f"Connection to {addr} closed")
-    writer.close()
-    if addr in conz:
-        del conz[addr]
+        print (f'connection to {addr} closed')
 
-
-def run_til_dead(poser: PoserTemplate = None, conn_handle=handle_echo):
+def run_til_dead(poser: PoserTemplate = None, conn_handle=Server()):
     """Run the server until it dies."""
     loop = asyncio.get_event_loop()
     coro = asyncio.start_server(conn_handle, *DOMAIN, loop=loop)

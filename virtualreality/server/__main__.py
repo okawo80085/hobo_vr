@@ -17,6 +17,7 @@ from docopt import docopt
 
 args = docopt(__doc__, version=__version__)
 
-server.PRINT_MESSAGES = args["--show-messages"]
+my_server = server.Server()
+my_server.debug = args["--show-messages"]
 
-server.run_til_dead()
+server.run_til_dead(conn_handle=my_server)
