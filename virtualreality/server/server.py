@@ -31,12 +31,14 @@ class Server:
                 if i != me and (i[2] == me[2] or i[3]):
                     i[1].write(msg)
                     await i[1].drain()
+
         except Exception as e:
-            print (f'message lost: {e}')
+            print (f'message from {me[0]} lost: {e}')
 
 
     async def __call__(self, reader, writer):
         '''this is will run for each incoming connection'''
+
         addr = writer.get_extra_info("peername")
 
         id_msg, first_msg = (await reader.read(50)).split(self._terminator)
@@ -49,10 +51,17 @@ class Server:
         if first_msg:
             await self.send_to_all(first_msg, me)
 
+        # this is does nothing but looks pretty
+        if id_msg in self._driver_idz:
+            print ('its a driver')
+
+        elif id_msg in self._poser_idz:
+            print ('its a poser')
+
+        # main receive/transmit loop
         while 1:
             try:
-                # data = await u.read3(reader, read_len=256)
-                data = await reader.read(300)
+                data = await reader.read(400)
 
                 if not data or self._close_msg in data:
                     break
@@ -73,7 +82,7 @@ class Server:
             writer.close()
             await writer.wait_closed()
         except Exception as e:
-            print (f'failed to close {addr}: {e}')
+            print (f'error on {addr} close: {e}')
 
         print (f'connection to {addr} closed')
 
