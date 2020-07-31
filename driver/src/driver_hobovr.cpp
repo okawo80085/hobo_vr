@@ -103,24 +103,15 @@ private:
 
 CWatchdogDriver_Sample g_watchdogDriverNull;
 
-// bool g_bExiting = false;
+bool g_bExiting = false;
 
-// void WatchdogThreadFunction() {
-//   while (!g_bExiting) {
-// #if defined(_WINDOWS)
-//     // on windows send the event when the Y key is pressed.
-//     if ((0x01 & GetAsyncKeyState(VK_MULTIPLY)) != 0) {
-//       // Y key was pressed.
-//       vr::VRWatchdogHost()->WatchdogWakeUp(vr::TrackedDeviceClass_HMD);
-//     }
-//     std::this_thread::sleep_for(std::chrono::microseconds(500));
-// #else
-//     // for the other platforms, just send one every five seconds
-//     std::this_thread::sleep_for(std::chrono::seconds(5));
-//     vr::VRWatchdogHost()->WatchdogWakeUp(vr::TrackedDeviceClass_HMD);
-// #endif
-//   }
-// }
+void WatchdogThreadFunction() {
+  while (!g_bExiting) {
+    // just wait and do nothing
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    // vr::VRWatchdogHost()->WatchdogWakeUp(vr::TrackedDeviceClass_HMD);
+  }
+}
 
 EVRInitError
 CWatchdogDriver_Sample::Init(vr::IVRDriverContext *pDriverContext) {
@@ -132,23 +123,23 @@ CWatchdogDriver_Sample::Init(vr::IVRDriverContext *pDriverContext) {
   // be pressed. A real driver should wait for a system button event or
   // something else from the
   // the hardware that signals that the VR system should start up.
-  // g_bExiting = false;
-  // m_pWatchdogThread = new std::thread(WatchdogThreadFunction);
-  // if (!m_pWatchdogThread) {
-  //   DriverLog("Unable to create watchdog thread\n");
-  //   return VRInitError_Driver_Failed;
-  // }
+  g_bExiting = false;
+  m_pWatchdogThread = new std::thread(WatchdogThreadFunction);
+  if (!m_pWatchdogThread) {
+    DriverLog("Unable to create watchdog thread\n");
+    return VRInitError_Driver_Failed;
+  }
 
   return VRInitError_None;
 }
 
 void CWatchdogDriver_Sample::Cleanup() {
-  // g_bExiting = true;
-  // if (m_pWatchdogThread) {
-  //   m_pWatchdogThread->join();
-  //   delete m_pWatchdogThread;
-  //   m_pWatchdogThread = nullptr;
-  // }
+  g_bExiting = true;
+  if (m_pWatchdogThread) {
+    m_pWatchdogThread->join();
+    delete m_pWatchdogThread;
+    m_pWatchdogThread = nullptr;
+  }
 
   CleanupDriverLog();
 }
@@ -160,8 +151,7 @@ void CWatchdogDriver_Sample::Cleanup() {
 class HeadsetDriver : public vr::ITrackedDeviceServerDriver,
                       public vr::IVRDisplayComponent {
 public:
-  HeadsetDriver(SockReceiver::DriverReceiver *remotePoser) {
-    this->remotePoser = remotePoser;
+  HeadsetDriver() {
     m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
     m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
 
@@ -258,12 +248,9 @@ public:
     vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
                                         Prop_IsOnDesktop_Bool, false);
 
-    vr::VRProperties()->SetStringProperty(
-        m_ulPropertyContainer, Prop_InputProfilePath_String,
-        "{hobovr}/input/hobovr_hmd_profile.json");
-
-    vr::VRDriverInput()->CreateBooleanComponent(
-        m_ulPropertyContainer, "/input/system/click", &m_compSystem);
+    // vr::VRProperties()->SetStringProperty(
+    //     m_ulPropertyContainer, Prop_InputProfilePath_String,
+    //     "{hobovr}/input/hobovr_hmd_profile.json");
 
     return VRInitError_None;
   }
@@ -279,11 +266,6 @@ public:
                   vr::IVRDisplayComponent_Version)) {
       return (vr::IVRDisplayComponent *)this;
     }
-    else if (!_stricmp(pchComponentNameAndVersion,
-                  vr::ITrackedDeviceServerDriver_Version)) {
-      return (vr::ITrackedDeviceServerDriver *)this;
-    }
-
     // override this to add a component to a driver
     return NULL;
   }
@@ -418,8 +400,6 @@ private:
   float m_fZoomWidth;
   float m_fZoomHeight;
 
-  SockReceiver::DriverReceiver *remotePoser;
-
   DriverPose_t pose;
 };
 
@@ -435,10 +415,11 @@ public:
 
     if (side) {
       m_sSerialNumber = "nut666";
+      m_sModelNumber = "hobovr_controller_m1";
     } else {
       m_sSerialNumber = "nut999";
+      m_sModelNumber = "hobovr_controller_m2";
     }
-    m_sModelNumber = "hobovr_controller_m1";
 
     poseController.poseTimeOffset = 0;
     poseController.poseIsValid = true;
@@ -534,11 +515,6 @@ public:
   virtual void EnterStandby() {}
 
   void *GetComponent(const char *pchComponentNameAndVersion) {
-    if (!_stricmp(pchComponentNameAndVersion,
-                  vr::ITrackedDeviceServerDriver_Version)) {
-      return (vr::ITrackedDeviceServerDriver *)this;
-    }
-
     // override this to add a component to a driver
     return NULL;
   }
@@ -692,13 +668,18 @@ private:
 };
 
 EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
-  remotePoser = new SockReceiver::DriverReceiver(57);
-  VR_INIT_SERVER_DRIVER_CONTEXT(pDriverContext);
-  remotePoser->start();
+  try{
+    remotePoser = new SockReceiver::DriverReceiver(57);
+    remotePoser->start();
+  } catch (...){
+    remotePoser = nullptr;
+    DriverLog("remotePoser broke on create or broke on start, either way you're fucked");
+  }
 
+  VR_INIT_SERVER_DRIVER_CONTEXT(pDriverContext);
   InitDriverLog(vr::VRDriverLog());
 
-  m_pNullHmdLatest = new HeadsetDriver(remotePoser);
+  m_pNullHmdLatest = new HeadsetDriver();
   vr::VRServerDriverHost()->TrackedDeviceAdded(
       m_pNullHmdLatest->GetSerialNumber().c_str(), vr::TrackedDeviceClass_HMD,
       m_pNullHmdLatest);
@@ -763,19 +744,21 @@ void CServerDriver_hobovr::myTrackingThread() {
   std::vector<double> tempPose;
   while (m_bMyThreadKeepAlive) {
 
-    tempPose = remotePoser->get_pose();
-    if (!tempPose.empty())
-    {
-      if (m_pRightController != NULL) {
-        m_pRightController->RunFrame(tempPose);
-      }
-
-      if (m_pLeftController != NULL) {
-        m_pLeftController->RunFrame(tempPose);
-      }
-
-      if (m_pNullHmdLatest != NULL) {
-        m_pNullHmdLatest->RunFrame(tempPose);
+    if (remotePoser != nullptr){
+      tempPose = remotePoser->get_pose();
+      if (!tempPose.empty())
+      {
+        if (m_pRightController != NULL) {
+          m_pRightController->RunFrame(tempPose);
+        }
+  
+        if (m_pLeftController != NULL) {
+          m_pLeftController->RunFrame(tempPose);
+        }
+  
+        if (m_pNullHmdLatest != NULL) {
+          m_pNullHmdLatest->RunFrame(tempPose);
+        }
       }
     }
 
