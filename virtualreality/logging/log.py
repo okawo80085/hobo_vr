@@ -13,7 +13,10 @@ def setup_custom_logger(name, level, file, format='[%(asctime)s] %(name)s %(leve
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
-    log_path = os.path.join(os.path.dirname(__file__), file)
+    log_path = os.path.normpath(os.path.join(os.path.dirname(__file__), file))
+    dir_p = os.path.dirname(log_path)
+    if not os.path.exists(dir_p):
+        os.mkdir(dir_p)
 
     #logging entry format
     logger_formatter = logging.Formatter('[%(asctime)s] %(name)s %(levelname)s - %(message)s')

@@ -2,7 +2,7 @@
 from . import util
 from . import templates
 
-from logging import log
+from .logging import log
 
 logger = log.setup_custom_logger(name=__name__,
     level="INFO",

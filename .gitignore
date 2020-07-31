@@ -40,3 +40,4 @@ driver/src/t
 !hobovr/*/*
 !hobovr/*/*/*
 !hobovr/*/*/*/*
+*.log
