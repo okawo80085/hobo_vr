@@ -15,8 +15,8 @@ class Server:
         self.conz = []
         self.debug = False
 
-        self._driver_idz = [b'hello\n',]
-        self._poser_idz = [b'holla\n',]
+        self._driver_idz = [b'hello',]
+        self._poser_idz = [b'holla',]
         self._terminator = b'\n'
         self._close_msg = b'CLOSE\n'
 
