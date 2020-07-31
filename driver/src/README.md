@@ -8,3 +8,8 @@ mv ./libdriver_hobovr.so ./driver_hobovr.so
 ```
 
 then copy `driver_hobovr.so` to `hobovr/bin/linux32` and `hobovr/bin/linux64`
+
+win compile stuff
+```
+cmake .. -G "Visual Studio 16 2019" -A {Win32/x64}
+```

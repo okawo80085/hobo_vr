@@ -3,7 +3,7 @@
 
 #pragma once
 
-#if defined(_WINDOWS)
+#ifdef _WIN32
 
 #include <tchar.h>
 
@@ -11,8 +11,7 @@
 #include <winsock2.h>
 #pragma comment(lib, "Ws2_32.lib")
 
-#else
-
+#elif defined(linux)
 // #include <sys/types.h>
 #include <sys/socket.h>
 // #include <netinet/in.h>
@@ -35,10 +34,10 @@
 #include <stdio.h>
 
 namespace SockReceiver {
-#if defined(_WINDOWS)
+#ifdef _WIN32
   int receive_till_zero( SOCKET sock, char* buf, int& numbytes, int max_packet_size )
   {
-#else
+#elif defined(linux)
   int receive_till_zero( int sock, char* buf, int& numbytes, int max_packet_size )
   {
 #endif
@@ -54,9 +53,9 @@ namespace SockReceiver {
         }
       }
 
-#if defined(_WINDOWS)
+#ifdef _WIN32
       int n = recv( sock, buf + numbytes, max_packet_size - numbytes, 0 );
-#else
+#elif defined(linux)
       int n = read( sock, buf + numbytes, max_packet_size - numbytes);
 #endif
       if( n == -1 ) {
@@ -118,7 +117,7 @@ namespace SockReceiver {
 
 class DriverReceiver{
   public:
-#if defined(_WINDOWS)
+#ifdef _WIN32
     DriverReceiver(int expected_pose_size, int port=6969) {
       this->eps = expected_pose_size;
       this->threadKeepAlive = false;
@@ -178,7 +177,7 @@ class DriverReceiver{
         throw std::runtime_error("failed to connect");
       }
     }
-#else
+#elif defined(linux)
     DriverReceiver(int expected_pose_size, char *port="6969", char* addr="127.0.01") {
       this->eps = expected_pose_size;
       this->threadKeepAlive = false;
@@ -299,9 +298,9 @@ class DriverReceiver{
     std::vector<double> get_pose() {return this->newPose;}
 
     int send2(const char* message) {
-#if defined(_WINDOWS)
+#ifdef _WIN32
       return send(this->mySoc, message, (int)strlen(message), 0);
-#else
+#elif defined(linux)
       return write(this->mySoc, message, (int)strlen(message));
 #endif
     }
@@ -313,9 +312,9 @@ class DriverReceiver{
     bool threadKeepAlive;
     std::thread *m_pMyTread;
 
-#if defined(_WINDOWS)
+#ifdef _WIN32
     SOCKET mySoc;
-#else
+#elif defined(linux)
     int mySoc;
 #endif
 
