@@ -15,9 +15,9 @@
 #if defined(_WINDOWS)
 #include <windows.h>
 
-#else
+// #else
 
-#define _stricmp strcasecmp
+// #define _stricmp strcasecmp
 
 #endif
 
@@ -248,9 +248,9 @@ public:
     vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
                                         Prop_IsOnDesktop_Bool, false);
 
-    // vr::VRProperties()->SetStringProperty(
-    //     m_ulPropertyContainer, Prop_InputProfilePath_String,
-    //     "{hobovr}/input/hobovr_hmd_profile.json");
+    vr::VRProperties()->SetStringProperty(
+        m_ulPropertyContainer, Prop_InputProfilePath_String,
+        "{hobovr}/input/hobovrhmd_profile.json");
 
     return VRInitError_None;
   }
@@ -684,17 +684,17 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
       m_pHmdLatest->GetSerialNumber().c_str(), vr::TrackedDeviceClass_HMD,
       m_pHmdLatest);
 
-  // m_pRightController = new ControllerDriver(1, remotePoser);
-  m_pRightController = NULL;
-  // m_pLeftController = new ControllerDriver(0, remotePoser);
-  m_pLeftController = NULL;
+  m_pRightController = new ControllerDriver(1, remotePoser);
+  // m_pRightController = NULL;
+  m_pLeftController = new ControllerDriver(0, remotePoser);
+  // m_pLeftController = NULL;
 
-  // vr::VRServerDriverHost()->TrackedDeviceAdded(
-  //     m_pRightController->GetSerialNumber().c_str(),
-  //     vr::TrackedDeviceClass_Controller, m_pRightController);
-  // vr::VRServerDriverHost()->TrackedDeviceAdded(
-  //     m_pLeftController->GetSerialNumber().c_str(),
-  //     vr::TrackedDeviceClass_Controller, m_pLeftController);
+  vr::VRServerDriverHost()->TrackedDeviceAdded(
+      m_pRightController->GetSerialNumber().c_str(),
+      vr::TrackedDeviceClass_Controller, m_pRightController);
+  vr::VRServerDriverHost()->TrackedDeviceAdded(
+      m_pLeftController->GetSerialNumber().c_str(),
+      vr::TrackedDeviceClass_Controller, m_pLeftController);
 
   m_bMyThreadKeepAlive = true;
   m_pMyTread = new std::thread(myThreadEnter, this);
