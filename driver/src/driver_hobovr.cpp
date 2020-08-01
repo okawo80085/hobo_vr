@@ -718,8 +718,8 @@ void CServerDriver_hobovr::Cleanup() {
   }
 
   delete m_pHmdLatest;
-  // delete m_pRightController;
-  // delete m_pLeftController;
+  delete m_pRightController;
+  delete m_pLeftController;
   delete remotePoser;
   remotePoser = NULL;
   m_pHmdLatest = NULL;
