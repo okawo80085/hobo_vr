@@ -657,7 +657,7 @@ public:
   void myTrackingThread();
 
 private:
-  HeadsetDriver *m_pNullHmdLatest = nullptr;
+  HeadsetDriver *m_pHmdLatest = nullptr;
   ControllerDriver *m_pRightController = nullptr;
   ControllerDriver *m_pLeftController = nullptr;
 
@@ -679,20 +679,22 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
   VR_INIT_SERVER_DRIVER_CONTEXT(pDriverContext);
   InitDriverLog(vr::VRDriverLog());
 
-  m_pNullHmdLatest = new HeadsetDriver();
+  m_pHmdLatest = new HeadsetDriver();
   vr::VRServerDriverHost()->TrackedDeviceAdded(
-      m_pNullHmdLatest->GetSerialNumber().c_str(), vr::TrackedDeviceClass_HMD,
-      m_pNullHmdLatest);
+      m_pHmdLatest->GetSerialNumber().c_str(), vr::TrackedDeviceClass_HMD,
+      m_pHmdLatest);
 
-  m_pRightController = new ControllerDriver(1, remotePoser);
-  m_pLeftController = new ControllerDriver(0, remotePoser);
+  // m_pRightController = new ControllerDriver(1, remotePoser);
+  m_pRightController = NULL;
+  // m_pLeftController = new ControllerDriver(0, remotePoser);
+  m_pLeftController = NULL;
 
-  vr::VRServerDriverHost()->TrackedDeviceAdded(
-      m_pRightController->GetSerialNumber().c_str(),
-      vr::TrackedDeviceClass_Controller, m_pRightController);
-  vr::VRServerDriverHost()->TrackedDeviceAdded(
-      m_pLeftController->GetSerialNumber().c_str(),
-      vr::TrackedDeviceClass_Controller, m_pLeftController);
+  // vr::VRServerDriverHost()->TrackedDeviceAdded(
+  //     m_pRightController->GetSerialNumber().c_str(),
+  //     vr::TrackedDeviceClass_Controller, m_pRightController);
+  // vr::VRServerDriverHost()->TrackedDeviceAdded(
+  //     m_pLeftController->GetSerialNumber().c_str(),
+  //     vr::TrackedDeviceClass_Controller, m_pLeftController);
 
   m_bMyThreadKeepAlive = true;
   m_pMyTread = new std::thread(myThreadEnter, this);
@@ -715,12 +717,12 @@ void CServerDriver_hobovr::Cleanup() {
     m_pMyTread = nullptr;
   }
 
-  delete m_pNullHmdLatest;
-  delete m_pRightController;
-  delete m_pLeftController;
+  delete m_pHmdLatest;
+  // delete m_pRightController;
+  // delete m_pLeftController;
   delete remotePoser;
   remotePoser = NULL;
-  m_pNullHmdLatest = NULL;
+  m_pHmdLatest = NULL;
   m_pRightController = NULL;
   m_pLeftController = NULL;
 }
@@ -756,8 +758,8 @@ void CServerDriver_hobovr::myTrackingThread() {
           m_pLeftController->RunFrame(tempPose);
         }
   
-        if (m_pNullHmdLatest != NULL) {
-          m_pNullHmdLatest->RunFrame(tempPose);
+        if (m_pHmdLatest != NULL) {
+          m_pHmdLatest->RunFrame(tempPose);
         }
       }
     }

@@ -1,26 +1,14 @@
 #ifndef RECEIVER_H
 #define RECEIVER_H
 
-#pragma once
-
-#ifdef _WIN32
-
 #include <tchar.h>
+
+#pragma once
 
 #include <Ws2tcpip.h>
 #include <winsock2.h>
+
 #pragma comment(lib, "Ws2_32.lib")
-
-#elif defined(linux)
-// #include <sys/types.h>
-#include <sys/socket.h>
-// #include <netinet/in.h>
-#include <netdb.h>
-#include <unistd.h>
-#include <cstring>
-
-#endif
-
 
 #include <vector>
 #include <string>
@@ -34,13 +22,8 @@
 #include <stdio.h>
 
 namespace SockReceiver {
-#ifdef _WIN32
   int receive_till_zero( SOCKET sock, char* buf, int& numbytes, int max_packet_size )
   {
-#elif defined(linux)
-  int receive_till_zero( int sock, char* buf, int& numbytes, int max_packet_size )
-  {
-#endif
     // receives a message until an end token is reached
     // thanks to https://stackoverflow.com/a/13528453/10190971
     int i = 0;
@@ -52,12 +35,7 @@ namespace SockReceiver {
           return i + 1; // return length of message
         }
       }
-
-#ifdef _WIN32
       int n = recv( sock, buf + numbytes, max_packet_size - numbytes, 0 );
-#elif defined(linux)
-      int n = read( sock, buf + numbytes, max_packet_size - numbytes);
-#endif
       if( n == -1 ) {
         return -1; // operation failed!
       }
@@ -115,9 +93,8 @@ namespace SockReceiver {
   }
 
 
-class DriverReceiver{
+  class DriverReceiver{
   public:
-#ifdef _WIN32
     DriverReceiver(int expected_pose_size, int port=6969) {
       this->eps = expected_pose_size;
       this->threadKeepAlive = false;
@@ -125,7 +102,6 @@ class DriverReceiver{
       for (int i=0; i<this->eps; i++) {
         this->newPose.push_back(0.0);
       }
-
 
       // init winsock
       WSADATA wsaData;
@@ -177,62 +153,6 @@ class DriverReceiver{
         throw std::runtime_error("failed to connect");
       }
     }
-#elif defined(linux)
-    DriverReceiver(int expected_pose_size, char *port="6969", char* addr="127.0.01") {
-      this->eps = expected_pose_size;
-      this->threadKeepAlive = false;
-
-      for (int i=0; i<this->eps; i++) {
-        this->newPose.push_back(0.0);
-      }
-
-      // placeholders
-      int portno, n;
-      struct sockaddr_in serv_addr;
-      struct hostent *server;
-
-      server = gethostbyname(addr); // oh and did i mention that this is also convoluted as shit in winsock?
-      portno = atoi(port);
-
-      this->mySoc = socket(AF_INET, SOCK_STREAM, 0); // create socket, surprisingly winsock didn't fuck this up
-
-      if (this->mySoc < 0) {
-        //log and throw
-#ifdef DRIVERLOG_H
-          DriverLog("receiver opening socket error");
-#endif
-          this->mySoc = NULL;
-          throw std::runtime_error("failed to open socket");
-      }
-
-      if (server == NULL){
-        //log and throw
-#ifdef DRIVERLOG_H
-          DriverLog("receiver bad host");
-#endif
-          this->mySoc = NULL;
-          throw std::runtime_error("bad host addr");
-      }
-
-      bzero((char *) &serv_addr, sizeof(serv_addr));
-      serv_addr.sin_family = AF_INET;
-
-      // a long ass function call just to copy the addr into a socket addr struct, still better then winsock
-      bcopy((char *)server->h_addr, 
-           (char *)&serv_addr.sin_addr.s_addr,
-           server->h_length);
-      serv_addr.sin_port = htons(portno); // copy port to the same struct
-
-      if (connect(this->mySoc,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) { // connect and check if successful
-        //log and throw
-#ifdef DRIVERLOG_H
-          DriverLog("receiver failed to connect to host");
-#endif
-          this->mySoc = NULL;
-          throw std::runtime_error("connection error");
-      }
-    }
-#endif
 
     ~DriverReceiver() {
       this->stop();
@@ -247,7 +167,7 @@ class DriverReceiver{
       if (!this->m_pMyTread || !this->threadKeepAlive) {
         // log failed to create recv thread
         // printf("thread start error\n");
-        this->close_me();
+        this->close();
 #ifdef DRIVERLOG_H
         DriverLog("receiver thread start error\n");
 #endif
@@ -256,21 +176,18 @@ class DriverReceiver{
     }
 
     void stop() {
+      this->close();
       this->threadKeepAlive = false;
       if (this->m_pMyTread) {
         this->m_pMyTread->join();
         delete this->m_pMyTread;
         this->m_pMyTread = nullptr;
       }
-      this->close_me();
     }
 
-    void close_me() {
+    void close() {
       if (this->mySoc != NULL) {
         int res = this->send2("CLOSE\n");
-
-#if defined(_WINDOWS)
-
         int iResult = closesocket(this->mySoc);
         if (iResult == SOCKET_ERROR) {
           // log closesocket error
@@ -278,18 +195,11 @@ class DriverReceiver{
 #ifdef DRIVERLOG_H
           DriverLog("receiver closesocket error: %d\n", WSAGetLastError());
 #endif
-
           WSACleanup();
           throw std::runtime_error("failed to closesocket");
         }
         else
           WSACleanup();
-
-#else
-
-      close(this->mySoc);
-
-#endif
       }
 
       this->mySoc = NULL;
@@ -298,11 +208,7 @@ class DriverReceiver{
     std::vector<double> get_pose() {return this->newPose;}
 
     int send2(const char* message) {
-#ifdef _WIN32
       return send(this->mySoc, message, (int)strlen(message), 0);
-#elif defined(linux)
-      return write(this->mySoc, message, (int)strlen(message));
-#endif
     }
 
   private:
@@ -312,11 +218,7 @@ class DriverReceiver{
     bool threadKeepAlive;
     std::thread *m_pMyTread;
 
-#ifdef _WIN32
     SOCKET mySoc;
-#elif defined(linux)
-    int mySoc;
-#endif
 
     static void my_thread_enter(DriverReceiver *ptr) {
       ptr->my_thread();

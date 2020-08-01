@@ -69,19 +69,19 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>$(SolutionDir)\bin\drivers\sample\bin\win32\</OutDir>
+    <OutDir>$(SolutionDir)bin\win32\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <OutDir>$(SolutionDir)\bin\drivers\sample\bin\win64\</OutDir>
+    <OutDir>$(SolutionDir)bin\win64\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)\bin\drivers\sample\bin\win32\</OutDir>
+    <OutDir>$(SolutionDir)bin\win32\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <OutDir>$(SolutionDir)\bin\drivers\sample\bin\win64\</OutDir>
+    <OutDir>$(SolutionDir)bin\win64\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -159,7 +159,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="driverlog.cpp" />
-    <ClCompile Include="driver_sample.cpp" />
+    <ClCompile Include="driver_hobovr.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="driverlog.h" />
