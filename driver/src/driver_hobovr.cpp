@@ -10,11 +10,11 @@
 #include <thread>
 #include <vector>
 
-#include "ref/receiver.h"
 
 #if defined(_WINDOWS)
 #include <windows.h>
 
+#include "ref/receiver.h"
 // #else
 
 // #define _stricmp strcasecmp
