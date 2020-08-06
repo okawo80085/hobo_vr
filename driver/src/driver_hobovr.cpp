@@ -14,12 +14,18 @@
 #if defined(_WINDOWS)
 #include <windows.h>
 
-#include "ref/receiver.h"
-// #else
+#else
+#define _stricmp strcasecmp
+#endif
 
-// #define _stricmp strcasecmp
+#if defined(_WIN32)
+#include "ref/receiver_win.h"
+
+#elif defined(__linux__)
+#include "ref/receiver_linux.h"
 
 #endif
+
 
 #include <cmath>
 #include <cstdio>
