@@ -10,21 +10,23 @@
 #include <thread>
 #include <vector>
 
+// #if defined(_WIN32)
+// #include "ref/receiver_win.h"
+
+// #elif defined(__linux__)
+// #include "ref/receiver_linux.h"
+
+// #endif
 
 #if defined(_WINDOWS)
+#include "ref/receiver_win.h"
 #include <windows.h>
 
-#else
-#define _stricmp strcasecmp
+// #else
+// #include "ref/receiver_linux.h"
+// #define _stricmp strcasecmp
 #endif
 
-#if defined(_WIN32)
-#include "ref/receiver_win.h"
-
-#elif defined(__linux__)
-#include "ref/receiver_linux.h"
-
-#endif
 
 
 #include <cmath>
