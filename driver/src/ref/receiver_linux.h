@@ -1,14 +1,7 @@
 #ifndef RECEIVER_H
 #define RECEIVER_H
 
-#include <tchar.h>
-
 #pragma once
-
-#include <Ws2tcpip.h>
-#include <winsock2.h>
-
-#pragma comment(lib, "Ws2_32.lib")
 
 #include <vector>
 #include <string>
@@ -22,7 +15,7 @@
 #include <stdio.h>
 
 namespace SockReceiver {
-  int receive_till_zero( SOCKET sock, char* buf, int& numbytes, int max_packet_size )
+  int receive_till_zero( int sock, char* buf, int& numbytes, int max_packet_size )
   {
     // receives a message until an end token is reached
     // thanks to https://stackoverflow.com/a/13528453/10190971
@@ -35,12 +28,15 @@ namespace SockReceiver {
           return i + 1; // return length of message
         }
       }
-      int n = recv( sock, buf + numbytes, max_packet_size - numbytes, 0 );
-      if( n == -1 ) {
+
+    int n = read( sock, buf + numbytes, max_packet_size - numbytes);
+
+    if( n == -1 ) {
         return -1; // operation failed!
       }
       numbytes += n;
     } while( true );
+
   }
 
   void remove_message_from_buffer( char* buf, int& numbytes, int msglen )
@@ -92,10 +88,9 @@ namespace SockReceiver {
     return false;
   }
 
-
-  class DriverReceiver{
+  class DriverReceiver {
   public:
-    DriverReceiver(int expected_pose_size, int port=6969) {
+    DriverReceiver(int expected_pose_size, char *port="6969", char* addr="127.0.01") {
       this->eps = expected_pose_size;
       this->threadKeepAlive = false;
 
@@ -103,54 +98,50 @@ namespace SockReceiver {
         this->newPose.push_back(0.0);
       }
 
-      // init winsock
-      WSADATA wsaData;
-      int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
-      if (iResult != NO_ERROR) {
-        // log init error
-        // printf("init error: %d\n", iResult);
+      // placeholders
+      int portno, n;
+      struct sockaddr_in serv_addr;
+      struct hostent *server;
+
+      server = gethostbyname(addr); // oh and did i mention that this is also convoluted as shit in winsock?
+      portno = atoi(port);
+
+      this->mySoc = socket(AF_INET, SOCK_STREAM, 0); // create socket, surprisingly winsock didn't fuck this up
+
+      if (this->mySoc < 0) {
+        //log and throw
 #ifdef DRIVERLOG_H
-        DriverLog("receiver init error: %d\n", WSAGetLastError());
+          DriverLog("receiver opening socket error");
 #endif
-        throw std::runtime_error("failed to init winsock");
+          this->mySoc = NULL;
+          throw std::runtime_error("failed to open socket");
       }
 
-      // create socket
-      this->mySoc = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-
-      if (this->mySoc == INVALID_SOCKET) {
-        // log create error
-        // printf("create error\n");
+      if (server == NULL){
+        //log and throw
 #ifdef DRIVERLOG_H
-        DriverLog("receiver create error: %d\n", WSAGetLastError());
+          DriverLog("receiver bad host");
 #endif
-        WSACleanup();
-        throw std::runtime_error("failed to create socket");
+          this->mySoc = NULL;
+          throw std::runtime_error("bad host addr");
       }
 
-      // addr details
-      sockaddr_in addrDetails;
-      addrDetails.sin_family = AF_INET;
-      InetPton(AF_INET, _T("127.0.0.1"), &addrDetails.sin_addr.s_addr);
-      addrDetails.sin_port = htons(port);
+      bzero((char *) &serv_addr, sizeof(serv_addr));
+      serv_addr.sin_family = AF_INET;
 
-      // connect socket
-      iResult = connect(this->mySoc, (SOCKADDR *) & addrDetails, sizeof (addrDetails));
-      if (iResult == SOCKET_ERROR) {
-        // log connect error
-        // printf("cennect error: %d\n", iResult);
+      // a long ass function call just to copy the addr into a socket addr struct, still better then winsock
+      bcopy((char *)server->h_addr, 
+           (char *)&serv_addr.sin_addr.s_addr,
+           server->h_length);
+      serv_addr.sin_port = htons(portno); // copy port to the same struct
+
+      if (connect(this->mySoc,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) { // connect and check if successful
+        //log and throw
 #ifdef DRIVERLOG_H
-        DriverLog("receiver connect error: %d\n", WSAGetLastError());
+          DriverLog("receiver failed to connect to host");
 #endif
-        iResult = closesocket(this->mySoc);
-        if (iResult == SOCKET_ERROR)
-          // log closesocket error
-          // printf("closesocket error: %d\n", iResult);
-#ifdef DRIVERLOG_H
-          DriverLog("receiver connect error: %d\n", WSAGetLastError());
-#endif
-        WSACleanup();
-        throw std::runtime_error("failed to connect");
+          this->mySoc = NULL;
+          throw std::runtime_error("connection error");
       }
     }
 
@@ -158,7 +149,7 @@ namespace SockReceiver {
       this->stop();
     }
 
-    void start() {
+     void start() {
       this->threadKeepAlive = true;
       this->send2("hello\n");
 
@@ -167,7 +158,7 @@ namespace SockReceiver {
       if (!this->m_pMyTread || !this->threadKeepAlive) {
         // log failed to create recv thread
         // printf("thread start error\n");
-        this->close();
+        this->close_me();
 #ifdef DRIVERLOG_H
         DriverLog("receiver thread start error\n");
 #endif
@@ -176,30 +167,20 @@ namespace SockReceiver {
     }
 
     void stop() {
-      this->close();
       this->threadKeepAlive = false;
       if (this->m_pMyTread) {
         this->m_pMyTread->join();
         delete this->m_pMyTread;
         this->m_pMyTread = nullptr;
       }
+      this->close_me();
     }
 
-    void close() {
+    void close_me() {
       if (this->mySoc != NULL) {
         int res = this->send2("CLOSE\n");
-        int iResult = closesocket(this->mySoc);
-        if (iResult == SOCKET_ERROR) {
-          // log closesocket error
-          // printf("closesocket error: %d\n", WSAGetLastError());
-#ifdef DRIVERLOG_H
-          DriverLog("receiver closesocket error: %d\n", WSAGetLastError());
-#endif
-          WSACleanup();
-          throw std::runtime_error("failed to closesocket");
-        }
-        else
-          WSACleanup();
+        close(this->mySoc);
+
       }
 
       this->mySoc = NULL;
@@ -208,7 +189,7 @@ namespace SockReceiver {
     std::vector<double> get_pose() {return this->newPose;}
 
     int send2(const char* message) {
-      return send(this->mySoc, message, (int)strlen(message), 0);
+      return write(this->mySoc, message, (int)strlen(message));
     }
 
   private:
@@ -218,7 +199,7 @@ namespace SockReceiver {
     bool threadKeepAlive;
     std::thread *m_pMyTread;
 
-    SOCKET mySoc;
+    int mySoc;
 
     static void my_thread_enter(DriverReceiver *ptr) {
       ptr->my_thread();
@@ -282,5 +263,6 @@ namespace SockReceiver {
   };
 
 };
+
 
 #endif // RECEIVER_H
