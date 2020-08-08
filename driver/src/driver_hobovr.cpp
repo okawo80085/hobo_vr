@@ -98,59 +98,59 @@ static const char *const k_pch_Hobovr_ZoomHeight_Float = "ZoomHeight";
 // Purpose: watchdogDriver
 //-----------------------------------------------------------------------------
 
-class CWatchdogDriver_Sample : public IVRWatchdogProvider {
-public:
-  CWatchdogDriver_Sample() { m_pWatchdogThread = nullptr; }
+// class CWatchdogDriver_Sample : public IVRWatchdogProvider {
+// public:
+//   CWatchdogDriver_Sample() { m_pWatchdogThread = nullptr; }
 
-  virtual EVRInitError Init(vr::IVRDriverContext *pDriverContext);
-  virtual void Cleanup();
+//   virtual EVRInitError Init(vr::IVRDriverContext *pDriverContext);
+//   virtual void Cleanup();
 
-private:
-  std::thread *m_pWatchdogThread;
-};
+// private:
+//   std::thread *m_pWatchdogThread;
+// };
 
-CWatchdogDriver_Sample g_watchdogDriverNull;
+// CWatchdogDriver_Sample g_watchdogDriverNull;
 
-bool g_bExiting = false;
+// bool g_bExiting = false;
 
-void WatchdogThreadFunction() {
-  while (!g_bExiting) {
-    // just wait and do nothing
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-    // vr::VRWatchdogHost()->WatchdogWakeUp(vr::TrackedDeviceClass_HMD);
-  }
-}
+// void WatchdogThreadFunction() {
+//   while (!g_bExiting) {
+//     // just wait and do nothing
+//     std::this_thread::sleep_for(std::chrono::seconds(1));
+//     // vr::VRWatchdogHost()->WatchdogWakeUp(vr::TrackedDeviceClass_HMD);
+//   }
+// }
 
-EVRInitError
-CWatchdogDriver_Sample::Init(vr::IVRDriverContext *pDriverContext) {
-  VR_INIT_WATCHDOG_DRIVER_CONTEXT(pDriverContext);
-  InitDriverLog(vr::VRDriverLog());
+// EVRInitError
+// CWatchdogDriver_Sample::Init(vr::IVRDriverContext *pDriverContext) {
+//   VR_INIT_WATCHDOG_DRIVER_CONTEXT(pDriverContext);
+//   InitDriverLog(vr::VRDriverLog());
 
-  // Watchdog mode on Windows starts a thread that listens for the '*' key on
-  // the keyboard to
-  // be pressed. A real driver should wait for a system button event or
-  // something else from the
-  // the hardware that signals that the VR system should start up.
-  g_bExiting = false;
-  m_pWatchdogThread = new std::thread(WatchdogThreadFunction);
-  if (!m_pWatchdogThread) {
-    DriverLog("Unable to create watchdog thread\n");
-    return VRInitError_Driver_Failed;
-  }
+//   // Watchdog mode on Windows starts a thread that listens for the '*' key on
+//   // the keyboard to
+//   // be pressed. A real driver should wait for a system button event or
+//   // something else from the
+//   // the hardware that signals that the VR system should start up.
+//   g_bExiting = false;
+//   m_pWatchdogThread = new std::thread(WatchdogThreadFunction);
+//   if (!m_pWatchdogThread) {
+//     DriverLog("Unable to create watchdog thread\n");
+//     return VRInitError_Driver_Failed;
+//   }
 
-  return VRInitError_None;
-}
+//   return VRInitError_None;
+// }
 
-void CWatchdogDriver_Sample::Cleanup() {
-  g_bExiting = true;
-  if (m_pWatchdogThread) {
-    m_pWatchdogThread->join();
-    delete m_pWatchdogThread;
-    m_pWatchdogThread = nullptr;
-  }
+// void CWatchdogDriver_Sample::Cleanup() {
+//   g_bExiting = true;
+//   if (m_pWatchdogThread) {
+//     m_pWatchdogThread->join();
+//     delete m_pWatchdogThread;
+//     m_pWatchdogThread = nullptr;
+//   }
 
-  CleanupDriverLog();
-}
+//   CleanupDriverLog();
+// }
 
 //-----------------------------------------------------------------------------
 // Purpose: hmdDriver
@@ -218,7 +218,13 @@ public:
     pose.poseIsValid = true;
     pose.deviceIsConnected = true;
     pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
+    pose.vecWorldFromDriverTranslation[0] = 0.;
+    pose.vecWorldFromDriverTranslation[1] = 0.;
+    pose.vecWorldFromDriverTranslation[2] = 0.;
     pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
+    pose.vecDriverFromHeadTranslation[0] = 0.;
+    pose.vecDriverFromHeadTranslation[1] = 0.;
+    pose.vecDriverFromHeadTranslation[2] = 0.;
     pose.vecPosition[0] = 0.;
     pose.vecPosition[1] = 0.;
     pose.vecPosition[2] = 0.;
@@ -351,6 +357,12 @@ public:
     coordinates.rfGreen[1] = hY + 0.5f;
     coordinates.rfRed[0] = hX + 0.5f;
     coordinates.rfRed[1] = hY + 0.5f;
+    // coordinates.rfBlue[0] = fU;
+    // coordinates.rfBlue[1] = fV;
+    // coordinates.rfGreen[0] = fU;
+    // coordinates.rfGreen[1] = fV;
+    // coordinates.rfRed[0] = fU;
+    // coordinates.rfRed[1] = fV;
 
     return coordinates;
   }
@@ -676,6 +688,7 @@ private:
 };
 
 EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
+  VR_INIT_SERVER_DRIVER_CONTEXT(pDriverContext);
   try{
     remotePoser = new SockReceiver::DriverReceiver(57);
     remotePoser->start();
@@ -684,7 +697,6 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
     DriverLog("remotePoser broke on create or broke on start, either way you're fucked");
   }
 
-  VR_INIT_SERVER_DRIVER_CONTEXT(pDriverContext);
   InitDriverLog(vr::VRDriverLog());
 
   m_pHmdLatest = new HeadsetDriver();
@@ -797,9 +809,9 @@ HMD_DLL_EXPORT void *HmdDriverFactory(const char *pInterfaceName,
   if (0 == strcmp(IServerTrackedDeviceProvider_Version, pInterfaceName)) {
     return &g_serverDriverNull;
   }
-  if (0 == strcmp(IVRWatchdogProvider_Version, pInterfaceName)) {
-    return &g_watchdogDriverNull;
-  }
+  // if (0 == strcmp(IVRWatchdogProvider_Version, pInterfaceName)) {
+  //   return &g_watchdogDriverNull;
+  // }
 
   if (pReturnCode)
     *pReturnCode = VRInitError_Init_InterfaceNotFound;
