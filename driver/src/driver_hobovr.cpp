@@ -22,9 +22,10 @@
 #include "ref/receiver_win.h"
 #include <windows.h>
 
-// #else
-// #include "ref/receiver_linux.h"
-// #define _stricmp strcasecmp
+#else
+#include "ref/receiver_linux.h"
+#define _stricmp strcasecmp
+
 #endif
 
 
@@ -435,10 +436,10 @@ public:
 
     if (side) {
       m_sSerialNumber = "nut666";
-      m_sModelNumber = "hobovr_controller_m1";
+      m_sModelNumber = "{hobovr}/rendermodels/hobovr_controller_m1";
     } else {
       m_sSerialNumber = "nut999";
-      m_sModelNumber = "hobovr_controller_m2";
+      m_sModelNumber = "{hobovr}/rendermodels/hobovr_controller_m2";
     }
 
     poseController.poseTimeOffset = 0;

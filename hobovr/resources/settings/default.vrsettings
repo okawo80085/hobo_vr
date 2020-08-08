@@ -2,7 +2,7 @@
    "driver_hobovr" : {
       "enable" : true,
       "serialNumber" : "420",
-      "modelNumber" : "generic_hmd",
+      "modelNumber" : "hobovrhmd",
       "windowX" : 10,
       "windowY" : 10,
       "windowWidth" : 3840,
