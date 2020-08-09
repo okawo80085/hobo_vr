@@ -178,6 +178,7 @@ public:
                                 k_pch_Hobovr_ModelNumber_String, buf,
                                 sizeof(buf));
     m_sModelNumber = buf;
+    m_sRenderModelPath = "{hobovr}/rendermodels/hobovr_hmd";
 
     m_nWindowX = vr::VRSettings()->GetInt32(k_pch_Hobovr_Section,
                                             k_pch_Hobovr_WindowX_Int32);
@@ -243,7 +244,7 @@ public:
         m_ulPropertyContainer, Prop_ModelNumber_String, m_sModelNumber.c_str());
     vr::VRProperties()->SetStringProperty(m_ulPropertyContainer,
                                           Prop_RenderModelName_String,
-                                          m_sModelNumber.c_str());
+                                          m_sRenderModelPath.c_str());
     vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer,
                                          Prop_UserIpdMeters_Float, m_flIPD);
     vr::VRProperties()->SetFloatProperty(
@@ -405,6 +406,7 @@ private:
 
   std::string m_sSerialNumber;
   std::string m_sModelNumber;
+  std::string m_sRenderModelPath;
 
   int32_t m_nWindowX;
   int32_t m_nWindowY;
@@ -436,10 +438,12 @@ public:
 
     if (side) {
       m_sSerialNumber = "nut666";
-      m_sModelNumber = "{hobovr}/rendermodels/hobovr_controller_m1";
+      m_sModelNumber = "hobovr_controller_m1";
+      m_sRenderModelPath = "{hobovr}/rendermodels/hobovr_controller_m1";
     } else {
       m_sSerialNumber = "nut999";
-      m_sModelNumber = "{hobovr}/rendermodels/hobovr_controller_m2";
+      m_sModelNumber = "hobovr_controller_m2";
+      m_sRenderModelPath = "{hobovr}/rendermodels/hobovr_controller_m2";
     }
 
     poseController.poseTimeOffset = 0;
@@ -470,7 +474,7 @@ public:
         m_ulPropertyContainer, Prop_ModelNumber_String, m_sModelNumber.c_str());
     vr::VRProperties()->SetStringProperty(m_ulPropertyContainer,
                                           Prop_RenderModelName_String,
-                                          m_sModelNumber.c_str());
+                                          m_sRenderModelPath.c_str());
 
     // return a constant that's not 0 (invalid) or 1 (reserved for Oculus)
     vr::VRProperties()->SetUint64Property(m_ulPropertyContainer,
@@ -648,6 +652,7 @@ private:
 
   std::string m_sSerialNumber;
   std::string m_sModelNumber;
+  std::string m_sRenderModelPath;
 
   DriverPose_t poseController;
   bool handSide_;
