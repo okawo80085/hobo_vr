@@ -88,7 +88,7 @@ class Poser(templates.PoserTemplate):
         print (f'current color masks {self.calibration}')
 
 
-    @templates.thread_register(1 / 90)
+    @templates.PoserTemplate.register_member_thread(1 / 90)
     async def mode_switcher(self):
         """Check to switch between left and right controllers."""
         while self.coro_keep_alive["mode_switcher"][0]:
@@ -122,7 +122,7 @@ class Poser(templates.PoserTemplate):
                 self.coro_keep_alive["mode_switcher"][0] = False
                 break
 
-    @templates.thread_register(1 / 65)
+    @templates.PoserTemplate.register_member_thread(1 / 65)
     async def get_location(self):
         """Get locations from blob trackers."""
         try:
@@ -165,7 +165,7 @@ class Poser(templates.PoserTemplate):
 
         self.coro_keep_alive["get_location"][0] = False
 
-    @templates.thread_register(1 / 100)
+    @templates.PoserTemplate.register_member_thread(1 / 100)
     async def serial_listener2(self):
         """Get controller data from serial."""
         irl_rot_off = Quaternion.from_z_rotation(np.pi/2) # imu on this controller is rotated 90 degrees irl for me
@@ -242,7 +242,7 @@ class Poser(templates.PoserTemplate):
                         break
         self.coro_keep_alive["serial_listener2"][0] = False
 
-    @templates.thread_register(1 / 100)
+    @templates.PoserTemplate.register_member_thread(1 / 100)
     async def serial_listener3(self):
         """Get orientation data from serial."""
         irl_rot_off = Quaternion.from_x_rotation(np.pi/3) # imu on this controller is rotated 90 degrees irl for me
@@ -283,7 +283,7 @@ class Poser(templates.PoserTemplate):
                         break
         self.coro_keep_alive["serial_listener3"][0] = False
 
-    @templates.thread_register(1 / 100)
+    @templates.PoserTemplate.register_member_thread(1 / 100)
     async def serial_listener(self):
         """Get orientation data from serial."""
         my_off = Quaternion()

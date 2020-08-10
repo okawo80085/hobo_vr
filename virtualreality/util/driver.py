@@ -119,7 +119,7 @@ class UduDummyDriverReceiver(threading.Thread):
     no docs, again... too bad!
 
     example:
-    t = UduDummyDriverReceiver('h13 c22 c22', addr='192.168.31.60', port=6969)
+    t = UduDummyDriverReceiver('h13 c22 c22')
 
     with t:
         t.send('hello') # driver id message
@@ -220,7 +220,7 @@ class UduDummyDriverReceiver(threading.Thread):
                 pass
 
             except Exception as e:
-                print(f"DummyDriverReceiver receive thread failed: {repr(e)}")
+                print(f"UduDummyDriverReceiver receive thread failed: {repr(e)}")
                 break
 
         self.alive = False

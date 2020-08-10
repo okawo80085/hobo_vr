@@ -109,7 +109,7 @@ class Poser(templates.PoserTemplate):
         self.width = width
         self.height = height
 
-    @templates.thread_register(1 / 60)
+    @templates.PoserTemplate.register_member_thread(1 / 60)
     async def get_location(self):
         """Get locations from blob trackers."""
         try:
@@ -145,7 +145,7 @@ class Poser(templates.PoserTemplate):
                     print("stopping get_location:", e)
                     break
 
-    @templates.thread_register(1 / 100)
+    @templates.PoserTemplate.register_member_thread(1 / 100)
     async def serial_listener_2(self):
         """Get controller data from serial."""
         past_velocity = [0, 0, 0]
@@ -271,7 +271,7 @@ class Poser(templates.PoserTemplate):
 
             await asyncio.sleep(1)
 
-    @templates.thread_register(1 / 100)
+    @templates.PoserTemplate.register_member_thread(1 / 100)
     async def serial_listener(self):
         """Get orientation data from serial."""
         while self.coro_keep_alive["serial_listener"][0]:
