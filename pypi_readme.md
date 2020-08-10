@@ -84,7 +84,7 @@ poser = templates.PoserClient()
 
 @poser.thread_register(1/60)
 async def example_thread():
-	'''moves the headset in a circle'''
+    '''moves the headset in a circle'''
     h = 0
     while poser.coro_keep_alive["example_thread"].is_alive:
         poser.pose.y = round(np.sin(h), 4)
@@ -97,7 +97,7 @@ async def example_thread():
 
 @poser.thread_register(1/60, runInDefaultExecutor=True)
 def example_thread2():
-	'''moves the controller up and down'''
+    '''moves the controller up and down'''
     while poser.coro_keep_alive["example_thread2"].is_alive:
         poser.pose_controller_l.x = 1+np.cos(h*3)/5
 
