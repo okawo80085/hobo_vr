@@ -55,9 +55,19 @@ async def example_thread():
 
     await ainput('controllers at ROOM_CENTER, press enter to continue...')
 
-    await asyncio.sleep(1)
 
     print ('starting boundary draw...')
+
+
+    poser.pose_controller_r.x = START_POS[0]
+    poser.pose_controller_r.y = START_POS[1]
+    poser.pose_controller_r.z = START_POS[2]
+
+    poser.pose_controller_l.x = START_POS[0]
+    poser.pose_controller_l.y = START_POS[1]
+    poser.pose_controller_l.z = START_POS[2]
+    
+    await asyncio.sleep(1)
 
     poser.pose_controller_r.trigger_value = 1
     poser.pose_controller_r.trigger_click = 1
@@ -67,7 +77,7 @@ async def example_thread():
 
     for i in APPLY_DIM:
         for _ in range(NUM_ITER):
-            if not poser.coro_keep_alive["example_thread"][0]:
+            if not poser.coro_keep_alive["example_thread"].is_alive:
                 break
 
             poser.pose.x = START_POS[0]
@@ -86,7 +96,7 @@ async def example_thread():
 
             print (START_POS)
 
-            await asyncio.sleep(poser.coro_keep_alive["example_thread"][1])
+            await asyncio.sleep(poser.coro_keep_alive["example_thread"].sleep_delay)
 
 
     poser.pose_controller_r.trigger_value = 0
@@ -95,10 +105,10 @@ async def example_thread():
     poser.pose_controller_l.trigger_value = 0
     poser.pose_controller_l.trigger_click = 0
 
-    poser.coro_keep_alive["example_thread"][0] = False
+    poser.coro_keep_alive["example_thread"].is_alive = False
     await asyncio.sleep(1/10)
     print ('drawing boundaries done')
 
-    poser.coro_keep_alive["close"][0] = False # close poser
+    poser.coro_keep_alive["close"].is_alive = False # close poser
 
 asyncio.run(poser.main())
