@@ -42,7 +42,7 @@ np.set_printoptions(formatter={'all':lambda x:'{:+.4f}, '.format(x)})
 
 
 @poser.thread_register(1/30)
-async def example_thread():
+async def draw_thread():
     global START_POS
 
     poser.pose_controller_r.x = ROOM_CENTER[0]
@@ -77,7 +77,7 @@ async def example_thread():
 
     for i in APPLY_DIM:
         for _ in range(NUM_ITER):
-            if not poser.coro_keep_alive["example_thread"].is_alive:
+            if not poser.coro_keep_alive["draw_thread"].is_alive:
                 break
 
             poser.pose.x = START_POS[0]
@@ -96,7 +96,7 @@ async def example_thread():
 
             print (START_POS)
 
-            await asyncio.sleep(poser.coro_keep_alive["example_thread"].sleep_delay)
+            await asyncio.sleep(poser.coro_keep_alive["draw_thread"].sleep_delay)
 
 
     poser.pose_controller_r.trigger_value = 0
@@ -105,7 +105,7 @@ async def example_thread():
     poser.pose_controller_l.trigger_value = 0
     poser.pose_controller_l.trigger_click = 0
 
-    poser.coro_keep_alive["example_thread"].is_alive = False
+    poser.coro_keep_alive["draw_thread"].is_alive = False
     await asyncio.sleep(1/10)
     print ('drawing boundaries done')
 

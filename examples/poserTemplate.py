@@ -20,13 +20,13 @@ class MyPoser(templates.PoserTemplate):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    @templates.PoserTemplate.register_member_thread(1 / 60)
+    @templates.PoserTemplate.register_member_thread(1 / 100)
     async def example_thread1(self):
         h = 0
         while self.coro_keep_alive["example_thread1"].is_alive:
             try:
                 self.pose.x = np.sin(h)
-                h += 0.001
+                h += 0.01
 
                 await asyncio.sleep(self.coro_keep_alive["example_thread1"].sleep_delay)
 
@@ -35,13 +35,13 @@ class MyPoser(templates.PoserTemplate):
                 break
         self.coro_keep_alive["example_thread1"].is_alive = False
 
-    @templates.PoserTemplate.register_member_thread(1 / 30, runInDefaultExecutor=True)
+    @templates.PoserTemplate.register_member_thread(1 / 100, runInDefaultExecutor=True)
     def example_thread2(self):
         h = 0
         while self.coro_keep_alive["example_thread2"].is_alive:
             try:
                 self.pose.y = np.cos(h)
-                h += 0.001
+                h += 0.01
 
                 time.sleep(self.coro_keep_alive["example_thread2"].sleep_delay)
 
