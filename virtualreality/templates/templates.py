@@ -17,7 +17,7 @@ class PoserTemplate(PoserTemplateBase):
         self.pose_controller_l - same as hmd pose +controller inputs for controller 2
 
     supplies a last message from server buffer:
-        self.last_read - string containing the last message from the server, it is recommended to consume it, it will be populated with new data when its received
+        self.last_read - bytearray containing the last message from the server, it is recommended to consume it, it will be populated with new data when its received
 
     supplies threading vars:
         self.coro_list - list of all methods recognized as threads

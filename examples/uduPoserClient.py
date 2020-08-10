@@ -7,7 +7,7 @@ import pyrr
 from virtualreality import templates
 from virtualreality.server import server
 
-poser = templates.UduPoserClient('h c c t t t')
+poser = templates.UduPoserClient('h c c') # devices setup identical to normal posers
 
 @poser.thread_register(1/60)
 async def example_thread():

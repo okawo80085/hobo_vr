@@ -59,9 +59,6 @@ class PoserTemplateBase(object):
 
         Also store socket reader and writer in self.reader and self.writer.
         It is not recommended you override this method
-
-        send id message
-        more on id messages: https://github.com/okawo80085/hobo_vr/wiki/server-id-messages
         """
         print(f'connecting to the server at "{self.addr}:{self.port}"...')
         # connect to the server
@@ -70,14 +67,14 @@ class PoserTemplateBase(object):
         self.writer.write(u.format_str_for_write(self.id_message))
 
     async def send(self):
-        """Send all poses thread."""
+        """Send all poses thread, you need to implement this!"""
         raise NotImplementedError('please implement the send thread')
 
     async def recv(self):
         """Receive messages thread."""
         while self.coro_keep_alive["recv"].is_alive:
             try:
-                data = await u.read(self.reader)
+                data = await u.read3(self.reader)
                 self.last_read = data
 
                 await asyncio.sleep(self.coro_keep_alive["recv"].sleep_delay)

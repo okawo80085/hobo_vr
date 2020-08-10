@@ -17,7 +17,7 @@ class UduPoserTemplate(PoserTemplateBase):
         self.poses - pose object will correspond to value of device_list_manifest, keep in mind that, as of now, only 3 types of devices are supported(h-hmd, c-controller, t-tracker)
 
     supplies a last message from server buffer:
-        self.last_read - string containing the last message from the server, it is recommended to consume it, it will be populated with new data when its received
+        self.last_read - bytearray containing the last message from the server, it is recommended to consume it, it will be populated with new data when its received
 
     supplies threading vars:
         self.coro_list - list of all methods recognized as threads
@@ -34,6 +34,7 @@ class UduPoserTemplate(PoserTemplateBase):
 
     every child class also needs to register it's thread
     methods with the PoserTemplate.register_member_thread decorator
+
     Example:
         class MyPoser(UduPoserTemplate):
             def __init__(self, *args, **kwargs):
