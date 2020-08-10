@@ -27,7 +27,7 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         "Programming Language :: C++",
-        "Programming Language :: Python :: 3.7 :: Only",
+        "Programming Language :: Python :: 3.7",
         "Topic :: Games/Entertainment",
         "Topic :: Multimedia :: Graphics :: Viewers",
         "Topic :: Scientific/Engineering :: Human Machine Interfaces",
@@ -36,4 +36,5 @@ setup(
     install_requires=["keyboard", "opencv-python", "numpy", "pykalman", "pyserial", "docopt", "pyrr", "scipy", "displayarray"],
     extras_require={"image": ["imutils"]},
     entry_points={"console_scripts": ["pyvr=virtualreality.main:main"]},
+    python_requires='>=3.7',
 )
