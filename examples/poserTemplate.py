@@ -22,10 +22,12 @@ class MyPoser(templates.PoserTemplate):
 
     @templates.PoserTemplate.register_member_thread(1 / 100)
     async def example_thread1(self):
+        '''moves the headset in a circle'''
         h = 0
         while self.coro_keep_alive["example_thread1"].is_alive:
             try:
                 self.pose.x = np.sin(h)
+                self.pose.y = np.cos(h)
                 h += 0.01
 
                 await asyncio.sleep(self.coro_keep_alive["example_thread1"].sleep_delay)
@@ -37,10 +39,11 @@ class MyPoser(templates.PoserTemplate):
 
     @templates.PoserTemplate.register_member_thread(1 / 100, runInDefaultExecutor=True)
     def example_thread2(self):
+        '''moves the controller up and down'''
         h = 0
         while self.coro_keep_alive["example_thread2"].is_alive:
             try:
-                self.pose.y = np.cos(h)
+                self.pose_controller_l.y = 1+np.cos(h)/5
                 h += 0.01
 
                 time.sleep(self.coro_keep_alive["example_thread2"].sleep_delay)

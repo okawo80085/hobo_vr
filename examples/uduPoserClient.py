@@ -1,3 +1,8 @@
+'''
+udu poser client example
+
+more info: help(templates.UduPoserTemplate)
+'''
 
 import asyncio
 import time

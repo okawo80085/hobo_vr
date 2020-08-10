@@ -20,7 +20,6 @@ import numpy as np
 import pyrr
 
 from virtualreality import templates
-from virtualreality.server import server
 
 poser = templates.PoserClient()
 
