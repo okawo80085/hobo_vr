@@ -41,10 +41,10 @@ class UduPoserTemplate(PoserTemplateBase):
 
             @UduPoserTemplate.register_member_thread(0.5)
             async def example_thread(self):
-                while self.coro_keep_alive['example_thread'][0]:
+                while self.coro_keep_alive['example_thread'].is_alive:
                     self.poses[0].x += 0.04
 
-                    await asyncio.sleep(self.coro_keep_alive['example_thread'][1])
+                    await asyncio.sleep(self.coro_keep_alive['example_thread'].sleep_delay)
 
         poser = MyPoser('h c c')
 
@@ -110,64 +110,24 @@ class UduPoserTemplate(PoserTemplateBase):
                 break
 
 
-class UduPoserClient(UduPoserTemplate):
+class UduPoserClient(UduPoserTemplate, PoserClientBase):
     """
     UduPoserClient.
 
     example usage:
-        poser = UduPoserClient()
+        poser = UduPoserClient('h c c')
 
         @poser.thread_register(1)
         async def lol():
-            while poser.coro_keepAlive['lol'][0]:
-                poser.pose.x += 0.2
+            while poser.coro_keep_alive['lol'].is_alive:
+                poser.poses[0].x += 0.2
 
-                await asyncio.sleep(poser.coro_keepAlive['lol'][1])
+                await asyncio.sleep(poser.coro_keep_alive['lol'].sleep_delay)
 
         asyncio.run(poser.main())
     """
 
     def __init__(self, *args, **kwargs):
         """init"""
+        print ('starting udu client')
         super().__init__(*args, **kwargs)
-        self._coro_name_exceptions.append("thread_register")
-
-    def thread_register(self, sleep_delay, runInDefaultExecutor=False):
-        """
-        Register a thread for UduPoserClient.
-
-        sleepDelay - sleep delay in seconds
-        runInDefaultExecutor - bool, set True if you want the function to be executed in asyncio's default pool executor
-        """
-
-        def _thread_register(coro):
-            if not asyncio.iscoroutinefunction(coro) and not runInDefaultExecutor:
-                raise ValueError(f"{repr(coro)} is not a coroutine function and runInDefaultExecutor is set to False")
-
-            if coro.__name__ not in self.coro_keep_alive and coro.__name__ not in self.coro_list:
-                self.coro_keep_alive[coro.__name__] = KeepAliveTrigger(True, sleep_delay)
-                self.coro_list.append(coro.__name__)
-
-                if runInDefaultExecutor:
-
-                    def _wrapper(*args, **kwargs):
-                        setattr(_wrapper, "__name__", f"{coro.__name__} _decorated")
-                        loop = asyncio.get_running_loop()
-
-                        return loop.run_in_executor(None, coro, *args, **kwargs)
-
-                    setattr(_wrapper, "__name__", coro.__name__)
-                    setattr(self, coro.__name__, _wrapper)
-                    return _wrapper
-
-                else:
-                    setattr(self, coro.__name__, coro)
-
-            else:
-                raise NameError(
-                    f"trying to register existing thread, thread with name {repr(coro.__name__)} already exists"
-                )
-
-            return coro
-
-        return _thread_register
