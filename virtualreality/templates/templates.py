@@ -113,7 +113,7 @@ class PoserClient(PoserTemplate):
     """
 
     def __init__(self, *args, **kwargs):
-        """Create the poser client."""
+        """init"""
         super().__init__(*args, **kwargs)
         self._coro_name_exceptions.append("thread_register")
 

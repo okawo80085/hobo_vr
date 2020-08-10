@@ -14,7 +14,7 @@ class UduPoserTemplate(PoserTemplateBase):
     udu poser template.
 
     supplies a list of poses:
-        self.poses - pose object will correspond to value of expected_pose_struct, keep in mind that, as of now, only 3 types of devices are supported(h-hmd, c-controller, t-tracker)
+        self.poses - pose object will correspond to value of device_list_manifest, keep in mind that, as of now, only 3 types of devices are supported(h-hmd, c-controller, t-tracker)
 
     supplies a last message from server buffer:
         self.last_read - string containing the last message from the server, it is recommended to consume it, it will be populated with new data when its received
@@ -42,7 +42,7 @@ class UduPoserTemplate(PoserTemplateBase):
             @UduPoserTemplate.register_member_thread(0.5)
             async def example_thread(self):
                 while self.coro_keep_alive['example_thread'][0]:
-                    self.pose[0].x += 0.04
+                    self.poses[0].x += 0.04
 
                     await asyncio.sleep(self.coro_keep_alive['example_thread'][1])
 
@@ -55,11 +55,11 @@ class UduPoserTemplate(PoserTemplateBase):
 
     """
 
-    def __init__(self, expected_pose_struct, *args, **kwargs):
+    def __init__(self, device_list_manifest, *args, **kwargs):
         """
         init
-        
-        :expected_pose_struct: should match this regex: ([htc][ ])+([htc]$)|[htc]$
+
+        :device_list_manifest: should match this regex: ([htc][ ])+([htc]$)|[htc]$
         :addr: is the address of the server to connect to, stored in self.addr
         :port: is the port of the server to connect to, stored in self.port
         :send_delay: sleep delay for the self.send thread(in seconds)
@@ -67,16 +67,16 @@ class UduPoserTemplate(PoserTemplateBase):
         """
         super().__init__(**kwargs)
 
-        re_s = re.search('([htc][ ])+([htc]$)|[htc]$', expected_pose_struct)
+        re_s = re.search('([htc][ ])+([htc]$)|[htc]$', device_list_manifest)
 
-        if not expected_pose_struct or re_s is None:
+        if not device_list_manifest or re_s is None:
             raise RuntimeError('empty pose struct')
 
-        if re_s.group() != expected_pose_struct:
-            raise RuntimeError(f'invalid pose struct: {repr(expected_pose_struct)}')
+        if re_s.group() != device_list_manifest:
+            raise RuntimeError(f'invalid pose struct: {repr(device_list_manifest)}')
 
         self.poses = []
-        self.device_types = expected_pose_struct.split(' ')
+        self.device_types = device_list_manifest.split(' ')
 
         new_struct = []
         for i in self.device_types:
@@ -90,17 +90,15 @@ class UduPoserTemplate(PoserTemplateBase):
 
         new_struct = ' '.join(new_struct)
 
-        print (f'total of {len(self.poses)} devices have been added, a new pose struct has been generated: {repr(new_struct)}')
+        print (f'total of {len(self.poses)} device(s) have been added, a new pose struct has been generated: {repr(new_struct)}')
         print ('full device list is available through self.poses')
 
     async def send(self):
         """Send all poses thread."""
+        poses_index = range(len(self.device_types))
         while self.coro_keep_alive["send"][0]:
             try:
-
-                poses = [*get_slot_values(self.poses[i]) for i in range(len(self.device_types))]
-
-                msg = u.format_str_for_write(' '.join(poses))
+                msg = u.format_str_for_write(' '.join([str(j) for i in poses_index for j in get_slot_values(self.poses[i])]))
 
                 self.writer.write(msg)
                 await self.writer.drain()
@@ -114,15 +112,15 @@ class UduPoserTemplate(PoserTemplateBase):
 
 class UduPoserClient(UduPoserTemplate):
     """
-    PoserClient.
+    UduPoserClient.
 
     example usage:
-        poser = PoserClient()
+        poser = UduPoserClient()
 
         @poser.thread_register(1)
         async def lol():
             while poser.coro_keepAlive['lol'][0]:
-                poser.pose['x'] += 0.2
+                poser.pose.x += 0.2
 
                 await asyncio.sleep(poser.coro_keepAlive['lol'][1])
 
@@ -130,13 +128,13 @@ class UduPoserClient(UduPoserTemplate):
     """
 
     def __init__(self, *args, **kwargs):
-        """Create the poser client."""
+        """init"""
         super().__init__(*args, **kwargs)
         self._coro_name_exceptions.append("thread_register")
 
     def thread_register(self, sleep_delay, runInDefaultExecutor=False):
         """
-        Register a thread for PoserClient.
+        Register a thread for UduPoserClient.
 
         sleepDelay - sleep delay in seconds
         runInDefaultExecutor - bool, set True if you want the function to be executed in asyncio's default pool executor
