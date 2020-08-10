@@ -9,44 +9,41 @@ from .poses import *
 
 class PoserTemplate(PoserTemplateBase):
     """
-    Poser base class.
+    poser template.
 
     supplies 3 tracked device pose dicts:
-        self.pose - hmd pose, position, orientation, velocity and angular velocity only
+        self.pose - hmd pose, position, orientation, velocity and angular velocity
         self.pose_controller_r - same as hmd pose +controller inputs for controller 1
         self.pose_controller_l - same as hmd pose +controller inputs for controller 2
-    
-    more info on poses/message format:
-        https://github.com/okawo80085/hobo_vr/wiki/poser-message-format
 
     supplies a last message from server buffer:
-        self.last_read - string containing the last message from the server
+        self.last_read - string containing the last message from the server, it is recommended to consume it, it will be populated with new data when its received
 
     supplies threading vars:
         self.coro_list - list of all methods recognized as threads
-        self.coro_keep_alive - dict of all registered threads, containing self.coro_keepAlive['threadMethodName'] = [KeepAliveBool, SleepDelay], the dict is populated at self.main() call
+        self.coro_keep_alive - dict of all registered threads, containing self.coro_keepAlive['memberThreadName'] = [KeepAliveBool, SleepDelayInSeconds], this dict is populated at self.main() call
 
-    this base class also has 3 built in threads, it is not recommended you override any of them:
+    this class also has 3 built in threads, it is not recommended you override any of them:
         self.send - sends all pose data to the server
         self.recv - receives messages from the server, the last message is stored in self.lastRead
         self.close - closes the connection to the server and ends all threads that where registered by thread_register
 
-    this base class will assume that every
-    child method without '_' as a first character
-    in the name is a thread, unless the name of that method has been added to self._coro_name_exceptions
+    this class will assume that every
+    child method without '_' as a first character in the name is a thread,
+    unless the name of that method has been added to self._coro_name_exceptions
 
     every child class also needs to register it's thread
-    methods with the thread_register decorator
+    methods with the PoserTemplate.register_member_thread decorator
 
     Example:
         class MyPoser(PoserTemplate):
             def __init__(self, *args, **kwargs):
                 super().__init__(**kwargs)
 
-            @thread_register(0.5)
+            @PoserTemplate.register_member_thread(0.5)
             async def example_thread(self):
                 while self.coro_keep_alive['example_thread'][0]:
-                    self.pose['x'] += 0.04
+                    self.pose.x += 0.04
 
                     await asyncio.sleep(self.coro_keep_alive['example_thread'][1])
 
@@ -57,21 +54,20 @@ class PoserTemplate(PoserTemplateBase):
     more examples:
         https://github.com/okawo80085/hobo_vr/blob/master/virtualreality/trackers/color_tracker.py
         https://github.com/okawo80085/hobo_vr/blob/master/examples/poserTemplate.py
+        https://github.com/okawo80085/hobo_vr/blob/master/examples/poserClient.py
 
     """
 
-    def __init__(
-        self, *, addr="127.0.0.1", port=6969, send_delay=1 / 100, recv_delay=1 / 1000, **kwargs,
-    ):
+    def __init__(self, *args, **kwargs):
         """
-        Create the poser template.
+        init
 
-        :param addr: is the address of the server to connect to, stored in self.addr
-        :param port: is the port of the server to connect to, stored in self.port
-        :param send_delay: sleep delay for the self.send thread(in seconds)
-        :param recv_delay: sleep delay for the self.recv thread(in seconds)
+        :addr: is the address of the server to connect to, stored in self.addr
+        :port: is the port of the server to connect to, stored in self.port
+        :send_delay: sleep delay for the self.send thread(in seconds)
+        :recv_delay: sleep delay for the self.recv thread(in seconds)
         """
-        super().__init__(addr=addr, port=port, send_delay=send_delay, recv_delay=recv_delay)
+        super().__init__(**kwargs)
 
         self.pose = Pose()
         self.pose_controller_r = ControllerState(pose=(0.5, 1, -1, 1, 0, 0, 0))
@@ -108,10 +104,10 @@ class PoserClient(PoserTemplate):
 
         @poser.thread_register(1)
         async def lol():
-            while poser.coro_keepAlive['lol'][0]:
-                poser.pose['x'] += 0.2
+            while poser.coro_keep_alive['lol'][0]:
+                poser.pose.x += 0.2
 
-                await asyncio.sleep(poser.coro_keepAlive['lol'][1])
+                await asyncio.sleep(poser.coro_keep_alive['lol'][1])
 
         asyncio.run(poser.main())
     """

@@ -126,7 +126,7 @@ class PoserTemplateBase(object):
     @staticmethod
     def register_member_thread(sleepDelay, runInDefaultExecutor=False):
         """
-        Register thread for PoserTemplate base class.
+        Registers thread functions, should only be used on member functions
 
         sleepDelay - sleep delay in seconds
         runInDefaultExecutor - bool, set True if you want the function to be executed in asyncio's default pool executor

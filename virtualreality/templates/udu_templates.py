@@ -11,70 +11,63 @@ import re
 
 class UduPoserTemplate(PoserTemplateBase):
     """
-    Poser base class.
+    udu poser template.
 
     supplies a list of poses:
-        self.poses - pose object will correspond to value of expected_pose_struct, keep in mind that only 3 types of devices are supported(h-hmd, c-controller, t-tracker)
-
-    more info on poses/message format:
-        https://github.com/okawo80085/hobo_vr/wiki/poser-message-format
+        self.poses - pose object will correspond to value of expected_pose_struct, keep in mind that, as of now, only 3 types of devices are supported(h-hmd, c-controller, t-tracker)
 
     supplies a last message from server buffer:
-        self.last_read - string containing the last message from the server
+        self.last_read - string containing the last message from the server, it is recommended to consume it, it will be populated with new data when its received
 
     supplies threading vars:
         self.coro_list - list of all methods recognized as threads
-        self.coro_keep_alive - dict of all registered threads, containing self.coro_keepAlive['threadMethodName'] = [KeepAliveBool, SleepDelay], the dict is populated at self.main() call
+        self.coro_keep_alive - dict of all registered threads, containing self.coro_keepAlive['memberThreadName'] = [KeepAliveBool, SleepDelayInSeconds], this dict is populated at self.main() call
 
-    this base class also has 3 built in threads, it is not recommended you override any of them:
+    this class also has 3 built in threads, it is not recommended you override any of them:
         self.send - sends all pose data to the server
         self.recv - receives messages from the server, the last message is stored in self.lastRead
         self.close - closes the connection to the server and ends all threads that where registered by thread_register
 
-    this base class will assume that every
-    child method without '_' as a first character
-    in the name is a thread, unless the name of that method has been added to self._coro_name_exceptions
+    this class will assume that every
+    child method without '_' as a first character in the name is a thread,
+    unless the name of that method has been added to self._coro_name_exceptions
 
     every child class also needs to register it's thread
-    methods with the thread_register decorator
-
+    methods with the PoserTemplate.register_member_thread decorator
     Example:
-        class MyPoser(PoserTemplate):
+        class MyPoser(UduPoserTemplate):
             def __init__(self, *args, **kwargs):
-                super().__init(**kwargs)
+                super().__init__(*args, **kwargs)
 
-            @thread_register(0.5)
+            @UduPoserTemplate.register_member_thread(0.5)
             async def example_thread(self):
                 while self.coro_keep_alive['example_thread'][0]:
-                    self.pose['x'] += 0.04
+                    self.pose[0].x += 0.04
 
                     await asyncio.sleep(self.coro_keep_alive['example_thread'][1])
 
-        poser = MyPoser()
+        poser = MyPoser('h c c')
 
         asyncio.run(poser.main())
 
     more examples:
-        https://github.com/okawo80085/hobo_vr/blob/master/virtualreality/trackers/color_tracker.py
-        https://github.com/okawo80085/hobo_vr/blob/master/examples/poserTemplate.py
+        https://github.com/okawo80085/hobo_vr/blob/master/examples/uduPoserClient.py
 
     """
 
-    def __init__(
-        self, expected_pose_struct, *, addr="127.0.0.1", port=6969, send_delay=1 / 100, recv_delay=1 / 1000, **kwargs,
-    ):
+    def __init__(self, expected_pose_struct, *args, **kwargs):
         """
-        Create the poser template.
-
-        :param expected_pose_struct: is the expected pose struct, should match this regex: ([hct][ ]{0,1})+
-        :param addr: is the address of the server to connect to, stored in self.addr
-        :param port: is the port of the server to connect to, stored in self.port
-        :param send_delay: sleep delay for the self.send thread(in seconds)
-        :param recv_delay: sleep delay for the self.recv thread(in seconds)
+        init
+        
+        :expected_pose_struct: should match this regex: ([htc][ ])+([htc]$)|[htc]$
+        :addr: is the address of the server to connect to, stored in self.addr
+        :port: is the port of the server to connect to, stored in self.port
+        :send_delay: sleep delay for the self.send thread(in seconds)
+        :recv_delay: sleep delay for the self.recv thread(in seconds)
         """
-        super().__init__(addr=addr, port=port, send_delay=send_delay, recv_delay=recv_delay)
+        super().__init__(**kwargs)
 
-        re_s = re.search('([hct][ ]{0,1})+', expected_pose_struct)
+        re_s = re.search('([htc][ ])+([htc]$)|[htc]$', expected_pose_struct)
 
         if not expected_pose_struct or re_s is None:
             raise RuntimeError('empty pose struct')
@@ -105,13 +98,12 @@ class UduPoserTemplate(PoserTemplateBase):
         while self.coro_keep_alive["send"][0]:
             try:
 
-                poses = []
-                for i in range(len(self.device_types)):
-                    poses += [str(j) for j in get_slot_values(self.poses[i])]
+                poses = [*get_slot_values(self.poses[i]) for i in range(len(self.device_types))]
 
                 msg = u.format_str_for_write(' '.join(poses))
 
                 self.writer.write(msg)
+                await self.writer.drain()
 
                 await asyncio.sleep(self.coro_keep_alive["send"][1])
             except Exception as e:

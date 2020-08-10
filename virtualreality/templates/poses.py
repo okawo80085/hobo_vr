@@ -244,14 +244,7 @@ class ControllerState(Pose):
         self.trackpad_touch: int = trackpad_touch  # 0 or 1
         self.trigger_click: int = trigger_click  # 0 or 1
 
-
-def get_slot_names(slotted_instance):
-    """Get all slot names in a class with slots."""
-    # thanks: https://stackoverflow.com/a/6720815/782170
-    return slotted_instance.__slots__
-
-
 def get_slot_values(slotted_instance):
     """Get all slot values in a class with slots."""
     # thanks: https://stackoverflow.com/a/6720815/782170
-    return [getattr(slotted_instance, slot) for slot in get_slot_names(slotted_instance)]
+    return [getattr(slotted_instance, slot) for slot in slotted_instance.__slots__]
