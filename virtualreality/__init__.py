@@ -10,4 +10,4 @@ logger = log.setup_custom_logger(name=__name__,
 
 logger.debug("created app.log log file")
 
-__version__ = "0.0.2"
+__version__ = "0.0.3"

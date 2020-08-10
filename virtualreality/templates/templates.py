@@ -74,7 +74,7 @@ class PoserTemplate(PoserTemplateBase):
                 await asyncio.sleep(self.coro_keep_alive["send"].sleep_delay)
             except Exception as e:
                 print(f"send failed: {e}")
-                self.coro_keep_alive["send"][0] = False
+                self.coro_keep_alive["send"].is_alive = False
                 break
 
 
