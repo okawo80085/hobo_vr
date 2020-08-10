@@ -166,14 +166,6 @@ class Pose(object):
     def __len__(self):
         return len(self.__slots__)
 
-
-"""class CoroutineKeepAlive(object):
-    def __init__(self, send_delay, receive_delay, close_delay=0.1):
-        self.send = [True, send_delay]
-        self.receive = [True, receive_delay]
-        self.close = [True, close_delay]"""
-
-
 class ControllerState(Pose):
     """Struct containing all variables needed for instantaneous controller state."""
 

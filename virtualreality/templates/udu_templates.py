@@ -21,12 +21,12 @@ class UduPoserTemplate(PoserTemplateBase):
 
     supplies threading vars:
         self.coro_list - list of all methods recognized as threads
-        self.coro_keep_alive - dict of all registered threads, containing self.coro_keepAlive['memberThreadName'] = [KeepAliveBool, SleepDelayInSeconds], this dict is populated at self.main() call
+        self.coro_keep_alive - dict of all registered threads, containing self.coro_keepAlive['memberThreadName'] = KeepAliveTrigger(is_alive, sleep_delay), this dict is populated at self.main() call
 
     this class also has 3 built in threads, it is not recommended you override any of them:
         self.send - sends all pose data to the server
         self.recv - receives messages from the server, the last message is stored in self.lastRead
-        self.close - closes the connection to the server and ends all threads that where registered by thread_register
+        self.close - closes the connection to the server and ends all threads that where registered by register_member_thread when the 'q' key is pressed
 
     this class will assume that every
     child method without '_' as a first character in the name is a thread,
@@ -91,19 +91,19 @@ class UduPoserTemplate(PoserTemplateBase):
         new_struct = ' '.join(new_struct)
 
         print (f'total of {len(self.poses)} device(s) have been added, a new pose struct has been generated: {repr(new_struct)}')
-        print ('full device list is available through self.poses')
+        print ('full device list is now available through self.poses')
 
     async def send(self):
         """Send all poses thread."""
         poses_index = range(len(self.device_types))
-        while self.coro_keep_alive["send"][0]:
+        while self.coro_keep_alive["send"].is_alive:
             try:
                 msg = u.format_str_for_write(' '.join([str(j) for i in poses_index for j in get_slot_values(self.poses[i])]))
 
                 self.writer.write(msg)
                 await self.writer.drain()
 
-                await asyncio.sleep(self.coro_keep_alive["send"][1])
+                await asyncio.sleep(self.coro_keep_alive["send"].sleep_delay)
             except Exception as e:
                 print(f"send failed: {e}")
                 self.coro_keep_alive["send"][0] = False
@@ -145,7 +145,7 @@ class UduPoserClient(UduPoserTemplate):
                 raise ValueError(f"{repr(coro)} is not a coroutine function and runInDefaultExecutor is set to False")
 
             if coro.__name__ not in self.coro_keep_alive and coro.__name__ not in self.coro_list:
-                self.coro_keep_alive[coro.__name__] = [True, sleep_delay]
+                self.coro_keep_alive[coro.__name__] = KeepAliveTrigger(True, sleep_delay)
                 self.coro_list.append(coro.__name__)
 
                 if runInDefaultExecutor:
