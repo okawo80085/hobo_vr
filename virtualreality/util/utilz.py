@@ -150,8 +150,8 @@ def get_numbers_from_text(text, separator="\t"):
         return []
 
 def get_pose_struct_from_text(text):
-    '''returns struct from :text:, :text: has to be styled so that it matches this regex: ([hct][0-9]+[ ]{0,1})+'''
-    res = re.search('([hct][0-9]+[ ]{0,1})+', text)
+    '''returns struct from :text:, :text: has to be styled so that it matches this regex: ([htc][0-9]+[ ])+([htc][0-9]+)$|([htc][0-9]+)$'''
+    res = re.search('([htc][0-9]+[ ])+([htc][0-9]+)$|([htc][0-9]+)$', text)
     if res != None:
         if res.group(0) == text:
             return tuple(i[0] for i in text.split(' ')), tuple(int(i[1:]) for i in text.split(' '))
