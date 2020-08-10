@@ -2,7 +2,7 @@
 from . import server
 from ..logging import log
 
-__version__ = "0.1"
+__version__ = "0.2" # the server is at this version
 
 logger = log.setup_custom_logger(name=__name__, 
     level="INFO",

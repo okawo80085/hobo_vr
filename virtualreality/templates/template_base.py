@@ -21,6 +21,26 @@ class KeepAliveTrigger:
 class PoserTemplateBase(object):
     """
     Base template class, should only be used to create new poser templates
+
+
+    supplies a last message from server buffer:
+        self.last_read - bytearray containing the last message from the server, it is recommended to consume it, it will be populated with new data when its received
+
+    supplies threading vars:
+        self.coro_list - list of all methods recognized as threads
+        self.coro_keep_alive - dict of all registered threads, containing self.coro_keepAlive['memberThreadName'] = KeepAliveTrigger(is_alive, sleep_delay), this dict is populated at self.main() call
+
+    this class also has 3 built in threads, it is not recommended you override any of them:
+        self.send - sends all pose data to the server
+        self.recv - receives messages from the server, the last message is stored in self.lastRead
+        self.close - closes the connection to the server and ends all threads that where registered by register_member_thread when the 'q' key is pressed
+
+    this class will assume that every
+    child method without '_' as a first character in the name is a thread,
+    unless the name of that method has been added to self._coro_name_exceptions
+
+    every child class also needs to register it's thread
+    methods with the PoserTemplate.register_member_thread decorator
     """
 
     def __init__(
