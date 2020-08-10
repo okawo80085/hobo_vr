@@ -1,12 +1,12 @@
 from setuptools import setup, find_packages
-from virtualreality import __virsion__
+from virtualreality import __version__
 
 with open("pypi_readme.md", "r") as f:
     long_description = f.read()
 
 setup(
     name="virtualreality",
-    version=__virsion__,
+    version=__version__,
     author="Okawo <okawo.198@gmail.com>, SimLeek <simulator.leek@gmail.com>",
     author_email="",
     description="python side of hobo_vr",
