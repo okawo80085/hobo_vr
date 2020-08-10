@@ -91,7 +91,7 @@ class Poser(templates.PoserTemplate):
     @templates.PoserTemplate.register_member_thread(1 / 90)
     async def mode_switcher(self):
         """Check to switch between left and right controllers."""
-        while self.coro_keep_alive["mode_switcher"][0]:
+        while self.coro_keep_alive["mode_switcher"].is_alive:
             try:
                 if self.mode == 1:
                     self.pose_controller_r.trackpad_touch = self.temp_pose.trackpad_touch
@@ -115,12 +115,12 @@ class Poser(templates.PoserTemplate):
                     self.pose_controller_l.grip = self.temp_pose.grip
                     self.pose_controller_l.menu = self.temp_pose.menu
 
-                await asyncio.sleep(self.coro_keep_alive["mode_switcher"][1])
+                await asyncio.sleep(self.coro_keep_alive["mode_switcher"].sleep_delay)
 
             except Exception as e:
                 print(f"failed mode_switcher: {e}")
-                self.coro_keep_alive["mode_switcher"][0] = False
                 break
+        self.coro_keep_alive["mode_switcher"].is_alive = False
 
     @templates.PoserTemplate.register_member_thread(1 / 65)
     async def get_location(self):
@@ -134,11 +134,11 @@ class Poser(templates.PoserTemplate):
 
         except Exception as e:
             print(f"failed to init get_location: {e}")
-            self.coro_keep_alive["get_location"][0] = False
+            self.coro_keep_alive["get_location"].is_alive = False
             return
 
         with t1:
-            while self.coro_keep_alive["get_location"][0]:
+            while self.coro_keep_alive["get_location"].is_alive:
                 try:
                     poses = t1.get_poses()
 
@@ -157,13 +157,13 @@ class Poser(templates.PoserTemplate):
                         self.pose.y = round(poses["blue"]["y"] * 0.85 - 0.07, 6)
                         self.pose.z = round(poses["blue"]["z"] * 2 + 0.05, 6)
 
-                    await asyncio.sleep(self.coro_keep_alive["get_location"][1])
+                    await asyncio.sleep(self.coro_keep_alive["get_location"].sleep_delay)
 
                 except Exception as e:
                     print("stopping get_location:", e)
                     break
 
-        self.coro_keep_alive["get_location"][0] = False
+        self.coro_keep_alive["get_location"].is_alive = False
 
     @templates.PoserTemplate.register_member_thread(1 / 100)
     async def serial_listener2(self):
@@ -174,7 +174,7 @@ class Poser(templates.PoserTemplate):
 
         if not check_serial_dict(self.serialPaths, 'cont_l'):
             print ('failed to init serial_listener2: bad serial dict for key \'cont_l\'')
-            self.coro_keep_alive["serial_listener2"][0] = False
+            self.coro_keep_alive["serial_listener2"].is_alive = False
             return
 
         with serial.Serial(self.serialPaths["cont_l"], 115200, timeout=1 / 4) as ser:
@@ -182,7 +182,7 @@ class Poser(templates.PoserTemplate):
                 protocol.write_line("nut")
                 await asyncio.sleep(5)
 
-                while self.coro_keep_alive["serial_listener2"][0]:
+                while self.coro_keep_alive["serial_listener2"].is_alive:
                     try:
                         gg = u.get_numbers_from_text(protocol.last_read, ',')
 
@@ -235,12 +235,12 @@ class Poser(templates.PoserTemplate):
                         else:
                             self.temp_pose.trigger_click = 0
 
-                        await asyncio.sleep(self.coro_keep_alive["serial_listener2"][1])
+                        await asyncio.sleep(self.coro_keep_alive["serial_listener2"].sleep_delay)
 
                     except Exception as e:
                         print(f"{self.serial_listener2.__name__}: {e}")
                         break
-        self.coro_keep_alive["serial_listener2"][0] = False
+        self.coro_keep_alive["serial_listener2"].is_alive = False
 
     @templates.PoserTemplate.register_member_thread(1 / 100)
     async def serial_listener3(self):
@@ -251,7 +251,7 @@ class Poser(templates.PoserTemplate):
 
         if not check_serial_dict(self.serialPaths, 'cont_r'):
             print ('failed to init serial_listener3: bad serial dict for key \'cont_r\'')
-            self.coro_keep_alive["serial_listener3"][0] = False
+            self.coro_keep_alive["serial_listener3"].is_alive = False
             return
 
         with serial.Serial(self.serialPaths["cont_r"], 115200, timeout=1 / 5) as ser2:
@@ -259,7 +259,7 @@ class Poser(templates.PoserTemplate):
                 protocol.write_line("nut")
                 await asyncio.sleep(5)
 
-                while self.coro_keep_alive["serial_listener3"][0]:
+                while self.coro_keep_alive["serial_listener3"].is_alive:
                     try:
                         gg = u.get_numbers_from_text(protocol.last_read, ',')
 
@@ -276,12 +276,12 @@ class Poser(templates.PoserTemplate):
                             self.pose_controller_r.r_y = round(my_q[1], 5)
                             self.pose_controller_r.r_z = round(my_q[2], 5)
 
-                        await asyncio.sleep(self.coro_keep_alive["serial_listener3"][1])
+                        await asyncio.sleep(self.coro_keep_alive["serial_listener3"].sleep_delay)
 
                     except Exception as e:
                         print(f"{self.serial_listener.__name__}: {e}")
                         break
-        self.coro_keep_alive["serial_listener3"][0] = False
+        self.coro_keep_alive["serial_listener3"].is_alive = False
 
     @templates.PoserTemplate.register_member_thread(1 / 100)
     async def serial_listener(self):
@@ -290,7 +290,7 @@ class Poser(templates.PoserTemplate):
 
         if not check_serial_dict(self.serialPaths, 'hmd'):
             print ('failed to init serial_listener: bad serial dict for key \'hmd\'')
-            self.coro_keep_alive["serial_listener"][0] = False
+            self.coro_keep_alive["serial_listener"].is_alive = False
             return
 
 
@@ -299,7 +299,7 @@ class Poser(templates.PoserTemplate):
                 protocol.write_line("nut")
                 await asyncio.sleep(5)
 
-                while self.coro_keep_alive["serial_listener"][0]:
+                while self.coro_keep_alive["serial_listener"].is_alive:
                     try:
                         gg = u.get_numbers_from_text(protocol.last_read, ',')
 
@@ -316,12 +316,12 @@ class Poser(templates.PoserTemplate):
                             self.pose.r_y = round(my_q[1], 5)
                             self.pose.r_z = round(my_q[2], 5)
 
-                        await asyncio.sleep(self.coro_keep_alive["serial_listener"][1])
+                        await asyncio.sleep(self.coro_keep_alive["serial_listener"].sleep_delay)
 
                     except Exception as e:
                         print(f"{self.serial_listener.__name__}: {e}")
                         break
-        self.coro_keep_alive["serial_listener"][0] = False
+        self.coro_keep_alive["serial_listener"].is_alive = False
 
 def run_poser_only(addr="127.0.0.1", cam=4, colordata=None, mapdata=None):
     """Run the poser only. The server must be started in another program."""
