@@ -723,6 +723,7 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
       vr::TrackedDeviceClass_Controller, m_pLeftController);
 
   m_bMyThreadKeepAlive = true;
+  std::this_thread::sleep_for(std::chrono::microseconds(20000));
   m_pMyTread = new std::thread(myThreadEnter, this);
 
   if (!m_pMyTread) {
