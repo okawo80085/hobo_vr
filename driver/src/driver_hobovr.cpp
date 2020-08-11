@@ -770,17 +770,10 @@ void CServerDriver_hobovr::myTrackingThread() {
 
 
   std::vector<double> tempPose;
-
-  for (int i=0; i<57; i++) {
-    tempPose.push_back(0.0);
-  }
-
   while (m_bMyThreadKeepAlive) {
 
-    if (remotePoser != NULL){
-      tempPose = remotePoser->get_pose();
-    }
 
+    tempPose = remotePoser->get_pose();
     if (!tempPose.empty())
     {
       if (m_pRightController != NULL) {
