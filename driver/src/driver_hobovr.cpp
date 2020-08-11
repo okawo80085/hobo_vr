@@ -699,7 +699,7 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
     remotePoser = new SockReceiver::DriverReceiver(57);
     remotePoser->start();
   } catch (...){
-    remotePoser = nullptr;
+    remotePoser = NULL;
     DriverLog("remotePoser broke on create or broke on start, either way you're fucked");
   }
 
