@@ -772,23 +772,23 @@ void CServerDriver_hobovr::myTrackingThread() {
   std::vector<double> tempPose;
   while (m_bMyThreadKeepAlive) {
 
-    if (remotePoser != nullptr){
-      tempPose = remotePoser->get_pose();
-      if (!tempPose.empty())
-      {
-        if (m_pRightController != NULL) {
-          m_pRightController->RunFrame(tempPose);
-        }
-  
-        if (m_pLeftController != NULL) {
-          m_pLeftController->RunFrame(tempPose);
-        }
-  
-        if (m_pHmdLatest != NULL) {
-          m_pHmdLatest->RunFrame(tempPose);
-        }
+
+    tempPose = remotePoser->get_pose();
+    if (!tempPose.empty())
+    {
+      if (m_pRightController != NULL) {
+        m_pRightController->RunFrame(tempPose);
+      }
+
+      if (m_pLeftController != NULL) {
+        m_pLeftController->RunFrame(tempPose);
+      }
+
+      if (m_pHmdLatest != NULL) {
+        m_pHmdLatest->RunFrame(tempPose);
       }
     }
+
 
     vr::VREvent_t vrEvent;
     while (vr::VRServerDriverHost()->PollNextEvent(&vrEvent, sizeof(vrEvent))) {
