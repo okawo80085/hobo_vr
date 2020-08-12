@@ -130,6 +130,7 @@ class Poser(templates.PoserTemplate):
             t1 = u.BlobTracker(
                 self.camera,
                 color_masks=self.calibration,
+                focal_length_px=554.2563
             )
 
         except Exception as e:
