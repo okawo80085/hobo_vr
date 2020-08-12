@@ -69,7 +69,7 @@ def rotate_z(points, angle: float):
     sin = np.sin(angle)
     cos = np.cos(angle)
 
-    for key, p in points.items():
+    for key, p in enumerate(points):
         points[key][0] = p[0] * cos - p[1] * sin
         points[key][1] = p[1] * cos + p[0] * sin
 
@@ -79,7 +79,7 @@ def rotate_x(points, angle: float):
     sin = np.sin(angle)
     cos = np.cos(angle)
 
-    for key, p in points.items():
+    for key, p in enumerate(points):
         points[key][1] = p[1] * cos - p[2] * sin
         points[key][2] = p[2] * cos + p[1] * sin
 
@@ -89,7 +89,7 @@ def rotate_y(points, angle: float):
     sin = np.sin(angle)
     cos = np.cos(angle)
 
-    for key, p in points.items():
+    for key, p in enumerate(points):
         points[key][0] = p[0] * cos - p[2] * sin
         points[key][2] = p[2] * cos + p[0] * sin
 
@@ -118,8 +118,7 @@ def translate(points, offsets: Sequence[float]) -> None:
     :param points: a point dictionary, such as: {"marker 1" : np.array((0, 0, 0))}
     :param offsets: the distance to translate on the x, y, and z axes
     """
-    for key, p in points.items():
-        points[key] += offsets
+    points += offsets
 
 
 def strings_share_characters(str1: str, str2: str) -> bool:
