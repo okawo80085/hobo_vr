@@ -64,41 +64,41 @@ async def read3(reader: StreamReader, read_len: int = 20) -> str:
     return data
 
 
-def rotate_z(points: Dict[str, Dict[str, float]], angle: float):
+def rotate_z(points, angle: float):
     """Rotate a set of points around the z axis."""
     sin = np.sin(angle)
     cos = np.cos(angle)
 
     for key, p in points.items():
-        points[key]["x"] = p["x"] * cos - p["y"] * sin
-        points[key]["y"] = p["y"] * cos + p["x"] * sin
+        points[key][0] = p[0] * cos - p[1] * sin
+        points[key][1] = p[1] * cos + p[0] * sin
 
 
-def rotate_x(points: Dict[str, Dict[str, float]], angle: float):
+def rotate_x(points, angle: float):
     """Rotate a set of points around the x axis."""
     sin = np.sin(angle)
     cos = np.cos(angle)
 
     for key, p in points.items():
-        points[key]["y"] = p["y"] * cos - p["z"] * sin
-        points[key]["z"] = p["z"] * cos + p["y"] * sin
+        points[key][1] = p[1] * cos - p[2] * sin
+        points[key][2] = p[2] * cos + p[1] * sin
 
 
-def rotate_y(points: Dict[str, Dict[str, float]], angle: float):
+def rotate_y(points, angle: float):
     """Rotate a set of points around the y axis."""
     sin = np.sin(angle)
     cos = np.cos(angle)
 
     for key, p in points.items():
-        points[key]["x"] = p["x"] * cos - p["z"] * sin
-        points[key]["z"] = p["z"] * cos + p["x"] * sin
+        points[key][0] = p[0] * cos - p[2] * sin
+        points[key][2] = p[2] * cos + p[0] * sin
 
 
 def rotate(points: Dict[str, Dict[str, float]], angles: Sequence[float]) -> None:
     """
     Rotate a set of points around the x, y, then z axes.
 
-    :param points: a point dictionary, such as: `{"marker 1" : {"x": 0, "y": 0, "z": 0}}`
+    :param points: a point dictionary, such as: {"marker 1" : np.array((0, 0, 0))}
     :param angles: the degrees to rotate on the x, y, and z axes
     """
     if angles[0] != 0:
@@ -111,17 +111,15 @@ def rotate(points: Dict[str, Dict[str, float]], angles: Sequence[float]) -> None
         rotate_z(points, angles[2])
 
 
-def translate(points: Dict[str, Dict[str, float]], offsets: Sequence[float]) -> None:
+def translate(points, offsets: Sequence[float]) -> None:
     """
     Translate a set of points along the x, y, then z axes.
 
-    :param points: a point dictionary, such as: `{"marker 1" : {"x": 0, "y": 0, "z": 0}}`
+    :param points: a point dictionary, such as: {"marker 1" : np.array((0, 0, 0))}
     :param offsets: the distance to translate on the x, y, and z axes
     """
     for key, p in points.items():
-        points[key]["x"] += offsets[0]
-        points[key]["y"] += offsets[1]
-        points[key]["z"] += offsets[2]
+        points[key] += offsets
 
 
 def strings_share_characters(str1: str, str2: str) -> bool:
@@ -295,6 +293,9 @@ class SerialReaderFactory(serial.threaded.LineReader):
         """Notify the user that the connection was lost."""
         print(f"SerialReaderFactory: port {repr(self.transport.serial.port)} closed {repr(exc)}")
 
+def cnt_2_x_y_w(cnt):
+    nc = cnt.reshape((cnt.shape[0], 2))
+    return (nc[:, 0].min() + nc[:, 0].max())/2, (nc[:, 1].min() + nc[:, 1].max())/2, nc[:, 0].max() - nc[:, 0].min()
 
 class BlobTracker(threading.Thread):
     """
@@ -328,9 +329,9 @@ class BlobTracker(threading.Thread):
         ...         poses = tracker.get_poses() # gets latest poses for the trackers
         ...         print (poses)
         ...         time.sleep(1/60) # some delay, doesn't affect the tracking
-        {'tracker1': {'x': 0, 'y': 0, 'z': 0}}
-        {'tracker1': {'x': 0, 'y': 0, 'z': 0}}
-        {'tracker1': {'x': 0, 'y': 0, 'z': 0}}
+        array([[0, 0, 0]])
+        array([[0, 0, 0]])
+        array([[0, 0, 0]])
 
         :param cam_index: index of the camera that will be used to track the blobs
         :param focal_length_px: focal length in pixels
@@ -357,30 +358,23 @@ class BlobTracker(threading.Thread):
             raise RuntimeError('invalid video source')
 
 
-        self.frame_height, self.frame_width, _ = frame.shape if self.can_track else (0, 0, 0)
-
+        self.frame_height, self.frame_width, _ = frame.shape
         self.markerMasks = color_masks
 
-        self.poses = {}
-        self.blobs = {}
+        self.poses = np.zeros((len(self.markerMasks), 3))
+        self.blobs = []
 
         self.kalmanTrainSize = 15
 
-        self.kalmanFilterz: Dict[str, LazyKalman] = {}
-        self.kalmanWasInited = {}
+        self.kalmanFilterz = []
 
-        self.kalmanFilterz2: Dict[str, LazyKalman] = {}
-        self.kalmanWasInited2 = {}
+        self.kalmanFilterz2 = []
 
-        for i in self.markerMasks:
-            self.poses[i] = {"x": 0, "y": 0, "z": 0}
-            self.blobs[i] = None
+        for i in range(len(self.markerMasks)):
+            self.blobs.append(None)
 
-            self.kalmanFilterz[i] = None
-            self.kalmanWasInited[i] = False
-
-            self.kalmanFilterz2[i] = None
-            self.kalmanWasInited2[i] = False
+            self.kalmanFilterz.append((False, None))
+            self.kalmanFilterz2.append((False, None))
 
         # -------------------threading related------------------------
 
@@ -401,12 +395,6 @@ class BlobTracker(threading.Thread):
             frame = None
             can_track = False
         return frame, can_track
-
-    def stop(self):
-        """Stop the blob tracking thread."""
-        self.alive = False
-        self.can_track = False
-        self.join(4)
 
     def run(self):
         """Run the main blob tracking thread."""
@@ -446,7 +434,7 @@ class BlobTracker(threading.Thread):
         self.alive = False
         self.can_track = False
 
-    def get_poses(self) -> Dict[str, Dict[str, float]]:
+    def get_poses(self):
         """Get the least recent set of poses."""
         if self.can_track and self.alive:
             return self.pose_que.get()
@@ -458,7 +446,7 @@ class BlobTracker(threading.Thread):
         if self.alive:
             frame, self.can_track = self._try_get_frame()
 
-            for key, mask_range in self.markerMasks.items():
+            for key, _, mask_range in enumerate(self.markerMasks.items()):
                 hc, hr = mask_range["h"]
 
                 sc, sr = mask_range["s"]
@@ -489,19 +477,20 @@ class BlobTracker(threading.Thread):
 
     def solve_blob_poses(self):
         """Solve for and set the poses of all blobs visible by the camera."""
-        for key, blob in self.blobs.items():
+        for key, blob in enumerate(self.blobs):
             if blob is not None:
-                elip = cv2.fitEllipse(blob)
+                # elip = cv2.fitEllipse(blob)
 
-                x, y = elip[0]
-                w, h = elip[1]
+                # x, y = elip[0]
+                # w, h = elip[1]
+                x, y, w = cnt_2_x_y_w(blob)
 
-                if not self.kalmanWasInited2[key]:
-                    self.kalmanFilterz2[key] = LazyKalman([x, y, w], np.eye(3), np.eye(3))
-                    self.kalmanWasInited2[key] = True
+                if not self.kalmanFilterz2[key][0]:
+                    self.kalmanFilterz2[key][1] = LazyKalman([x, y, w], np.eye(3), np.eye(3))
+                    self.kalmanFilterz2[key][0] = True
 
                 else:
-                    x, y, w = self.kalmanFilterz2[key].apply([x, y, w])
+                    x, y, w = self.kalmanFilterz2[key][1].apply([x, y, w])
 
                 f_px = self.camera_focal_length
                 x_px = x
@@ -530,22 +519,22 @@ class BlobTracker(threading.Thread):
                 x_cm = l_cm * x_px / l_px
                 y_cm = l_cm * y_px / l_px
 
-                self.poses[key]["x"] = x_cm / 100
-                self.poses[key]["y"] = y_cm / 100
-                self.poses[key]["z"] = z_cm / 100
+                self.poses[key] = np.array((x_cm / 100, y_cm / 100, z_cm / 100))
 
                 # self._translate()
 
                 if not has_nan_in_pose(self.poses[key]):
-                    if not self.kalmanWasInited[key]:
-                        self.kalmanFilterz[key] = LazyKalman(
-                            [self.poses[key]["x"], self.poses[key]["y"], self.poses[key]["z"],], np.eye(3), np.eye(3)
-                        )
-                        self.kalmanWasInited[key] = True
+                    if not self.kalmanFilterz[key][0]:
+                        self.kalmanFilterz[key][1] = LazyKalman(self.poses[key], np.eye(3), np.eye(3))
+                        self.kalmanFilterz[key][0] = True
                     else:
-                        self.poses[key]["x"], self.poses[key]["y"], self.poses[key]["z"] = self.kalmanFilterz[
-                            key
-                        ].apply([self.poses[key]["x"], self.poses[key]["y"], self.poses[key]["z"]])
+                        self.poses[key] = self.kalmanFilterz[key][1].apply(self.poses[key])
+
+    def stop(self):
+        """Stop the blob tracking thread."""
+        self.alive = False
+        self.can_track = False
+        self.join(4)
 
     def close(self):
         """Close the blob tracker thread."""

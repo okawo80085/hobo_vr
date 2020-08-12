@@ -146,17 +146,17 @@ class Poser(templates.PoserTemplate):
                     u.rotate(poses, offsets)
 
                     if self.usePos:
-                        self.pose_controller_l.x = round(-poses["green"]["x"] * 0.9, 6)
-                        self.pose_controller_l.y = round(poses["green"]["y"] * 0.85, 6)
-                        self.pose_controller_l.z = round(poses["green"]["z"] * 1.8, 6)
+                        self.pose_controller_l.x = round(-poses[1][0] * 0.9, 6)
+                        self.pose_controller_l.y = round(poses[1][1] * 0.85, 6)
+                        self.pose_controller_l.z = round(poses[1][2] * 1.8, 6)
 
-                        self.pose_controller_r.x = round(-poses["yellow"]["x"] * 0.9, 6)
-                        self.pose_controller_r.y = round(poses["yellow"]["y"] * 0.85, 6)
-                        self.pose_controller_r.z = round(poses["yellow"]["z"] * 1.8, 6)
+                        self.pose_controller_r.x = round(-poses[2][0] * 0.9, 6)
+                        self.pose_controller_r.y = round(poses[2][1] * 0.85, 6)
+                        self.pose_controller_r.z = round(poses[2][2] * 1.8, 6)
 
-                        self.pose.x = round(-poses["blue"]["x"] * 0.9 - 0.01, 6)
-                        self.pose.y = round(poses["blue"]["y"] * 0.85 - 0.07, 6)
-                        self.pose.z = round(poses["blue"]["z"] * 2 + 0.05, 6)
+                        self.pose.x = round(-poses[0][0] * 0.9 - 0.01, 6)
+                        self.pose.y = round(poses[0][1] * 0.85 - 0.07, 6)
+                        self.pose.z = round(poses[0][2] * 2 + 0.05, 6)
 
                     await asyncio.sleep(self.coro_keep_alive["get_location"].sleep_delay)
 
