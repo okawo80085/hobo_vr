@@ -364,8 +364,6 @@ class BlobTracker(threading.Thread):
         self.poses = np.zeros((len(self.markerMasks), 3))
         self.blobs = []
 
-        self.kalmanTrainSize = 15
-
         self.kalmanFilterz = []
 
         self.kalmanFilterz2 = []
