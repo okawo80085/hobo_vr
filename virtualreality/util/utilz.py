@@ -365,12 +365,11 @@ class BlobTracker(threading.Thread):
         self.blobs = []
 
         self.kalmanFilterz = []
-
         self.kalmanFilterz2 = []
+
 
         for i in range(len(self.markerMasks)):
             self.blobs.append(None)
-
             self.kalmanFilterz.append((False, None))
             self.kalmanFilterz2.append((False, None))
 
