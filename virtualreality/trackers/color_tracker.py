@@ -94,6 +94,9 @@ class Poser(templates.PoserTemplate):
         while self.coro_keep_alive["mode_switcher"].is_alive:
             try:
                 if self.mode == 1:
+                    self.pose_controller_l.trackpad_touch = 0
+                    self.pose_controller_l.trackpad_x = 0
+                    self.pose_controller_l.trackpad_y = 0
                     self.pose_controller_r.trackpad_touch = self.temp_pose.trackpad_touch
                     self.pose_controller_r.trackpad_click = self.temp_pose.trackpad_click
                     self.pose_controller_r.trackpad_x = self.temp_pose.trackpad_x
@@ -105,6 +108,9 @@ class Poser(templates.PoserTemplate):
                     self.pose_controller_r.menu = self.temp_pose.menu
 
                 else:
+                    self.pose_controller_r.trackpad_touch = 0
+                    self.pose_controller_r.trackpad_x = 0
+                    self.pose_controller_r.trackpad_y = 0
                     self.pose_controller_l.trackpad_touch = self.temp_pose.trackpad_touch
                     self.pose_controller_l.trackpad_click = self.temp_pose.trackpad_click
                     self.pose_controller_l.trackpad_x = self.temp_pose.trackpad_x

@@ -165,9 +165,8 @@ def get_poses_shape(poses):
 
 def has_nan_in_pose(pose):
     """Determine if any numbers in pose are invalid."""
-    for key in ["x", "y", "z"]:
-        if np.isnan(pose[key]) or np.isinf(pose[key]):
-            return True
+    if np.isnan(pose).any() or np.isinf(pose).any():
+        return True
 
     return False
 
@@ -369,8 +368,8 @@ class BlobTracker(threading.Thread):
 
         for i in range(len(self.markerMasks)):
             self.blobs.append(None)
-            self.kalmanFilterz.append((False, None))
-            self.kalmanFilterz2.append((False, None))
+            self.kalmanFilterz.append([False, None])
+            self.kalmanFilterz2.append([False, None])
 
         # -------------------threading related------------------------
 
@@ -430,14 +429,13 @@ class BlobTracker(threading.Thread):
         if self.alive:
             frame, self.can_track = self._try_get_frame()
 
-            for key, _, mask_range in enumerate(self.markerMasks.items()):
+            for key, mask_range in enumerate(self.markerMasks.items()):
                 if self.can_track:
-                    hc, hr = mask_range["h"]
+                    hc, hr = mask_range[1]["h"]
 
-                    sc, sr = mask_range["s"]
+                    sc, sr = mask_range[1]["s"]
 
-                    vc, vr = mask_range["v"]
-
+                    vc, vr = mask_range[1]["v"]
                     color_high = [hc + hr, sc + sr, vc + vr]
                     color_low = [hc - hr, sc - sr, vc - vr]
 
@@ -463,11 +461,11 @@ class BlobTracker(threading.Thread):
         """Solve for and set the poses of all blobs visible by the camera."""
         for key, blob in enumerate(self.blobs):
             if blob is not None:
-                # elip = cv2.fitEllipse(blob)
+                elip = cv2.fitEllipse(blob)
 
-                # x, y = elip[0]
-                # w, h = elip[1]
-                x, y, w = cnt_2_x_y_w(blob)
+                x, y = elip[0]
+                w, h = elip[1]
+                # x, y, w = cnt_2_x_y_w(blob)
 
                 if not self.kalmanFilterz2[key][0]:
                     self.kalmanFilterz2[key][1] = LazyKalman([x, y, w], np.eye(3), np.eye(3))
