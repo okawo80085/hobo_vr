@@ -63,52 +63,37 @@ async def read3(reader: StreamReader, read_len: int = 20) -> str:
 
     return data
 
-
-def rotate_z(points, angle: float):
-    """Rotate a set of points around the z axis."""
-    sin = np.sin(angle)
-    cos = np.cos(angle)
-
-    for key, p in enumerate(points):
-        points[key][0] = p[0] * cos - p[1] * sin
-        points[key][1] = p[1] * cos + p[0] * sin
-
-
-def rotate_x(points, angle: float):
-    """Rotate a set of points around the x axis."""
-    sin = np.sin(angle)
-    cos = np.cos(angle)
-
-    for key, p in enumerate(points):
-        points[key][1] = p[1] * cos - p[2] * sin
-        points[key][2] = p[2] * cos + p[1] * sin
-
-
-def rotate_y(points, angle: float):
-    """Rotate a set of points around the y axis."""
-    sin = np.sin(angle)
-    cos = np.cos(angle)
-
-    for key, p in enumerate(points):
-        points[key][0] = p[0] * cos - p[2] * sin
-        points[key][2] = p[2] * cos + p[0] * sin
-
-
-def rotate(points: Dict[str, Dict[str, float]], angles: Sequence[float]) -> None:
+def rotate(points, angls):
     """
     Rotate a set of points around the x, y, then z axes.
 
     :param points: a point dictionary, such as: {"marker 1" : np.array((0, 0, 0))}
     :param angles: the degrees to rotate on the x, y, and z axes
     """
-    if angles[0] != 0:
-        rotate_x(points, angles[0])
+    rotx = np.array([
+                [1, 0, 0],
+                [0, np.cos(angls[0]), -np.sin(angls[0])],
+                [0, np.sin(angls[0]), np.cos(angls[0])]
+            ], dtype=np.float64)
 
-    if angles[1] != 0:
-        rotate_y(points, angles[1])
+    roty = np.array([
+                [np.cos(angls[1]), 0, np.sin(angls[1])],
+                [ 0, 1, 0],
+                [ -np.sin(angls[1]), 0, np.cos(angls[1])]
+            ], dtype=np.float64)
 
-    if angles[2] != 0:
-        rotate_z(points, angles[2])
+    rotz = np.array([
+                [np.cos(angls[2]), -np.sin(angls[2]), 0],
+                [ np.sin(angls[2]), np.cos(angls[2]), 0],
+                [ 0,            0,            1]
+            ], dtype=np.float64)
+
+    rot = np.matmul(np.matmul(rotx, roty), rotz)
+
+    for i, p in enumerate(points):
+        points[i] = np.around(np.sum(rot* p, axis=1), decimals=6)
+
+    return points
 
 
 def translate(points, offsets: Sequence[float]) -> None:
