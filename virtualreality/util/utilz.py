@@ -431,16 +431,16 @@ class BlobTracker(threading.Thread):
             frame, self.can_track = self._try_get_frame()
 
             for key, _, mask_range in enumerate(self.markerMasks.items()):
-                hc, hr = mask_range["h"]
-
-                sc, sr = mask_range["s"]
-
-                vc, vr = mask_range["v"]
-
-                color_high = [hc + hr, sc + sr, vc + vr]
-                color_low = [hc - hr, sc - sr, vc - vr]
-
                 if self.can_track:
+                    hc, hr = mask_range["h"]
+
+                    sc, sr = mask_range["s"]
+
+                    vc, vr = mask_range["v"]
+
+                    color_high = [hc + hr, sc + sr, vc + vr]
+                    color_low = [hc - hr, sc - sr, vc - vr]
+
                     blurred = cv2.GaussianBlur(frame, (3, 3), 0)
 
                     hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
