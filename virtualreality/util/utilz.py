@@ -411,15 +411,6 @@ class BlobTracker(threading.Thread):
                 self.solve_blob_poses()
                 # rotate(self.poses, self.offsets)
 
-                if not self.pose_que.empty():
-                    try:
-                        self.pose_que.get_nowait()
-
-                    except queue.Empty:
-                        pass
-
-                self.pose_que.put(self.poses.copy())
-
                 if not self.can_track:
                     break
 
@@ -431,11 +422,8 @@ class BlobTracker(threading.Thread):
         self.can_track = False
 
     def get_poses(self):
-        """Get the least recent set of poses."""
-        if self.can_track and self.alive:
-            return self.pose_que.get()
-        else:
-            raise RuntimeError("tracking loop already finished")
+        """Get last poses."""
+        return self.poses.copy()
 
     def find_blobs_in_frame(self):
         """Get a frame from the camera and find all the blobs in it."""
