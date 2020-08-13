@@ -28,15 +28,16 @@ poser = templates.PoserClient()
 async def example_thread():
     h = 0
     while poser.coro_keep_alive["example_thread"][0]:
-        poser.pose.y = round(np.sin(h/2)-2, 4)
-        poser.pose.x = round(np.cos(h/2), 4)
+        # poser.pose.y = round(np.sin(h/2)-2, 4)
+        poser.pose.y = -2.1
+        # poser.pose.x = round(np.cos(h/2), 4)
         poser.pose.z = round(np.cos(h/2), 4)
         poser.pose_controller_l.x = round(0.5-np.cos(h*2)/5, 4)
         poser.pose_controller_l.y = -2
         poser.pose_controller_r.z = round(-1 - np.cos(h*2)/5, 4)
         poser.pose_controller_r.y = -2.2
 
-        x, y, z, w = pyrr.Quaternion.from_y_rotation(h/2)
+        x, y, z, w = pyrr.Quaternion.from_z_rotation(h/2)
         poser.pose.r_x = round(x, 4)
         poser.pose.r_y = round(y, 4)
         poser.pose.r_z = round(z, 4)

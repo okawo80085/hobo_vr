@@ -1,5 +1,6 @@
 *.json
 !hobovr/*/*/*.json
+*.txt
 !CMakeLists.txt
 x64
 Release

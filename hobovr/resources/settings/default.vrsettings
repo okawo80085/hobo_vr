@@ -1,7 +1,7 @@
 {
    "driver_hobovr" : {
       "enable" : true,
-      "serialNumber" : "1234",
+      "serialNumber" : "420",
       "modelNumber" : "hobovr_hmd_m1",
       "windowX" : 10,
       "windowY" : 10,
