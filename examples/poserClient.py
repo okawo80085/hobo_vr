@@ -20,14 +20,13 @@ import numpy as np
 import pyrr
 
 from virtualreality import templates
-from virtualreality.server import server
 
 poser = templates.PoserClient()
 
 @poser.thread_register(1/60)
 async def example_thread():
     h = 0
-    while poser.coro_keep_alive["example_thread"][0]:
+    while poser.coro_keep_alive["example_thread"].is_alive:
         # poser.pose.y = round(np.sin(h/2)-2, 4)
         poser.pose.y = -2.1
         # poser.pose.x = round(np.cos(h/2), 4)
@@ -57,15 +56,15 @@ async def example_thread():
 
         h += 0.01
 
-        await asyncio.sleep(poser.coro_keep_alive["example_thread"][1])
+        await asyncio.sleep(poser.coro_keep_alive["example_thread"].sleep_delay)
 
 
 # @poser.thread_register(1, runInDefaultExecutor=True)
 # def example_thread2():
-#     while poser.coro_keep_alive["example_thread2"][0]:
-#         poser.pose["x"] += 0.2
+#     while poser.coro_keep_alive["example_thread2"].is_alive:
+#         poser.pose.x += 0.2
 
-#         time.sleep(poser.coro_keep_alive["example_thread2"][1])
+#         time.sleep(poser.coro_keep_alive["example_thread2"].sleep_delay)
 
 
 asyncio.run(poser.main())

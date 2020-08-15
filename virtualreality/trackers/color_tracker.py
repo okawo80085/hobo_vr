@@ -88,12 +88,15 @@ class Poser(templates.PoserTemplate):
         print (f'current color masks {self.calibration}')
 
 
-    @templates.thread_register(1 / 90)
+    @templates.PoserTemplate.register_member_thread(1 / 90)
     async def mode_switcher(self):
         """Check to switch between left and right controllers."""
-        while self.coro_keep_alive["mode_switcher"][0]:
+        while self.coro_keep_alive["mode_switcher"].is_alive:
             try:
                 if self.mode == 1:
+                    self.pose_controller_l.trackpad_touch = 0
+                    self.pose_controller_l.trackpad_x = 0
+                    self.pose_controller_l.trackpad_y = 0
                     self.pose_controller_r.trackpad_touch = self.temp_pose.trackpad_touch
                     self.pose_controller_r.trackpad_click = self.temp_pose.trackpad_click
                     self.pose_controller_r.trackpad_x = self.temp_pose.trackpad_x
@@ -105,6 +108,9 @@ class Poser(templates.PoserTemplate):
                     self.pose_controller_r.menu = self.temp_pose.menu
 
                 else:
+                    self.pose_controller_r.trackpad_touch = 0
+                    self.pose_controller_r.trackpad_x = 0
+                    self.pose_controller_r.trackpad_y = 0
                     self.pose_controller_l.trackpad_touch = self.temp_pose.trackpad_touch
                     self.pose_controller_l.trackpad_click = self.temp_pose.trackpad_click
                     self.pose_controller_l.trackpad_x = self.temp_pose.trackpad_x
@@ -115,14 +121,14 @@ class Poser(templates.PoserTemplate):
                     self.pose_controller_l.grip = self.temp_pose.grip
                     self.pose_controller_l.menu = self.temp_pose.menu
 
-                await asyncio.sleep(self.coro_keep_alive["mode_switcher"][1])
+                await asyncio.sleep(self.coro_keep_alive["mode_switcher"].sleep_delay)
 
             except Exception as e:
                 print(f"failed mode_switcher: {e}")
-                self.coro_keep_alive["mode_switcher"][0] = False
                 break
+        self.coro_keep_alive["mode_switcher"].is_alive = False
 
-    @templates.thread_register(1 / 65)
+    @templates.PoserTemplate.register_member_thread(1 / 65)
     async def get_location(self):
         """Get locations from blob trackers."""
         try:
@@ -130,42 +136,43 @@ class Poser(templates.PoserTemplate):
             t1 = u.BlobTracker(
                 self.camera,
                 color_masks=self.calibration,
+                focal_length_px=554.2563
             )
 
         except Exception as e:
             print(f"failed to init get_location: {e}")
-            self.coro_keep_alive["get_location"][0] = False
+            self.coro_keep_alive["get_location"].is_alive = False
             return
 
         with t1:
-            while self.coro_keep_alive["get_location"][0]:
+            while self.coro_keep_alive["get_location"].is_alive:
                 try:
                     poses = t1.get_poses()
 
                     u.rotate(poses, offsets)
 
                     if self.usePos:
-                        self.pose_controller_l.x = round(-poses["green"]["x"] * 0.9, 6)
-                        self.pose_controller_l.y = round(poses["green"]["y"] * 0.85, 6)
-                        self.pose_controller_l.z = round(poses["green"]["z"] * 1.8, 6)
+                        self.pose_controller_l.x = round(-poses[1][0] * 0.9, 6)
+                        self.pose_controller_l.y = round(poses[1][1] * 0.85, 6)
+                        self.pose_controller_l.z = round(poses[1][2] * 1.8, 6)
 
-                        self.pose_controller_r.x = round(-poses["yellow"]["x"] * 0.9, 6)
-                        self.pose_controller_r.y = round(poses["yellow"]["y"] * 0.85, 6)
-                        self.pose_controller_r.z = round(poses["yellow"]["z"] * 1.8, 6)
+                        self.pose_controller_r.x = round(-poses[2][0] * 0.9, 6)
+                        self.pose_controller_r.y = round(poses[2][1] * 0.85, 6)
+                        self.pose_controller_r.z = round(poses[2][2] * 1.8, 6)
 
-                        self.pose.x = round(-poses["blue"]["x"] * 0.9 - 0.01, 6)
-                        self.pose.y = round(poses["blue"]["y"] * 0.85 - 0.07, 6)
-                        self.pose.z = round(poses["blue"]["z"] * 2 + 0.05, 6)
+                        self.pose.x = round(-poses[0][0] * 0.9 - 0.01, 6)
+                        self.pose.y = round(poses[0][1] * 0.85 - 0.07, 6)
+                        self.pose.z = round(poses[0][2] * 2 + 0.05, 6)
 
-                    await asyncio.sleep(self.coro_keep_alive["get_location"][1])
+                    await asyncio.sleep(self.coro_keep_alive["get_location"].sleep_delay)
 
                 except Exception as e:
                     print("stopping get_location:", e)
                     break
 
-        self.coro_keep_alive["get_location"][0] = False
+        self.coro_keep_alive["get_location"].is_alive = False
 
-    @templates.thread_register(1 / 100)
+    @templates.PoserTemplate.register_member_thread(1 / 100)
     async def serial_listener2(self):
         """Get controller data from serial."""
         irl_rot_off = Quaternion.from_z_rotation(np.pi/2) # imu on this controller is rotated 90 degrees irl for me
@@ -174,7 +181,7 @@ class Poser(templates.PoserTemplate):
 
         if not check_serial_dict(self.serialPaths, 'cont_l'):
             print ('failed to init serial_listener2: bad serial dict for key \'cont_l\'')
-            self.coro_keep_alive["serial_listener2"][0] = False
+            self.coro_keep_alive["serial_listener2"].is_alive = False
             return
 
         with serial.Serial(self.serialPaths["cont_l"], 115200, timeout=1 / 4) as ser:
@@ -182,7 +189,7 @@ class Poser(templates.PoserTemplate):
                 protocol.write_line("nut")
                 await asyncio.sleep(5)
 
-                while self.coro_keep_alive["serial_listener2"][0]:
+                while self.coro_keep_alive["serial_listener2"].is_alive:
                     try:
                         gg = u.get_numbers_from_text(protocol.last_read, ',')
 
@@ -235,14 +242,14 @@ class Poser(templates.PoserTemplate):
                         else:
                             self.temp_pose.trigger_click = 0
 
-                        await asyncio.sleep(self.coro_keep_alive["serial_listener2"][1])
+                        await asyncio.sleep(self.coro_keep_alive["serial_listener2"].sleep_delay)
 
                     except Exception as e:
                         print(f"{self.serial_listener2.__name__}: {e}")
                         break
-        self.coro_keep_alive["serial_listener2"][0] = False
+        self.coro_keep_alive["serial_listener2"].is_alive = False
 
-    @templates.thread_register(1 / 100)
+    @templates.PoserTemplate.register_member_thread(1 / 100)
     async def serial_listener3(self):
         """Get orientation data from serial."""
         irl_rot_off = Quaternion.from_x_rotation(np.pi/3) # imu on this controller is rotated 90 degrees irl for me
@@ -251,7 +258,7 @@ class Poser(templates.PoserTemplate):
 
         if not check_serial_dict(self.serialPaths, 'cont_r'):
             print ('failed to init serial_listener3: bad serial dict for key \'cont_r\'')
-            self.coro_keep_alive["serial_listener3"][0] = False
+            self.coro_keep_alive["serial_listener3"].is_alive = False
             return
 
         with serial.Serial(self.serialPaths["cont_r"], 115200, timeout=1 / 5) as ser2:
@@ -259,7 +266,7 @@ class Poser(templates.PoserTemplate):
                 protocol.write_line("nut")
                 await asyncio.sleep(5)
 
-                while self.coro_keep_alive["serial_listener3"][0]:
+                while self.coro_keep_alive["serial_listener3"].is_alive:
                     try:
                         gg = u.get_numbers_from_text(protocol.last_read, ',')
 
@@ -276,21 +283,21 @@ class Poser(templates.PoserTemplate):
                             self.pose_controller_r.r_y = round(my_q[1], 5)
                             self.pose_controller_r.r_z = round(my_q[2], 5)
 
-                        await asyncio.sleep(self.coro_keep_alive["serial_listener3"][1])
+                        await asyncio.sleep(self.coro_keep_alive["serial_listener3"].sleep_delay)
 
                     except Exception as e:
                         print(f"{self.serial_listener.__name__}: {e}")
                         break
-        self.coro_keep_alive["serial_listener3"][0] = False
+        self.coro_keep_alive["serial_listener3"].is_alive = False
 
-    @templates.thread_register(1 / 100)
+    @templates.PoserTemplate.register_member_thread(1 / 100)
     async def serial_listener(self):
         """Get orientation data from serial."""
         my_off = Quaternion()
 
         if not check_serial_dict(self.serialPaths, 'hmd'):
             print ('failed to init serial_listener: bad serial dict for key \'hmd\'')
-            self.coro_keep_alive["serial_listener"][0] = False
+            self.coro_keep_alive["serial_listener"].is_alive = False
             return
 
 
@@ -299,7 +306,7 @@ class Poser(templates.PoserTemplate):
                 protocol.write_line("nut")
                 await asyncio.sleep(5)
 
-                while self.coro_keep_alive["serial_listener"][0]:
+                while self.coro_keep_alive["serial_listener"].is_alive:
                     try:
                         gg = u.get_numbers_from_text(protocol.last_read, ',')
 
@@ -316,12 +323,12 @@ class Poser(templates.PoserTemplate):
                             self.pose.r_y = round(my_q[1], 5)
                             self.pose.r_z = round(my_q[2], 5)
 
-                        await asyncio.sleep(self.coro_keep_alive["serial_listener"][1])
+                        await asyncio.sleep(self.coro_keep_alive["serial_listener"].sleep_delay)
 
                     except Exception as e:
                         print(f"{self.serial_listener.__name__}: {e}")
                         break
-        self.coro_keep_alive["serial_listener"][0] = False
+        self.coro_keep_alive["serial_listener"].is_alive = False
 
 def run_poser_only(addr="127.0.0.1", cam=4, colordata=None, mapdata=None):
     """Run the poser only. The server must be started in another program."""

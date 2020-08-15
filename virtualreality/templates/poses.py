@@ -166,14 +166,6 @@ class Pose(object):
     def __len__(self):
         return len(self.__slots__)
 
-
-"""class CoroutineKeepAlive(object):
-    def __init__(self, send_delay, receive_delay, close_delay=0.1):
-        self.send = [True, send_delay]
-        self.receive = [True, receive_delay]
-        self.close = [True, close_delay]"""
-
-
 class ControllerState(Pose):
     """Struct containing all variables needed for instantaneous controller state."""
 
@@ -244,14 +236,7 @@ class ControllerState(Pose):
         self.trackpad_touch: int = trackpad_touch  # 0 or 1
         self.trigger_click: int = trigger_click  # 0 or 1
 
-
-def get_slot_names(slotted_instance):
-    """Get all slot names in a class with slots."""
-    # thanks: https://stackoverflow.com/a/6720815/782170
-    return slotted_instance.__slots__
-
-
 def get_slot_values(slotted_instance):
     """Get all slot values in a class with slots."""
     # thanks: https://stackoverflow.com/a/6720815/782170
-    return [getattr(slotted_instance, slot) for slot in get_slot_names(slotted_instance)]
+    return [getattr(slotted_instance, slot) for slot in slotted_instance.__slots__]

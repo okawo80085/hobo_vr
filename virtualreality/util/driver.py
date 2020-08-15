@@ -119,7 +119,7 @@ class UduDummyDriverReceiver(threading.Thread):
     no docs, again... too bad!
 
     example:
-    t = UduDummyDriverReceiver('h13 c22 c22', addr='192.168.31.60', port=6969)
+    t = UduDummyDriverReceiver('h13 c22 c22')
 
     with t:
         t.send('hello') # driver id message
@@ -133,7 +133,7 @@ class UduDummyDriverReceiver(threading.Thread):
 
     def __init__(self, expected_pose_struct, *, addr="127.0.0.1", port=6969):
         """
-        ill let you guess what this does
+        ill let you guess what this does, :expected_pose_struct: should completely match this regex: ([htc][0-9]+[ ])*([htc][0-9]+)$
         """
         super().__init__()
         self.device_order, self.eps = u.get_pose_struct_from_text(expected_pose_struct)
@@ -220,7 +220,7 @@ class UduDummyDriverReceiver(threading.Thread):
                 pass
 
             except Exception as e:
-                print(f"DummyDriverReceiver receive thread failed: {repr(e)}")
+                print(f"UduDummyDriverReceiver receive thread failed: {repr(e)}")
                 break
 
         self.alive = False

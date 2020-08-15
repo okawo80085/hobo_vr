@@ -1,14 +1,15 @@
 from setuptools import setup, find_packages
+from virtualreality import __version__
 
-with open("README.md", "r") as f:
+with open("pypi_readme.md", "r") as f:
     long_description = f.read()
 
 setup(
     name="virtualreality",
-    version="0.1",
-    author="",
+    version=__version__,
+    author="Okawo <okawo.198@gmail.com>, SimLeek <simulator.leek@gmail.com>",
     author_email="",
-    description="",
+    description="python side of hobo_vr",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/okawo80085/hobo_vr",
@@ -26,7 +27,7 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         "Programming Language :: C++",
-        "Programming Language :: Python :: 3 :: Only",
+        "Programming Language :: Python :: 3.7",
         "Topic :: Games/Entertainment",
         "Topic :: Multimedia :: Graphics :: Viewers",
         "Topic :: Scientific/Engineering :: Human Machine Interfaces",
@@ -35,4 +36,5 @@ setup(
     install_requires=["keyboard", "opencv-python", "numpy", "pykalman", "pyserial", "docopt", "pyrr", "scipy", "displayarray"],
     extras_require={"image": ["imutils"]},
     entry_points={"console_scripts": ["pyvr=virtualreality.main:main"]},
+    python_requires='>=3.7',
 )

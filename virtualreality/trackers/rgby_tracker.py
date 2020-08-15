@@ -109,7 +109,7 @@ class Poser(templates.PoserTemplate):
         self.width = width
         self.height = height
 
-    @templates.thread_register(1 / 60)
+    @templates.PoserTemplate.register_member_thread(1 / 60)
     async def get_location(self):
         """Get locations from blob trackers."""
         try:
@@ -127,7 +127,7 @@ class Poser(templates.PoserTemplate):
             return
 
         with t1:
-            while self.coro_keep_alive["get_location"][0]:
+            while self.coro_keep_alive["get_location"].is_alive:
                 try:
                     poses = t1.get_poses()
 
@@ -139,19 +139,19 @@ class Poser(templates.PoserTemplate):
                     self.pose.y = round(poses["blue"]["y"] + 1 - 0.07, 6)
                     self.pose.z = round(poses["blue"]["z"] - 0.03, 6)
 
-                    await asyncio.sleep(self.coro_keep_alive["get_location"][1])
+                    await asyncio.sleep(self.coro_keep_alive["get_location"].sleep_delay)
 
                 except Exception as e:
                     print("stopping get_location:", e)
                     break
 
-    @templates.thread_register(1 / 100)
+    @templates.PoserTemplate.register_member_thread(1 / 100)
     async def serial_listener_2(self):
         """Get controller data from serial."""
         past_velocity = [0, 0, 0]
         velocity_until_reset = 0
         temp_for_offz = {"x": 0, "y": 0, "z": 0}
-        while self.coro_keep_alive["serial_listener_2"][0]:
+        while self.coro_keep_alive["serial_listener_2"].is_alive:
             try:
                 yaw_offset = 0
                 with serial.Serial(self.serialPaths["green"], 115200, timeout=1 / 4) as ser:
@@ -160,7 +160,7 @@ class Poser(templates.PoserTemplate):
                             protocol.write_line("nut")
                             await asyncio.sleep(1)
 
-                        while self.coro_keep_alive["serial_listener_2"][0]:
+                        while self.coro_keep_alive["serial_listener_2"].is_alive:
                             try:
                                 gg = u.get_numbers_from_text(protocol.last_read)
 
@@ -179,17 +179,17 @@ class Poser(templates.PoserTemplate):
                                         ]
                                         temp_for_offz["x"] = round(
                                             past_velocity[0]
-                                            - ax * self.coro_keep_alive["serial_listener_2"][1] * 0.005,
+                                            - ax * self.coro_keep_alive["serial_listener_2"].sleep_delay * 0.005,
                                             4,
                                         )
                                         temp_for_offz["y"] = round(
                                             past_velocity[1]
-                                            - ay * self.coro_keep_alive["serial_listener_2"][1] * 0.005,
+                                            - ay * self.coro_keep_alive["serial_listener_2"].sleep_delay * 0.005,
                                             4,
                                         )
                                         temp_for_offz["z"] = round(
                                             past_velocity[2]
-                                            - az * self.coro_keep_alive["serial_listener_2"][1] * 0.005,
+                                            - az * self.coro_keep_alive["serial_listener_2"].sleep_delay * 0.005,
                                             4,
                                         )
                                         u.rotate_y(
@@ -260,7 +260,7 @@ class Poser(templates.PoserTemplate):
                                 else:
                                     self.temp_pose.trigger_click = 0
 
-                                await asyncio.sleep(self.coro_keep_alive["serial_listener_2"][1])
+                                await asyncio.sleep(self.coro_keep_alive["serial_listener_2"].sleep_delay)
 
                             except Exception as e:
                                 print(f"{self.serial_listener_2.__name__}: {e}")
@@ -271,10 +271,10 @@ class Poser(templates.PoserTemplate):
 
             await asyncio.sleep(1)
 
-    @templates.thread_register(1 / 100)
+    @templates.PoserTemplate.register_member_thread(1 / 100)
     async def serial_listener(self):
         """Get orientation data from serial."""
-        while self.coro_keep_alive["serial_listener"][0]:
+        while self.coro_keep_alive["serial_listener"].is_alive:
             try:
                 with serial.Serial(self.serialPaths["blue"], 115200, timeout=1 / 5) as ser2:
                     with serial.threaded.ReaderThread(ser2, u.SerialReaderFactory) as protocol:
@@ -283,7 +283,7 @@ class Poser(templates.PoserTemplate):
                             protocol.write_line("nut")
                             await asyncio.sleep(1)
 
-                        while self.coro_keep_alive["serial_listener"][0]:
+                        while self.coro_keep_alive["serial_listener"].is_alive:
                             try:
                                 gg = u.get_numbers_from_text(protocol.last_read)
 
@@ -307,7 +307,7 @@ class Poser(templates.PoserTemplate):
                                     if self._serialResetYaw:
                                         yaw_offset = 0 - ypr[0]
 
-                                await asyncio.sleep(self.coro_keep_alive["serial_listener"][1])
+                                await asyncio.sleep(self.coro_keep_alive["serial_listener"].sleep_delay)
 
                             except Exception as e:
                                 print(f"{self.serial_listener.__name__}: {e}")
