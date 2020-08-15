@@ -43,7 +43,7 @@ class UduPoserTemplate(PoserTemplateBase):
         """
         init
 
-        :device_list_manifest: should match this regex: ([htc][ ])+([htc]$)|[htc]$
+        :device_list_manifest: should completely match this regex: ([htc][ ])*([htc]$)
         :addr: is the address of the server to connect to, stored in self.addr
         :port: is the port of the server to connect to, stored in self.port
         :send_delay: sleep delay for the self.send thread(in seconds)
@@ -51,7 +51,7 @@ class UduPoserTemplate(PoserTemplateBase):
         """
         super().__init__(**kwargs)
 
-        re_s = re.search('([htc][ ])+([htc]$)|[htc]$', device_list_manifest)
+        re_s = re.search('([htc][ ])*([htc]$)', device_list_manifest)
 
         if not device_list_manifest or re_s is None:
             raise RuntimeError('empty pose struct')
@@ -75,7 +75,7 @@ class UduPoserTemplate(PoserTemplateBase):
         new_struct = ' '.join(new_struct)
 
         print (f'total of {len(self.poses)} device(s) have been added, a new pose struct has been generated: {repr(new_struct)}')
-        print ('full device list is now available through self.poses')
+        print ('full device list is now available through self.device_types, all device poses are in self.poses')
 
     async def send(self):
         """Send all poses thread."""
@@ -90,8 +90,8 @@ class UduPoserTemplate(PoserTemplateBase):
                 await asyncio.sleep(self.coro_keep_alive["send"].sleep_delay)
             except Exception as e:
                 print(f"send failed: {e}")
-                self.coro_keep_alive["send"].is_alive = False
                 break
+        self.coro_keep_alive["send"].is_alive = False
 
 
 class UduPoserClient(UduPoserTemplate, PoserClientBase):
@@ -99,7 +99,7 @@ class UduPoserClient(UduPoserTemplate, PoserClientBase):
     UduPoserClient.
 
     example usage:
-        poser = UduPoserClient('h c c')
+        poser = UduPoserClient('h c c') # normal poser device setup: hmd controller controller
 
         @poser.thread_register(1)
         async def lol():
@@ -109,9 +109,11 @@ class UduPoserClient(UduPoserTemplate, PoserClientBase):
                 await asyncio.sleep(poser.coro_keep_alive['lol'].sleep_delay)
 
         asyncio.run(poser.main())
+
+    more info: help(UduPoserTemplate)
     """
 
     def __init__(self, *args, **kwargs):
         """init"""
-        print ('starting udu client')
+        print ('starting udu client') # this is here bc otherwise it looks sad, useless and empty
         super().__init__(*args, **kwargs)

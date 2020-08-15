@@ -74,8 +74,8 @@ class PoserTemplate(PoserTemplateBase):
                 await asyncio.sleep(self.coro_keep_alive["send"].sleep_delay)
             except Exception as e:
                 print(f"send failed: {e}")
-                self.coro_keep_alive["send"].is_alive = False
                 break
+        self.coro_keep_alive["send"].is_alive = False
 
 
 class PoserClient(PoserTemplate, PoserClientBase):
@@ -93,9 +93,11 @@ class PoserClient(PoserTemplate, PoserClientBase):
                 await asyncio.sleep(poser.coro_keep_alive['lol'].sleep_delay)
 
         asyncio.run(poser.main())
+
+    more info: help(PoserTemplate)
     """
 
     def __init__(self, *args, **kwargs):
         """init"""
-        print ('starting the client')
+        print ('starting the client') # this is here bc otherwise it looks sad, useless and empty
         super().__init__(*args, **kwargs)

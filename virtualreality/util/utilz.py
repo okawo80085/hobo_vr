@@ -67,8 +67,8 @@ def rotate(points, angls):
     """
     Rotate a set of points around the x, y, then z axes.
 
-    :param points: a point dictionary, such as: {"marker 1" : np.array((0, 0, 0))}
-    :param angles: the degrees to rotate on the x, y, and z axes
+    :param points: a point dictionary, such as: [[0, 0, 0], [1, 0, 0]]
+    :param angles: the degrees to rotate on the x, y, and z axis
     """
     rotx = np.array([
                 [1, 0, 0],
@@ -116,7 +116,7 @@ def strings_share_characters(str1: str, str2: str) -> bool:
 
 
 def get_numbers_from_text(text, separator="\t"):
-    """Get a list of number from a string of numbers seperated by :separator:[default: "\t"]."""
+    """Get a list of number from a string of numbers separated by :separator:[default: "\t"]."""
     try:
         if isinstance(text, bytearray) or isinstance(text, bytes):
             text = text.decode("utf-8")
@@ -132,8 +132,8 @@ def get_numbers_from_text(text, separator="\t"):
         return []
 
 def get_pose_struct_from_text(text):
-    '''returns struct from :text:, :text: has to be styled so that it matches this regex: ([htc][0-9]+[ ])+([htc][0-9]+)$|([htc][0-9]+)$'''
-    res = re.search('([htc][0-9]+[ ])+([htc][0-9]+)$|([htc][0-9]+)$', text)
+    '''returns struct from :text:, :text: has to be styled so that it completely matches this regex: ([htc][0-9]+[ ])*([htc][0-9]+)$'''
+    res = re.search('([htc][0-9]+[ ])*([htc][0-9]+)$', text)
     if res != None:
         if res.group(0) == text:
             return tuple(i[0] for i in text.split(' ')), tuple(int(i[1:]) for i in text.split(' '))
@@ -150,10 +150,7 @@ def get_poses_shape(poses):
 
 def has_nan_in_pose(pose):
     """Determine if any numbers in pose are invalid."""
-    if np.isnan(pose).any() or np.isinf(pose).any():
-        return True
-
-    return False
+    return np.isnan(pose).any() or np.isinf(pose).any()
 
 
 class LazyKalman:

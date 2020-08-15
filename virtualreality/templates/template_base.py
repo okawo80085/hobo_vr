@@ -31,7 +31,7 @@ class PoserTemplateBase(object):
         self.coro_keep_alive - dict of all registered threads, containing self.coro_keepAlive['memberThreadName'] = KeepAliveTrigger(is_alive, sleep_delay), this dict is populated at self.main() call
 
     this class also has 3 built in threads, it is not recommended you override any of them:
-        self.send - sends all pose data to the server
+        self.send - sends all pose data, you need to implement this!
         self.recv - receives messages from the server, the last message is stored in self.lastRead
         self.close - closes the connection to the server and ends all threads that where registered by register_member_thread when the 'q' key is pressed
 
@@ -196,7 +196,7 @@ class PoserClientBase(PoserTemplateBase):
     '''
     poser client base class
     should only be inherited together with one of the poser templates
-    should only be used to crate new poser clients
+    should only be used to create new poser clients
     '''
     def __init__(self, *args, **kwargs):
         """init"""

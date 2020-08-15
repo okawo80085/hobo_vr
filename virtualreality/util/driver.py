@@ -133,7 +133,7 @@ class UduDummyDriverReceiver(threading.Thread):
 
     def __init__(self, expected_pose_struct, *, addr="127.0.0.1", port=6969):
         """
-        ill let you guess what this does
+        ill let you guess what this does, :expected_pose_struct: should completely match this regex: ([htc][0-9]+[ ])*([htc][0-9]+)$
         """
         super().__init__()
         self.device_order, self.eps = u.get_pose_struct_from_text(expected_pose_struct)
