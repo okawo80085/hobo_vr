@@ -13,6 +13,16 @@
 #include <chrono>
 
 #include <stdio.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <string>
+// #include <sys/types.h>
+#include <sys/socket.h>
+// #include <netinet/in.h>
+#include <netdb.h> 
+
 
 namespace SockReceiver {
   int receive_till_zero( int sock, char* buf, int& numbytes, int max_packet_size )
