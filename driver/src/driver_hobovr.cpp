@@ -1,6 +1,8 @@
 //============ Copyright (c) okawo, All rights reserved.
 //============
 
+// now needs gmath headers from https://github.com/YclepticStudios/gmath
+
 //#include "openvr.h"
 #include "openvr_driver.h"
 //#include "openvr_capi.h"
@@ -10,22 +12,17 @@
 #include <thread>
 #include <vector>
 
-// #if defined(_WIN32)
-// #include "ref/receiver_win.h"
-
-// #elif defined(__linux__)
-// #include "ref/receiver_linux.h"
-
-// #endif
-
-#if defined(_WINDOWS)
+#if defined(_WIN32)
 #include "ref/receiver_win.h"
-#include <windows.h>
 
-#else
+#elif defined(__linux__)
 #include "ref/receiver_linux.h"
 #define _stricmp strcasecmp
 
+#endif
+
+#if defined(_WINDOWS)
+#include <windows.h>
 #endif
 
 
@@ -36,7 +33,7 @@
 #include <cstring>
 #include <ctime>
 
-// #include "ref/controllerDriverRef.h"
+#include "Quaternion.hpp"
 
 using namespace vr;
 
@@ -52,11 +49,13 @@ using namespace vr;
 
 inline HmdQuaternion_t HmdQuaternion_Init(double w, double x, double y,
                                           double z) {
+  Quaternion t(x, y, z, w);
+  t = Quaternion::Normalized(t);
   HmdQuaternion_t quat;
-  quat.w = w;
-  quat.x = x;
-  quat.y = y;
-  quat.z = z;
+  quat.w = t.W;
+  quat.x = t.X;
+  quat.y = t.Y;
+  quat.z = t.Z;
   return quat;
 }
 
@@ -771,6 +770,9 @@ void CServerDriver_hobovr::myTrackingThread() {
 
 
   std::vector<double> tempPose;
+  for (int i=0; i<57; i++) {
+    tempPose.push_back(0.0);
+  }
   while (m_bMyThreadKeepAlive) {
 
 
