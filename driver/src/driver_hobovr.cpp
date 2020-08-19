@@ -1,8 +1,6 @@
 //============ Copyright (c) okawo, All rights reserved.
 //============
 
-// now needs gmath headers from https://github.com/YclepticStudios/gmath
-
 //#include "openvr.h"
 #include "openvr_driver.h"
 //#include "openvr_capi.h"
@@ -33,8 +31,6 @@
 #include <cstring>
 #include <ctime>
 
-#include "Quaternion.hpp"
-
 using namespace vr;
 
 #if defined(_WIN32)
@@ -49,13 +45,11 @@ using namespace vr;
 
 inline HmdQuaternion_t HmdQuaternion_Init(double w, double x, double y,
                                           double z) {
-  Quaternion t(x, y, z, w);
-  t = Quaternion::Normalized(t);
   HmdQuaternion_t quat;
-  quat.w = t.W;
-  quat.x = t.X;
-  quat.y = t.Y;
-  quat.z = t.Z;
+  quat.w = w;
+  quat.x = x;
+  quat.y = y;
+  quat.z = z;
   return quat;
 }
 
@@ -93,64 +87,6 @@ static const char *const k_pch_Hobovr_DistortionK1_Float = "DistortionK1";
 static const char *const k_pch_Hobovr_DistortionK2_Float = "DistortionK2";
 static const char *const k_pch_Hobovr_ZoomWidth_Float = "ZoomWidth";
 static const char *const k_pch_Hobovr_ZoomHeight_Float = "ZoomHeight";
-
-//-----------------------------------------------------------------------------
-// Purpose: watchdogDriver
-//-----------------------------------------------------------------------------
-
-// class CWatchdogDriver_Sample : public IVRWatchdogProvider {
-// public:
-//   CWatchdogDriver_Sample() { m_pWatchdogThread = nullptr; }
-
-//   virtual EVRInitError Init(vr::IVRDriverContext *pDriverContext);
-//   virtual void Cleanup();
-
-// private:
-//   std::thread *m_pWatchdogThread;
-// };
-
-// CWatchdogDriver_Sample g_watchdogDriverNull;
-
-// bool g_bExiting = false;
-
-// void WatchdogThreadFunction() {
-//   while (!g_bExiting) {
-//     // just wait and do nothing
-//     std::this_thread::sleep_for(std::chrono::seconds(1));
-//     // vr::VRWatchdogHost()->WatchdogWakeUp(vr::TrackedDeviceClass_HMD);
-//   }
-// }
-
-// EVRInitError
-// CWatchdogDriver_Sample::Init(vr::IVRDriverContext *pDriverContext) {
-//   VR_INIT_WATCHDOG_DRIVER_CONTEXT(pDriverContext);
-//   InitDriverLog(vr::VRDriverLog());
-
-//   // Watchdog mode on Windows starts a thread that listens for the '*' key on
-//   // the keyboard to
-//   // be pressed. A real driver should wait for a system button event or
-//   // something else from the
-//   // the hardware that signals that the VR system should start up.
-//   g_bExiting = false;
-//   m_pWatchdogThread = new std::thread(WatchdogThreadFunction);
-//   if (!m_pWatchdogThread) {
-//     DriverLog("Unable to create watchdog thread\n");
-//     return VRInitError_Driver_Failed;
-//   }
-
-//   return VRInitError_None;
-// }
-
-// void CWatchdogDriver_Sample::Cleanup() {
-//   g_bExiting = true;
-//   if (m_pWatchdogThread) {
-//     m_pWatchdogThread->join();
-//     delete m_pWatchdogThread;
-//     m_pWatchdogThread = nullptr;
-//   }
-
-//   CleanupDriverLog();
-// }
 
 //-----------------------------------------------------------------------------
 // Purpose: hmdDriver
@@ -557,56 +493,51 @@ public:
   void RunFrame(std::vector<double> &lastRead) {
     // update all the things
 
-    int i_indexOffset = 13;
-    if (!handSide_) {
-      i_indexOffset += 22;
-    }
-
     poseController.result = TrackingResult_Running_OK;
 
-    poseController.vecPosition[0] = lastRead[(i_indexOffset + 0)];
-    poseController.vecPosition[1] = lastRead[(i_indexOffset + 1)];
-    poseController.vecPosition[2] = lastRead[(i_indexOffset + 2)];
+    poseController.vecPosition[0] = lastRead[0];
+    poseController.vecPosition[1] = lastRead[1];
+    poseController.vecPosition[2] = lastRead[2];
 
     poseController.qRotation =
-        HmdQuaternion_Init(lastRead[(i_indexOffset + 3)],
-                           lastRead[(i_indexOffset + 4)],
-                           lastRead[(i_indexOffset + 5)],
-                           lastRead[(i_indexOffset + 6)]);
+        HmdQuaternion_Init(lastRead[3],
+                           lastRead[4],
+                           lastRead[5],
+                           lastRead[6]);
 
-    poseController.vecVelocity[0] = lastRead[(i_indexOffset + 7)];
-    poseController.vecVelocity[1] = lastRead[(i_indexOffset + 8)];
-    poseController.vecVelocity[2] = lastRead[(i_indexOffset + 9)];
+    poseController.vecVelocity[0] = lastRead[7];
+    poseController.vecVelocity[1] = lastRead[8];
+    poseController.vecVelocity[2] = lastRead[9];
 
     poseController.vecAngularVelocity[0] =
-        lastRead[(i_indexOffset + 10)];
+        lastRead[10];
     poseController.vecAngularVelocity[1] =
-        lastRead[(i_indexOffset + 11)];
+        lastRead[11];
     poseController.vecAngularVelocity[2] =
-        lastRead[(i_indexOffset + 12)];
+        lastRead[12];
 
     vr::VRDriverInput()->UpdateBooleanComponent(
-        m_compGrip, lastRead[(i_indexOffset + 13)] > 0.4, 0);
+        m_compGrip, lastRead[13] > 0.4, 0);
     vr::VRDriverInput()->UpdateBooleanComponent(
-        m_compSystem, lastRead[(i_indexOffset + 14)] > 0.4, 0);
+        m_compSystem, lastRead[14] > 0.4, 0);
     vr::VRDriverInput()->UpdateBooleanComponent(
-        m_compAppMenu, lastRead[(i_indexOffset + 15)] > 0.4, 0);
+        m_compAppMenu, lastRead[15] > 0.4, 0);
     vr::VRDriverInput()->UpdateBooleanComponent(
-        m_compTrackpadClick, lastRead[(i_indexOffset + 16)] > 0.4,
+        m_compTrackpadClick, lastRead[16] > 0.4,
         0);
 
     vr::VRDriverInput()->UpdateScalarComponent(
-        m_compTrigger, float(lastRead[(i_indexOffset + 17)]), 0);
+        m_compTrigger, float(lastRead[17]), 0);
     vr::VRDriverInput()->UpdateScalarComponent(
-        m_compTrackpadX, float(lastRead[(i_indexOffset + 18)]), 0);
+        m_compTrackpadX, float(lastRead[18]), 0);
     vr::VRDriverInput()->UpdateScalarComponent(
-        m_compTrackpadY, float(lastRead[(i_indexOffset + 19)]), 0);
+        m_compTrackpadY, float(lastRead[19]), 0);
 
     vr::VRDriverInput()->UpdateBooleanComponent(
-        m_compTrackpadTouch, lastRead[(i_indexOffset + 20)] > 0.4,
+        m_compTrackpadTouch, lastRead[20] > 0.4,
         0);
     vr::VRDriverInput()->UpdateBooleanComponent(
-        m_compTriggerClick, lastRead[(i_indexOffset + 21)] > 0.4,
+        m_compTriggerClick, lastRead[21] > 0.4,
         0);
 
     if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
@@ -695,11 +626,11 @@ private:
 EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
   VR_INIT_SERVER_DRIVER_CONTEXT(pDriverContext);
   try{
-    remotePoser = new SockReceiver::DriverReceiver(57);
+    remotePoser = new SockReceiver::DriverReceiver("h13 c22 c22");
     remotePoser->start();
   } catch (...){
     remotePoser = NULL;
-    DriverLog("remotePoser broke on create or broke on start, either way you're fucked");
+    DriverLog("remotePoser broke on create or broke on start, either way you're fucked\n");
   }
 
   InitDriverLog(vr::VRDriverLog());
@@ -769,27 +700,20 @@ void CServerDriver_hobovr::myTrackingThread() {
 #endif
 
 
-  std::vector<double> tempPose;
-  for (int i=0; i<57; i++) {
-    tempPose.push_back(0.0);
-  }
+  std::vector<std::vector<double>> tempPose;
+
   while (m_bMyThreadKeepAlive) {
-
-
     tempPose = remotePoser->get_pose();
-    if (!tempPose.empty())
-    {
-      if (m_pRightController != NULL) {
-        m_pRightController->RunFrame(tempPose);
-      }
+    if (m_pHmdLatest != NULL) {
+      m_pHmdLatest->RunFrame(tempPose[0]);
+    }
 
-      if (m_pLeftController != NULL) {
-        m_pLeftController->RunFrame(tempPose);
-      }
+    if (m_pRightController != NULL) {
+      m_pRightController->RunFrame(tempPose[1]);
+    }
 
-      if (m_pHmdLatest != NULL) {
-        m_pHmdLatest->RunFrame(tempPose);
-      }
+    if (m_pLeftController != NULL) {
+      m_pLeftController->RunFrame(tempPose[2]);
     }
 
 
