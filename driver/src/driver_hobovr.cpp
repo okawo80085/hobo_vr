@@ -87,6 +87,7 @@ static const char *const k_pch_Hobovr_DistortionK1_Float = "DistortionK1";
 static const char *const k_pch_Hobovr_DistortionK2_Float = "DistortionK2";
 static const char *const k_pch_Hobovr_ZoomWidth_Float = "ZoomWidth";
 static const char *const k_pch_Hobovr_ZoomHeight_Float = "ZoomHeight";
+static const char *const k_pch_Hobovr_UduDeviceManifestList_String = "DeviceManifestList";
 
 //-----------------------------------------------------------------------------
 // Purpose: hmdDriver
@@ -625,15 +626,23 @@ private:
 
 EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
   VR_INIT_SERVER_DRIVER_CONTEXT(pDriverContext);
+  InitDriverLog(vr::VRDriverLog());
+
+  std::string uduThing;
+  char buf[1024];
+  vr::VRSettings()->GetString(k_pch_Hobovr_Section,
+                              k_pch_Hobovr_UduDeviceManifestList_String, buf,
+                              sizeof(buf));
+  uduThing = buf;
+  DriverLog("device manifest list: '%s'\n", uduThing);
+
   try{
-    remotePoser = new SockReceiver::DriverReceiver("h13 c22 c22");
+    remotePoser = new SockReceiver::DriverReceiver(uduThing);
     remotePoser->start();
   } catch (...){
     remotePoser = NULL;
     DriverLog("remotePoser broke on create or broke on start, either way you're fucked\n");
   }
-
-  InitDriverLog(vr::VRDriverLog());
 
   m_pHmdLatest = new HeadsetDriver();
   vr::VRServerDriverHost()->TrackedDeviceAdded(
