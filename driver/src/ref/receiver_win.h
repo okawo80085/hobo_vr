@@ -10,6 +10,8 @@
 
 #pragma comment(lib, "Ws2_32.lib")
 
+#include "util.h"
+
 #include <vector>
 #include <string>
 #include <sstream>
@@ -42,56 +44,6 @@ namespace SockReceiver {
       numbytes += n;
     } while( true );
   }
-
-  void remove_message_from_buffer( char* buf, int& numbytes, int msglen )
-  {
-    // remove complete message from the buffer.
-    // thanks to https://stackoverflow.com/a/13528453/10190971
-    memmove( buf, buf + msglen, numbytes - msglen );
-    numbytes -= msglen;
-  }
-
-  std::string buffer_to_string(char* buffer, int bufflen)
-  {
-    std::string ret(buffer, bufflen);
-
-    return ret;
-  }
-
-  std::vector<std::string> split_string(std::string text)
-  {
-    std::istringstream iss(text);
-
-    std::vector<std::string> tokens{std::istream_iterator<std::string>{iss},
-                            std::istream_iterator<std::string>{}};
-
-    return tokens;
-  }
-
-  std::vector<double> split_to_double(std::vector<std::string> split)
-  {
-    // converts a vector of strings to a vector of doubles
-    std::vector<double> out(split.size());
-    try {
-      std::transform(split.begin(), split.end(), out.begin(), [](const std::string& val)
-      {
-        return std::stod(val);
-      });
-    } catch (...) {
-      out = {0.0, 0.0};
-    }
-
-    return out;
-  }
-
-  bool strings_share_characters(std::string a, std::string b)
-  {
-    for (auto i : b) {
-      if (a.find(i) != std::string::npos) return true;
-    }
-    return false;
-  }
-
 
   class DriverReceiver{
   public:
@@ -269,7 +221,7 @@ namespace SockReceiver {
     }
 
     int _handle(std::string packet) {
-      std::vector<double> temp = split_to_double(split_string(packet));
+      std::vector<double> temp = split_to_number<double>(split_string(packet));
 
       if (temp.size() == this->eps) {
         this->newPose = temp;
