@@ -639,22 +639,25 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
     DriverLog("remotePoser broke on create or broke on start, either way you're fucked\n");
   }
 
-  int counter = 0;
+  int counter_hmd = 0;
+  int counter_cntrlr = 0;
   int controller_hs = 1;
 
   for (std::string i:remotePoser->device_list) {
     if (i == "h") {
       HoboDevice temp = {HoboDevice::HMD, 1};
-      temp.hmd = new HeadsetDriver(std::to_string(counter));
+      temp.hmd = new HeadsetDriver("h" + std::to_string(counter_hmd));
 
       m_vDevices.push_back(temp);
       vr::VRServerDriverHost()->TrackedDeviceAdded(
                     m_vDevices.back().hmd->GetSerialNumber().c_str(), vr::TrackedDeviceClass_HMD,
                     m_vDevices.back().hmd);
 
+      counter_hmd++;
+
     } else if (i == "c") {
       HoboDevice temp = {HoboDevice::CNTRLR, 1};
-      temp.controller = new ControllerDriver(controller_hs, std::to_string(counter), remotePoser);
+      temp.controller = new ControllerDriver(controller_hs, "c" + std::to_string(counter_cntrlr), remotePoser);
 
       m_vDevices.push_back(temp);
       vr::VRServerDriverHost()->TrackedDeviceAdded(
@@ -662,17 +665,18 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
                     m_vDevices.back().controller);
 
       controller_hs = (controller_hs) ? 0 : 1;
+      counter_cntrlr++;
 
     } else {
       DriverLog("unsopported device type: %s", i);
       return VRInitError_Driver_Failed;
     }
-    if (counter > 15) {
+
+    if (counter_hmd > 5 || counter_cntrlr > 10) {
       DriverLog("too many devices");
       return VRInitError_Driver_Failed;
     }
 
-    counter++;
   }
 
   m_bMyThreadKeepAlive = true;
