@@ -1,10 +1,9 @@
 {
    "driver_hobovr" : {
       "enable" : true,
-      "serialNumber" : "420",
-      "modelNumber" : "hobovr_hmd_m1",
       "windowX" : 10,
       "windowY" : 10,
+      "IPD" : 0.063,
       "windowWidth" : 3840,
       "windowHeight" : 2160,
       "renderWidth" : 1920,
