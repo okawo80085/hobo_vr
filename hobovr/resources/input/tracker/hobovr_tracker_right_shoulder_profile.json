@@ -1,0 +1,21 @@
+{
+	"jsonid" : "input_profile",
+  "controller_type": "hobovr_tracker_right_shoulder",
+  "input_bindingui_mode" : "single_device",
+  "input_bindingui_right" :
+  {
+    "image": "{hobovr}/icons/hobovr_tracker.svg"
+  },
+  "input_source" :
+  {
+    "/input/power" : {
+        "type" : "button",
+				"order" :  1,
+        "binding_image_point" : [ 90, 80 ]
+    },
+    "/pose/raw" : {
+        "type" : "pose",
+        "binding_image_point" : [ 100, 90 ]
+    }
+  }
+}
