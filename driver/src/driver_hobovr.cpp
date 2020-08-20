@@ -754,7 +754,7 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
                               k_pch_Hobovr_UduDeviceManifestList_String, buf,
                               sizeof(buf));
   uduThing = buf;
-  DriverLog("device manifest list: '%s'\n", uduThing);
+  DriverLog("device manifest list: '%s'\n", uduThing.c_str());
 
   try{
     remotePoser = new SockReceiver::DriverReceiver(uduThing);
