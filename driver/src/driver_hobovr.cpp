@@ -194,7 +194,7 @@ public:
 
     vr::VRProperties()->SetStringProperty(
         m_ulPropertyContainer, Prop_InputProfilePath_String,
-        "{hobovr}/input/hobovrhmd_profile.json");
+        "{hobovr}/input/hobovr_hmd_profile.json");
 
     return VRInitError_None;
   }
@@ -539,11 +539,7 @@ public:
       if (vrEvent.data.hapticVibration.componentHandle == m_compHaptic) {
         // haptic!
         if (remotePoser != NULL) {
-          if (handSide_) {
-            remotePoser->send2("R\n");
-          } else {
-            remotePoser->send2("L\n");
-          }
+          remotePoser->send2((m_sSerialNumber + "\n").c_str());
         }
       }
     } break;
@@ -576,17 +572,146 @@ private:
   SockReceiver::DriverReceiver *remotePoser;
 };
 
+
+//-----------------------------------------------------------------------------
+// Purpose: trackerDriver
+//-----------------------------------------------------------------------------
+class TrackerDriver : public vr::ITrackedDeviceServerDriver {
+public:
+  TrackerDriver(std::string myserial, SockReceiver::DriverReceiver *remotePoser) {
+    this->remotePoser = remotePoser;
+    m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
+    m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
+
+    m_sSerialNumber = myserial;
+    m_sModelNumber = "hobovr_tracker_m" + m_sSerialNumber;
+    m_sRenderModelPath = "{hobovr}/rendermodels/hobovr_tracker_m" + m_sSerialNumber;
+
+    poseTracker.poseTimeOffset = 0;
+    poseTracker.poseIsValid = true;
+    poseTracker.deviceIsConnected = true;
+    poseTracker.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
+    poseTracker.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
+    poseTracker.vecPosition[0] = 0.;
+
+    poseTracker.vecPosition[2] = 0.;
+    poseTracker.willDriftInYaw = true;
+  }
+
+  virtual ~TrackerDriver() {}
+
+  virtual EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId) {
+    m_unObjectId = unObjectId;
+    m_ulPropertyContainer =
+        vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
+
+    vr::VRProperties()->SetStringProperty(
+        m_ulPropertyContainer, Prop_ModelNumber_String, m_sModelNumber.c_str());
+    vr::VRProperties()->SetStringProperty(m_ulPropertyContainer,
+                                          Prop_RenderModelName_String,
+                                          m_sRenderModelPath.c_str());
+
+    // return a constant that's not 0 (invalid) or 1 (reserved for Oculus)
+    vr::VRProperties()->SetUint64Property(m_ulPropertyContainer,
+                                          Prop_CurrentUniverseId_Uint64, 2);
+
+    // even though we won't ever track we want to pretend to be the right hand
+    // so binding will work as expected
+    vr::VRProperties()->SetInt32Property(m_ulPropertyContainer,
+                                         Prop_ControllerRoleHint_Int32,
+                                         TrackedControllerRole_RightHand);
+
+
+    // this file tells the UI what to show the user for binding this controller
+    // as well as what default bindings should
+    // be for legacy or other apps
+    vr::VRProperties()->SetStringProperty(
+        m_ulPropertyContainer, Prop_InputProfilePath_String,
+        "{hobovr}/input/hobovr_tracker_profile.json");
+
+    return VRInitError_None;
+  }
+
+  virtual void Deactivate() {
+    m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
+  }
+
+  virtual void EnterStandby() {}
+
+  void *GetComponent(const char *pchComponentNameAndVersion) {
+    // override this to add a component to a driver
+    return NULL;
+  }
+
+  virtual void PowerOff() {}
+
+  /** debug request from a client */
+  virtual void DebugRequest(const char *pchRequest, char *pchResponseBuffer,
+                            uint32_t unResponseBufferSize) {
+    if (unResponseBufferSize >= 1)
+      pchResponseBuffer[0] = 0;
+  }
+
+  virtual DriverPose_t GetPose() { return poseTracker; } // this is called like once 
+
+  void RunFrame(std::vector<double> &lastRead) {
+    // update all the things
+
+    poseTracker.result = TrackingResult_Running_OK;
+
+    poseTracker.vecPosition[0] = lastRead[0];
+    poseTracker.vecPosition[1] = lastRead[1];
+    poseTracker.vecPosition[2] = lastRead[2];
+
+    poseTracker.qRotation =
+        HmdQuaternion_Init(lastRead[3],
+                           lastRead[4],
+                           lastRead[5],
+                           lastRead[6]);
+
+    poseTracker.vecVelocity[0] = lastRead[7];
+    poseTracker.vecVelocity[1] = lastRead[8];
+    poseTracker.vecVelocity[2] = lastRead[9];
+
+    poseTracker.vecAngularVelocity[0] =
+        lastRead[10];
+    poseTracker.vecAngularVelocity[1] =
+        lastRead[11];
+    poseTracker.vecAngularVelocity[2] =
+        lastRead[12];
+
+    if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
+      vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
+          m_unObjectId, poseTracker, sizeof(DriverPose_t));
+    }
+  }
+
+  std::string GetSerialNumber() const { return m_sSerialNumber; }
+
+private:
+  vr::TrackedDeviceIndex_t m_unObjectId;
+  vr::PropertyContainerHandle_t m_ulPropertyContainer;
+
+  std::string m_sSerialNumber;
+  std::string m_sModelNumber;
+  std::string m_sRenderModelPath;
+
+  DriverPose_t poseTracker;
+  SockReceiver::DriverReceiver *remotePoser;
+};
+
 //-----------------------------------------------------------------------------
 // Purpose: serverDriver
 //-----------------------------------------------------------------------------
 
 struct HoboDevice
 {
-  enum{HMD, CNTRLR} tag;
+  enum{HMD, CNTRLR, TRKR} tag;
   bool active;
   union {
     HeadsetDriver* hmd;
     ControllerDriver* controller;
+    TrackerDriver* tracker;
   };
 };
 
@@ -641,6 +766,7 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
 
   int counter_hmd = 0;
   int counter_cntrlr = 0;
+  int counter_trkr = 0;
   int controller_hs = 1;
 
   for (std::string i:remotePoser->device_list) {
@@ -667,12 +793,23 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
       controller_hs = (controller_hs) ? 0 : 1;
       counter_cntrlr++;
 
+    } else if (i == "t") {
+      HoboDevice temp = {HoboDevice::TRKR, 1};
+      temp.tracker = new TrackerDriver("t" + std::to_string(counter_trkr), remotePoser);
+
+      m_vDevices.push_back(temp);
+      vr::VRServerDriverHost()->TrackedDeviceAdded(
+                    m_vDevices.back().tracker->GetSerialNumber().c_str(), vr::TrackedDeviceClass_GenericTracker,
+                    m_vDevices.back().tracker);
+
+      counter_trkr++;
+
     } else {
       DriverLog("unsopported device type: %s", i);
       return VRInitError_Driver_Failed;
     }
 
-    if (counter_hmd > 5 || counter_cntrlr > 10) {
+    if (counter_hmd > 5 || counter_cntrlr > 10 || counter_trkr > 10) {
       DriverLog("too many devices");
       return VRInitError_Driver_Failed;
     }
@@ -717,6 +854,12 @@ void CServerDriver_hobovr::Cleanup() {
         i.controller = NULL;
         i.active = 0;
         break;
+
+      case HoboDevice::TRKR:
+        delete i.tracker;
+        i.tracker = NULL;
+        i.active = 0;
+        break;
     }
   }
 }
@@ -753,6 +896,10 @@ void CServerDriver_hobovr::myTrackingThread() {
 
           case HoboDevice::CNTRLR:
             m_vDevices[i].controller->RunFrame(tempPose[i]);
+            break;
+
+          case HoboDevice::TRKR:
+            m_vDevices[i].tracker->RunFrame(tempPose[i]);
             break;
 
         }

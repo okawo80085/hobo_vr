@@ -1,6 +1,6 @@
 {
     "jsonid" : "input_profile",
-  "controller_type": "hobovrhmd",
+  "controller_type": "hobovr_hmd",
   "input_bindingui_mode" : "hmd",
   "input_bindingui_right" :
   {
