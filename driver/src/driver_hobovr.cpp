@@ -106,7 +106,7 @@ public:
     m_sSerialNumber = myserial;
 
     m_sModelNumber = "hobovr_hmd_m" + m_sSerialNumber;
-    m_sRenderModelPath = "{hobovr}/rendermodels/hobovr_hmd_m" + m_sSerialNumber;
+    m_sRenderModelPath = "{hobovr}/rendermodels/hobovr_hmd_mh0";
 
     m_nWindowX = vr::VRSettings()->GetInt32(k_pch_Hobovr_Section,
                                             k_pch_Hobovr_WindowX_Int32);
@@ -366,7 +366,7 @@ public:
 
     m_sSerialNumber = myserial;
     m_sModelNumber = "hobovr_controller_m" + m_sSerialNumber;
-    m_sRenderModelPath = "{hobovr}/rendermodels/hobovr_controller_m" + m_sSerialNumber;
+    m_sRenderModelPath = "{hobovr}/rendermodels/hobovr_controller_mc0";
 
     poseController.poseTimeOffset = 0;
     poseController.poseIsValid = true;
@@ -585,7 +585,7 @@ public:
 
     m_sSerialNumber = myserial;
     m_sModelNumber = "hobovr_tracker_m" + m_sSerialNumber;
-    m_sRenderModelPath = "{hobovr}/rendermodels/hobovr_tracker_m" + m_sSerialNumber;
+    m_sRenderModelPath = "{hobovr}/rendermodels/hobovr_tracker_mt0";
 
     poseTracker.poseTimeOffset = 0;
     poseTracker.poseIsValid = true;
@@ -808,12 +808,6 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
       DriverLog("unsopported device type: %s", i);
       return VRInitError_Driver_Failed;
     }
-
-    if (counter_hmd > 5 || counter_cntrlr > 10 || counter_trkr > 10) {
-      DriverLog("too many devices");
-      return VRInitError_Driver_Failed;
-    }
-
   }
 
   m_bMyThreadKeepAlive = true;
