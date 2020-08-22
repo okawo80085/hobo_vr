@@ -9,6 +9,7 @@
 #include <sstream>
 
 namespace SockReceiver {
+  // reshapes packet vector into shape inxs
   template <typename T>
   std::vector<std::vector<T>> split_pk(std::vector<T> arr, std::vector<int> inxs) {
     std::vector<std::vector<T>> out;
@@ -30,6 +31,7 @@ namespace SockReceiver {
     return out;
   }
 
+  // returns the found text
   std::string first_rgx_match(std::string ss, std::regex rgx) {
     std::smatch mm;
     if (std::regex_search(ss, mm, rgx))
@@ -37,6 +39,7 @@ namespace SockReceiver {
     return "";
   }
 
+  // get regex vector
   std::vector<std::string> get_rgx_vector(std::string ss, std::regex rgx) {
     std::sregex_token_iterator iter(ss.begin(),
         ss.end(),
@@ -50,6 +53,7 @@ namespace SockReceiver {
     return out;
   }
 
+  // split by regex
   std::vector<std::string> split_by_rgx(std::string ss, std::regex rgx) {
     std::sregex_token_iterator iter(ss.begin(),
         ss.end(),
@@ -63,6 +67,7 @@ namespace SockReceiver {
     return out;
   }
 
+  // gets the shape of a 2D vector
   template <typename T>
   std::vector<int> get_poses_shape(std::vector<std::vector<T>> arr) {
     std::vector<int> out;
@@ -71,6 +76,7 @@ namespace SockReceiver {
     return out;
   }
 
+  // convert vector of strings to type
   template <typename T>
   std::vector<T> split_to_number(std::vector<std::string> split)
   {
@@ -89,6 +95,7 @@ namespace SockReceiver {
     return out;
   }
 
+  // something socket related idk
   void remove_message_from_buffer( char* buf, int& numbytes, int msglen )
   {
     // remove complete message from the buffer.
@@ -97,6 +104,7 @@ namespace SockReceiver {
     numbytes -= msglen;
   }
 
+  // char buffer to string
   std::string buffer_to_string(char* buffer, int bufflen)
   {
     std::string ret(buffer, bufflen);
@@ -104,6 +112,7 @@ namespace SockReceiver {
     return ret;
   }
 
+  // splits string somehow
   std::vector<std::string> split_string(std::string text)
   {
     std::istringstream iss(text);
@@ -114,6 +123,7 @@ namespace SockReceiver {
     return tokens;
   }
 
+  // yes
   bool strings_share_characters(std::string a, std::string b)
   {
     for (auto i : b) {
