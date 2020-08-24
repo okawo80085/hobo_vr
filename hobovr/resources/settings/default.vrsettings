@@ -14,6 +14,6 @@
       "DistortionK2" : 0.5,
       "ZoomWidth" : 1,
       "ZoomHeight" : 1,
-      "DeviceManifestList" : "h13 c22 c22 t13 t13"
+      "DeviceManifestList" : "h13 c22 c22"
    }
 }
