@@ -152,17 +152,17 @@ class Poser(templates.PoserTemplate):
                     u.rotate(poses, offsets)
 
                     if self.usePos:
-                        self.pose_controller_l.x = round(-poses[1][0] * 0.9, 6)
-                        self.pose_controller_l.y = round(poses[1][1] * 0.85, 6)
-                        self.pose_controller_l.z = round(poses[1][2] * 1.8, 6)
+                        self.pose_controller_l.x = round(-poses[1][0] , 6)
+                        self.pose_controller_l.y = round(poses[1][1] , 6)
+                        self.pose_controller_l.z = round(poses[1][2] , 6)
 
-                        self.pose_controller_r.x = round(-poses[2][0] * 0.9, 6)
-                        self.pose_controller_r.y = round(poses[2][1] * 0.85, 6)
-                        self.pose_controller_r.z = round(poses[2][2] * 1.8, 6)
+                        self.pose_controller_r.x = round(-poses[2][0] , 6)
+                        self.pose_controller_r.y = round(poses[2][1] , 6)
+                        self.pose_controller_r.z = round(poses[2][2] , 6)
 
-                        self.pose.x = round(-poses[0][0] * 0.9 - 0.01, 6)
-                        self.pose.y = round(poses[0][1] * 0.85 - 0.07, 6)
-                        self.pose.z = round(poses[0][2] * 2 + 0.05, 6)
+                        self.pose.x = round(-poses[0][0]  - 0.01, 6)
+                        self.pose.y = round(poses[0][1]  - 0.07, 6)
+                        self.pose.z = round(poses[0][2], 6)
 
                     await asyncio.sleep(self.coro_keep_alive["get_location"].sleep_delay)
 
@@ -252,7 +252,7 @@ class Poser(templates.PoserTemplate):
     @templates.PoserTemplate.register_member_thread(1 / 100)
     async def serial_listener3(self):
         """Get orientation data from serial."""
-        irl_rot_off = Quaternion.from_x_rotation(np.pi/3) # imu on this controller is rotated 90 degrees irl for me
+        irl_rot_off = Quaternion.from_x_rotation(np.pi/2) # imu on this controller is rotated 90 degrees irl for me
 
         my_off = Quaternion()
 
