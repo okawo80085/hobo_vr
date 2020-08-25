@@ -10,7 +10,15 @@ import cv2
 import numpy as np
 import serial.threaded
 from pykalman import KalmanFilter
-from displayarray import read_updates
+
+try:
+    from displayarray import read_updates
+    HAVE_VOD = True
+
+except Exception as e:
+    print (f'failed to import displayarray, reason: {e}')
+    print ('camera based tracking methods will not be available')
+    HAVE_VOD = False
 
 from itertools import islice, takewhile
 import re
@@ -318,6 +326,9 @@ class BlobTracker(threading.Thread):
         :param ball_radius_cm: the radius of the ball to be tracked in cm
         :param color_masks: color mask parameters, in opencv hsv color space, for color detection
         """
+        if not HAVE_VOD:
+            raise RuntimeError('displayarray is not installed, no camera based tracking methods are available')
+
         super().__init__()
         self._vs = read_updates(cam_index)
 

@@ -12,12 +12,16 @@ to install the module, run the following command:
 ```
 python -m pip install virtualreality
 ```
+if you want to have camera based tracking, install it with the `camera` extra
+```
+python -m pip install virtualreality[camera]
+```
 
 to install the development version, do the following:
 ```
 git clone https://github.com/okawo80085/hobo_vr
 cd ./hobo_vr
-python setup.py install --user
+python -m pip install -e .
 ```
 
 # quick example

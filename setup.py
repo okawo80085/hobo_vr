@@ -33,8 +33,8 @@ setup(
         "Topic :: Scientific/Engineering :: Human Machine Interfaces",
         "Topic :: System :: Hardware :: Hardware Drivers",
     ],
-    install_requires=["keyboard", "opencv-python", "numpy", "pykalman", "pyserial", "docopt", "pyrr", "scipy", "displayarray"],
-    extras_require={"image": ["imutils"]},
+    install_requires=["keyboard", "opencv-python", "numpy", "pykalman", "pyserial", "docopt", "pyrr", "scipy"],
+    extras_require={"camera": ["displayarray"], "bluetooth": ["pybluez"]},
     entry_points={"console_scripts": ["pyvr=virtualreality.main:main"]},
     python_requires='>=3.7',
 )

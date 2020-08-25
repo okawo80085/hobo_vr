@@ -9,7 +9,7 @@ options:
     -d --show-messages      show messages
 
 """
-from virtualreality.server import server
+from . import server
 
 from . import __version__
 

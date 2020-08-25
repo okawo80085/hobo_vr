@@ -6,11 +6,17 @@ from typing import Optional, Union
 
 import cv2
 import numpy as np
-from displayarray import read_updates
-from displayarray.input import mouse_loop
-from displayarray.window import SubscriberWindows
-from displayarray.effects.overlay import overlay_transparent
-from displayarray.effects.transform import transform_about_center
+try:
+    from displayarray import read_updates
+    from displayarray.input import mouse_loop
+    from displayarray.window import SubscriberWindows
+    from displayarray.effects.overlay import overlay_transparent
+    from displayarray.effects.transform import transform_about_center
+
+except Exception as e:
+    print (f'failed to import displayarray, this module will not be available\n\n')
+    raise e
+
 from virtualreality.calibration.ai_tracker_training.audio import get_audio_thread, menu_music, easy_music, normal_music, \
     hard_music, easy_bpm, normal_bpm, hard_bpm
 from virtualreality.calibration.ai_tracker_training.video import menu_np
