@@ -1,0 +1,89 @@
+{
+  "jsonid" : "input_profile",
+  "controller_type": "hobovr_tracker_handed",
+  "legacy_binding" :  "{hobovr}/input/tracker/legacy_bindings_hobovr_tracker_handed_rotated.json",
+  "override_device_class" : "TrackedDeviceClass_Controller",
+  "input_bindingui_mode" : "controller_handed",
+  "hand_priority" : -1,
+  "should_show_binding_errors":  true,
+  "input_bindingui_left" :
+  {
+    "transform" : "scale(-1,1)",
+    "image": "{hobovr}/icons/hobovr_tracker_with_handle.svg"
+  },
+  "input_bindingui_right" :
+  {
+    "image": "{hobovr}/icons/hobovr_tracker_with_handle.svg"
+  },
+ "input_source" :
+  {
+    "/input/power" : {
+        "type" : "button",
+				"order" :  1,
+        "binding_image_point" : [ 42, 37 ]
+    },
+    "/input/trigger" : {
+        "type" : "button",
+				"order" :  2,
+        "binding_image_point" : [ 80, 110 ]
+    },
+    "/input/grip" : {
+        "type" : "button",
+				"order" :  3,
+        "binding_image_point" : [ 110, 110 ]
+    },
+    "/input/application_menu" : {
+        "type" : "button",
+				"order" :  4,
+        "binding_image_point" : [ 75, 70 ]
+    },
+    "/input/thumb" : {
+        "type" : "button",
+				"order" :  5,
+        "binding_image_point" : [ 90, 80 ]
+    },
+    "/pose/raw" : {
+        "type" : "pose",
+        "binding_image_point" : [ 15, 25 ]
+    },
+    "/pose/front" : {
+        "type" : "pose",
+        "binding_image_point" : [ 15, 25 ]
+    },
+    "/pose/back" : {
+        "type" : "pose",
+        "binding_image_point" : [ 15, 25 ]
+    },
+    "/pose/pistol" : {
+        "type" : "pose",
+        "binding_image_point" : [ 15, 25 ]
+    },
+    "/pose/front_rolled" : {
+        "type" : "pose",
+        "binding_image_point" : [ 15, 25 ]
+    }
+  },
+  "default_bindings" :
+  [
+    {
+      "app_key" : "steam.app.503580",
+      "binding_url" : "legacy_bindings_hobovr_tracker_handed.json"
+    },
+    {
+      "app_key" : "steam.app.456180",
+      "binding_url" : "legacy_bindings_hobovr_tracker_handed.json"
+    },
+    {
+      "app_key" : "steam.app.342180",
+      "binding_url" : "legacy_bindings_hobovr_tracker_handed_pistol.json"
+    },
+    {
+      "app_key" : "steam.app.611720",
+      "binding_url" : "legacy_bindings_hobovr_tracker_handed.json"
+    },
+    {
+      "app_key" : "steam.app.720510",
+      "binding_url" : "legacy_bindings_hobovr_tracker_handed.json"
+    }
+  ]
+}

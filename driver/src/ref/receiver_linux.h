@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "util.h"
+
 #include <vector>
 #include <string>
 #include <sstream>
@@ -49,63 +51,23 @@ namespace SockReceiver {
 
   }
 
-  void remove_message_from_buffer( char* buf, int& numbytes, int msglen )
-  {
-    // remove complete message from the buffer.
-    // thanks to https://stackoverflow.com/a/13528453/10190971
-    memmove( buf, buf + msglen, numbytes - msglen );
-    numbytes -= msglen;
-  }
-
-  std::string buffer_to_string(char* buffer, int bufflen)
-  {
-    std::string ret(buffer, bufflen);
-
-    return ret;
-  }
-
-  std::vector<std::string> split_string(std::string text)
-  {
-    std::istringstream iss(text);
-
-    std::vector<std::string> tokens{std::istream_iterator<std::string>{iss},
-                            std::istream_iterator<std::string>{}};
-
-    return tokens;
-  }
-
-  std::vector<double> split_to_double(std::vector<std::string> split)
-  {
-    // converts a vector of strings to a vector of doubles
-    std::vector<double> out(split.size());
-    try {
-      std::transform(split.begin(), split.end(), out.begin(), [](const std::string& val)
-      {
-        return std::stod(val);
-      });
-    } catch (...) {
-      out = {0.0, 0.0};
-    }
-
-    return out;
-  }
-
-  bool strings_share_characters(std::string a, std::string b)
-  {
-    for (auto i : b) {
-      if (a.find(i) != std::string::npos) return true;
-    }
-    return false;
-  }
-
   class DriverReceiver {
   public:
-    DriverReceiver(int expected_pose_size, char *port="6969", char* addr="127.0.01") {
-      this->eps = expected_pose_size;
+    std::vector<std::string> device_list;
+
+    DriverReceiver(std::string expected_pose_struct, char *port="6969", char* addr="127.0.01") {
+      std::regex rgx("[htc]");
+      std::regex rgx2("[0-9]+");
+
+      this->eps = split_to_number<int>(get_rgx_vector(expected_pose_struct, rgx2));
+      this->device_list = get_rgx_vector(expected_pose_struct, rgx);
       this->threadKeepAlive = false;
 
-      for (int i=0; i<this->eps; i++) {
-        this->newPose.push_back(0.0);
+      for (auto i:this->eps) {
+        std::vector<double> temp;
+        for (auto j=0; j<i; j++)
+          temp.push_back(0.0);
+        this->newPose.push_back(temp);
       }
 
       // placeholders
@@ -196,15 +158,15 @@ namespace SockReceiver {
       this->mySoc = NULL;
     }
 
-    std::vector<double> get_pose() {return this->newPose;}
+    std::vector<std::vector<double>> get_pose() {return this->newPose;}
 
     int send2(const char* message) {
       return write(this->mySoc, message, (int)strlen(message));
     }
 
   private:
-    std::vector<double> newPose;
-    int eps;
+    std::vector<std::vector<double>> newPose;
+    std::vector<int> eps;
 
     bool threadKeepAlive;
     std::thread *m_pMyTread;
@@ -239,7 +201,7 @@ namespace SockReceiver {
           if (packErr != -1) {
             // log packet process error
 #ifdef DRIVERLOG_H
-            DriverLog("receiver packet size miss match, expected %d, got %d\n", this->eps, packErr);
+            DriverLog("receiver packet size miss match, got %d\n", packErr);
 #endif
           }
 
@@ -260,9 +222,9 @@ namespace SockReceiver {
     }
 
     int _handle(std::string packet) {
-      std::vector<double> temp = split_to_double(split_string(packet));
+      auto temp = split_pk(split_to_number<double>(split_string(packet)), this->eps);
 
-      if (temp.size() == this->eps) {
+      if (get_poses_shape(temp) == this->eps) {
         this->newPose = temp;
         return -1;
       }

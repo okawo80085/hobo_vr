@@ -42,3 +42,7 @@ driver/src/t
 !hobovr/*/*/*
 !hobovr/*/*/*/*
 *.log
+Matrix3x3.hpp
+Vector2.hpp
+Vector3.hpp
+Quaternion.hpp
