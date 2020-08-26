@@ -23,6 +23,7 @@ tLOL
 *.p
 !images/*.jpg
 !images/*.svg
+!images/*.png
 !hobovr/resources/icons/*.jpg
 !hobovr/resources/icons/*.svg
 !hobovr/resources/icons/*.png
