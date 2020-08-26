@@ -856,6 +856,8 @@ void CServerDriver_hobovr::Cleanup() {
         break;
     }
   }
+
+  VR_CLEANUP_SERVER_DRIVER_CONTEXT();
 }
 
 void CServerDriver_hobovr::myTrackingThread() {
