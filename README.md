@@ -21,7 +21,7 @@ Debug view:
      * This launches the server, which gathers information from trackers and passes that into steam. More info: [Server Documentation](https://github.com/okawo80085/hobo_vr/wiki/server)
  * Then, launch a tracker
      * Default tracker: `pyvr track`
-         * This tracks bright spheres like in PSVR.
+         * This tracks bright spheres like in PSVR. Requires a webcam.
      * Implement and run a custom tracker. For example: `python -m examples.poserTemplate`
          * More info: [Poser Script Documentation](https://github.com/okawo80085/hobo_vr/wiki/poser-script)
  * Then, launch any steam VR game.
