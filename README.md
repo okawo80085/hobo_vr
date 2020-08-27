@@ -97,8 +97,6 @@ Custom Textures:
 
 <img src="hobovr/resources/rendermodels/hobovr_controller_mc0/onepointfive_texture.png" width="300" height="300" />
 
-&nbsp;
-
 Lots of tracking:
 
 ![1 Headset. 8 Controllers. 7 Trackers.](images/cursed_devices.png)
