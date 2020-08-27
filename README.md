@@ -23,12 +23,12 @@ Debug view:
      * Default tracker: `pyvr track`
          * This tracks bright spheres like in PSVR. Requires a webcam.
      * Implement and run a custom tracker. For example: `python -m examples.poserTemplate`
-         * More info: [Poser Script Documentation](https://github.com/okawo80085/hobo_vr/wiki/poser-script)
+         * More info: [Python Docs](pypi_readme.md)
  * Then, launch any steam VR game.
  
 # Setup
 
-1. [Steam](https://store.steampowered.com/about/) and [Python 3.7.x](https://www.python.org/downloads/release/python-378/) must already be installed.
+1. [Steam](https://store.steampowered.com/about/), [SteamVR](https://store.steampowered.com/app/250820/SteamVR/), and [Python 3.7.x](https://www.python.org/downloads/release/python-378/) must already be installed.
 2. In a terminal, run: `git clone https://github.com/okawo80085/hobo_vr`
 3. Install the driver:
     * Windows:
