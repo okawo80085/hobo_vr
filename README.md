@@ -24,7 +24,8 @@ Debug view:
          * This tracks bright spheres like in PSVR.
      * Implement and run a custom tracker. For example: `python -m examples.poserTemplate`
          * More info: [Poser Script Documentation](https://github.com/okawo80085/hobo_vr/wiki/poser-script)
-
+ * Then, launch any steam VR game.
+ 
 # Setup
 
 1. [Steam](https://store.steampowered.com/about/) and [Python 3.7.x](https://www.python.org/downloads/release/python-378/) must already be installed.
