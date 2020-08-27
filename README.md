@@ -2,8 +2,6 @@
 
 *a pc vr solution for hobos* don't ask why
 
-&nbsp;
-
 Works with IMU and camera based homemade VR devices, 
 or other devices if you provide the tracking.
 
@@ -19,29 +17,13 @@ Debug view:
 
 # Usage
 
-From one terminal, run:
-```bash
-pyvr server
-```
-This launches the server, which gathers information from trackers and 
-passes that into steam. More info: 
-[Server Documentation](https://github.com/okawo80085/hobo_vr/wiki/server)
-
-&nbsp;
-
-Then, in another, you can launch the default tracker, which tracks bright spheres like in PSVR:
-```bash
-pyvr track
-```
-
-&nbsp;
-
-Or, you can make a new tracker from one of the examples and run that.
-
-```bash
-python -m examples.poserTemplate
-```
-More info: [Poser Script Documentation](https://github.com/okawo80085/hobo_vr/wiki/poser-script)
+ * From one terminal, run: `pyvr server`
+     * This launches the server, which gathers information from trackers and passes that into steam. More info: [Server Documentation](https://github.com/okawo80085/hobo_vr/wiki/server)
+ * Then, launch a tracker
+     * Default tracker: `pyvr track`
+         * This tracks bright spheres like in PSVR.
+     * Implement and run a custom tracker. For example: `python -m examples.poserTemplate`
+         * More info: [Poser Script Documentation](https://github.com/okawo80085/hobo_vr/wiki/poser-script)
 
 # Setup
 
