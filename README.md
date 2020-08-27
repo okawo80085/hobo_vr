@@ -93,10 +93,10 @@ Would be Awesome:
 
 # Fun / Extra
 
-Custom Textures:
+Custom Controller Textures(`hobo_vr/hobovr/resources/rendermodels/hobovr_controller_mc0/onepointfive_texture.png` could be changed to fit your desire):
 
 <img src="hobovr/resources/rendermodels/hobovr_controller_mc0/onepointfive_texture.png" width="300" height="300" />
 
 Lots of tracking:
 
-![1 Headset. 8 Controllers. 7 Trackers.](images/cursed_devices.png)
+[![1 Headset. 8 Controllers. 7 Trackers.](images/cursed_devices.png)](https://github.com/okawo80085/hobo_vr/wiki/udu)
