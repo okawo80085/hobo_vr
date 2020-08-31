@@ -7,6 +7,7 @@ from ..util import utilz as u
 from .template_base import *
 from .poses import *
 
+
 class PoserTemplate(PoserTemplateBase):
     """
     poser template.
@@ -99,5 +100,7 @@ class PoserClient(PoserTemplate, PoserClientBase):
 
     def __init__(self, *args, **kwargs):
         """init"""
-        print ('starting the client') # this is here bc otherwise it looks sad, useless and empty
+        print(
+            "starting the client"
+        )  # this is here bc otherwise it looks sad, useless and empty
         super().__init__(*args, **kwargs)

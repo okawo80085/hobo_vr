@@ -1,4 +1,4 @@
-'''base template class'''
+"""base template class"""
 import asyncio
 import numbers
 import warnings
@@ -7,13 +7,15 @@ from ..util import utilz as u
 
 
 class KeepAliveTrigger:
-    '''a keep alive trigger, used in poser templates for threading signals'''
-    __slots__ = ['is_alive', 'sleep_delay']
+    """a keep alive trigger, used in poser templates for threading signals"""
+
+    __slots__ = ["is_alive", "sleep_delay"]
+
     def __init__(self, is_alive, sleep_delay):
-        '''
+        """
         :is_alive: bool, stored in self.is_alive
         :sleep_delay: sleep delay in seconds, stored in self.sleep_delay
-        '''
+        """
         self.is_alive = is_alive
         self.sleep_delay = sleep_delay
 
@@ -44,7 +46,13 @@ class PoserTemplateBase(object):
     """
 
     def __init__(
-        self, *, addr="127.0.0.1", port=6969, send_delay=1 / 100, recv_delay=1 / 1000, **kwargs,
+        self,
+        *,
+        addr="127.0.0.1",
+        port=6969,
+        send_delay=1 / 100,
+        recv_delay=1 / 1000,
+        **kwargs,
     ):
         """
         :addr: is the address of the server to connect to, stored in self.addr
@@ -71,7 +79,7 @@ class PoserTemplateBase(object):
             "recv": KeepAliveTrigger(True, recv_delay),
         }
         self.last_read = ""
-        self.id_message = 'holla'
+        self.id_message = "holla"
 
     async def _socket_init(self):
         """
@@ -82,13 +90,15 @@ class PoserTemplateBase(object):
         """
         print(f'connecting to the server at "{self.addr}:{self.port}"...')
         # connect to the server
-        self.reader, self.writer = await asyncio.open_connection(self.addr, self.port, loop=asyncio.get_event_loop())
+        self.reader, self.writer = await asyncio.open_connection(
+            self.addr, self.port, loop=asyncio.get_event_loop()
+        )
         # send poser id message
         self.writer.write(u.format_str_for_write(self.id_message))
 
     async def send(self):
         """Send all poses thread, you need to implement this!"""
-        raise NotImplementedError('please implement the send thread')
+        raise NotImplementedError("please implement the send thread")
 
     async def recv(self):
         """Receive messages thread."""
@@ -115,7 +125,9 @@ class PoserTemplateBase(object):
                 await asyncio.sleep(self.coro_keep_alive["close"].sleep_delay)
 
         except ImportError as e:
-            print(f"close: failed to import keyboard, poser will close in 10 seconds: {e}")
+            print(
+                f"close: failed to import keyboard, poser will close in 10 seconds: {e}"
+            )
             await asyncio.sleep(10)
 
         print("closing...")
@@ -135,7 +147,7 @@ class PoserTemplateBase(object):
             await self.writer.wait_closed()
 
         except Exception as e:
-            print (f'failed to close connection: {e}')
+            print(f"failed to close connection: {e}")
 
         print("finished")
 
@@ -149,7 +161,11 @@ class PoserTemplateBase(object):
         await self._socket_init()
 
         await asyncio.gather(
-            *[getattr(self, coro_name)() for coro_name in self.coro_list if coro_name not in self._coro_name_exceptions]
+            *[
+                getattr(self, coro_name)()
+                for coro_name in self.coro_list
+                if coro_name not in self._coro_name_exceptions
+            ]
         )
 
     @staticmethod
@@ -165,13 +181,24 @@ class PoserTemplateBase(object):
             def _thread_reg_wrapper(self, *args, **kwargs):
 
                 if not asyncio.iscoroutinefunction(func) and not runInDefaultExecutor:
-                    raise ValueError(f"{repr(func)} is not a coroutine function and runInDefaultExecutor is set to False")
+                    raise ValueError(
+                        f"{repr(func)} is not a coroutine function and runInDefaultExecutor is set to False"
+                    )
 
-                if func.__name__ not in self.coro_keep_alive and func.__name__ in self.coro_list and func.__name__ not in self._coro_name_exceptions:
-                    self.coro_keep_alive[func.__name__] = KeepAliveTrigger(True, sleepDelay)
+                if (
+                    func.__name__ not in self.coro_keep_alive
+                    and func.__name__ in self.coro_list
+                    and func.__name__ not in self._coro_name_exceptions
+                ):
+                    self.coro_keep_alive[func.__name__] = KeepAliveTrigger(
+                        True, sleepDelay
+                    )
 
                 elif func.__name__ in self._coro_name_exceptions:
-                    warnings.warn("thread register ignored, thread name is in balck list", RuntimeWarning)
+                    warnings.warn(
+                        "thread register ignored, thread name is in balck list",
+                        RuntimeWarning,
+                    )
                     return func(self, *args, **kwargs)
 
                 else:
@@ -192,12 +219,14 @@ class PoserTemplateBase(object):
 
         return _thread_reg
 
+
 class PoserClientBase(PoserTemplateBase):
-    '''
+    """
     poser client base class
     should only be inherited together with one of the poser templates
     should only be used to create new poser clients
-    '''
+    """
+
     def __init__(self, *args, **kwargs):
         """init"""
         super().__init__(*args, **kwargs)
@@ -213,10 +242,17 @@ class PoserClientBase(PoserTemplateBase):
 
         def _thread_register(coro):
             if not asyncio.iscoroutinefunction(coro) and not runInDefaultExecutor:
-                raise ValueError(f"{repr(coro)} is not a coroutine function and runInDefaultExecutor is set to False")
+                raise ValueError(
+                    f"{repr(coro)} is not a coroutine function and runInDefaultExecutor is set to False"
+                )
 
-            if coro.__name__ not in self.coro_keep_alive and coro.__name__ not in self.coro_list:
-                self.coro_keep_alive[coro.__name__] = KeepAliveTrigger(True, sleep_delay)
+            if (
+                coro.__name__ not in self.coro_keep_alive
+                and coro.__name__ not in self.coro_list
+            ):
+                self.coro_keep_alive[coro.__name__] = KeepAliveTrigger(
+                    True, sleep_delay
+                )
                 self.coro_list.append(coro.__name__)
 
                 if runInDefaultExecutor:

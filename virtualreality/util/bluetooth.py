@@ -78,7 +78,9 @@ class BluetoothReceiver(threading.Thread):
                     break
 
                 while self._terminator in self.backBuffer:
-                    self._last_read, self.backBuffer = self.backBuffer.split(self._terminator, 1)
+                    self._last_read, self.backBuffer = self.backBuffer.split(
+                        self._terminator, 1
+                    )
 
             except Exception as e:
                 print(f"BluetoothSocket receive thread failed: {repr(e)}")

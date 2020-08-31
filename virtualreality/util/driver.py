@@ -1,4 +1,4 @@
-'''a colection of receivers used in drivers, for debugging, actually used receiver is writen in c++'''
+"""a colection of receivers used in drivers, for debugging, actually used receiver is writen in c++"""
 
 import socket
 import time
@@ -22,7 +22,6 @@ class DummyDriverReceiver(threading.Thread):
 
     """
 
-
     def __init__(self, expected_pose_size, *, addr="127.0.0.1", port=6969):
         """
         ill let you guess what this does
@@ -36,7 +35,7 @@ class DummyDriverReceiver(threading.Thread):
 
         self.backBuffer = bytearray()
         self.readSize = 50
-        self._terminator = b'\n'
+        self._terminator = b"\n"
 
         self.newPose = [0 for _ in range(self.eps)]
 
@@ -76,12 +75,14 @@ class DummyDriverReceiver(threading.Thread):
         self.sock.send(u.format_str_for_write(text))
 
     def _handlePacket(self, lastPacket):
-        lastPacket = lastPacket.decode('utf-8')
-        if self.alive and not u.strings_share_characters(lastPacket.lower(), "qwrtyuiopsasdfghjklzxcvbnm><*[]{}()"):
-            pose = u.get_numbers_from_text(lastPacket.strip('\n').strip(' '), " ")
+        lastPacket = lastPacket.decode("utf-8")
+        if self.alive and not u.strings_share_characters(
+            lastPacket.lower(), "qwrtyuiopsasdfghjklzxcvbnm><*[]{}()"
+        ):
+            pose = u.get_numbers_from_text(lastPacket.strip("\n").strip(" "), " ")
 
             if len(pose) != self.eps:
-                print (f'pose size miss match, expected {self.eps}, got {len(pose)}')
+                print(f"pose size miss match, expected {self.eps}, got {len(pose)}")
                 return False
 
             else:
@@ -100,9 +101,11 @@ class DummyDriverReceiver(threading.Thread):
                     break
 
                 while self._terminator in self.backBuffer:
-                    lastPacket, self.backBuffer = self.backBuffer.split(self._terminator, 1)
+                    lastPacket, self.backBuffer = self.backBuffer.split(
+                        self._terminator, 1
+                    )
                     if not self._handlePacket(lastPacket):
-                        print (repr(lastPacket), repr(self.backBuffer))
+                        print(repr(lastPacket), repr(self.backBuffer))
 
             except socket.timeout as e:
                 pass
@@ -130,7 +133,6 @@ class UduDummyDriverReceiver(threading.Thread):
 
     """
 
-
     def __init__(self, expected_pose_struct, *, addr="127.0.0.1", port=6969):
         """
         ill let you guess what this does, :expected_pose_struct: should completely match this regex: ([htc][0-9]+[ ])*([htc][0-9]+)$
@@ -139,7 +141,7 @@ class UduDummyDriverReceiver(threading.Thread):
         self.device_order, self.eps = u.get_pose_struct_from_text(expected_pose_struct)
 
         if not self.eps:
-            raise RuntimeError(f'invalid expected_pose_struct: {expected_pose_struct}')
+            raise RuntimeError(f"invalid expected_pose_struct: {expected_pose_struct}")
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((addr, port))
@@ -147,7 +149,7 @@ class UduDummyDriverReceiver(threading.Thread):
 
         self.backBuffer = bytearray()
         self.readSize = 50
-        self._terminator = b'\n'
+        self._terminator = b"\n"
 
         self.newPoses = [tuple(0 for _ in range(i)) for i in self.eps]
 
@@ -187,13 +189,19 @@ class UduDummyDriverReceiver(threading.Thread):
         self.sock.send(u.format_str_for_write(text))
 
     def _handlePacket(self, lastPacket):
-        lastPacket = lastPacket.decode('utf-8')
-        if self.alive and not u.strings_share_characters(lastPacket.lower(), "qwrtyuiopsasdfghjklzxcvbnm><*[]{}()"):
-            poses = u.parse_poses_from_packet(u.get_numbers_from_text(lastPacket.strip('\n').strip(' '), " "), self.eps)
-
+        lastPacket = lastPacket.decode("utf-8")
+        if self.alive and not u.strings_share_characters(
+            lastPacket.lower(), "qwrtyuiopsasdfghjklzxcvbnm><*[]{}()"
+        ):
+            poses = u.parse_poses_from_packet(
+                u.get_numbers_from_text(lastPacket.strip("\n").strip(" "), " "),
+                self.eps,
+            )
 
             if u.get_poses_shape(poses) != self.eps:
-                print (f'pose size miss match, expected {self.eps}, got {u.get_poses_shape(poses)}')
+                print(
+                    f"pose size miss match, expected {self.eps}, got {u.get_poses_shape(poses)}"
+                )
                 return False
 
             else:
@@ -212,9 +220,11 @@ class UduDummyDriverReceiver(threading.Thread):
                     break
 
                 while self._terminator in self.backBuffer:
-                    lastPacket, self.backBuffer = self.backBuffer.split(self._terminator, 1)
+                    lastPacket, self.backBuffer = self.backBuffer.split(
+                        self._terminator, 1
+                    )
                     if not self._handlePacket(lastPacket):
-                        print (repr(lastPacket), repr(self.backBuffer))
+                        print(repr(lastPacket), repr(self.backBuffer))
 
             except socket.timeout as e:
                 pass

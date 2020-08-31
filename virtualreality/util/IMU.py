@@ -21,14 +21,14 @@ def unit_vector(vector):
 
 
 def angle_between(v1, v2):
-    """ Returns the angle in radians between vectors 'v1' and 'v2'::
+    """Returns the angle in radians between vectors 'v1' and 'v2'::
 
-            >>> angle_between((1, 0, 0), (0, 1, 0))
-            1.5707963267948966
-            >>> angle_between((1, 0, 0), (1, 0, 0))
-            0.0
-            >>> angle_between((1, 0, 0), (-1, 0, 0))
-            3.141592653589793
+    >>> angle_between((1, 0, 0), (0, 1, 0))
+    1.5707963267948966
+    >>> angle_between((1, 0, 0), (1, 0, 0))
+    0.0
+    >>> angle_between((1, 0, 0), (-1, 0, 0))
+    3.141592653589793
     """
     # https://stackoverflow.com/a/13849249/782170
     v1_u = unit_vector(v1)
@@ -103,7 +103,9 @@ class IMU(object):
         self._mag_x = 0.0
         self._mag_y = 0.0
         self._mag_z = 0.0
-        self.grav_magnitude = 14  # I have no idea why gravity is 14 on my imu, but it is
+        self.grav_magnitude = (
+            14  # I have no idea why gravity is 14 on my imu, but it is
+        )
         self._mag_iron_offset_x = 23.5
         self._mag_iron_offset_y = 23.5
         self._mag_iron_offset_z = -45
@@ -129,14 +131,23 @@ class IMU(object):
         q = Quaternion.from_matrix(rot)
         return q
 
-    def get_orientation(self, convergence_acc: float, overshoot_acc: float, convergence_mag: float,
-                        overshoot_mag: float):
+    def get_orientation(
+        self,
+        convergence_acc: float,
+        overshoot_acc: float,
+        convergence_mag: float,
+        overshoot_mag: float,
+    ):
         # https://www.sciencedirect.com/science/article/pii/S2405896317321201
         if self.prev_up is not None:
             t2 = time.time()
 
-            k_acc, k_bias_acc = get_ki_kbias(convergence_acc, overshoot_acc, t2 - self.prev_orientation_time)
-            k_mag, k_bias_mag = get_ki_kbias(convergence_mag, overshoot_mag, t2 - self.prev_orientation_time)
+            k_acc, k_bias_acc = get_ki_kbias(
+                convergence_acc, overshoot_acc, t2 - self.prev_orientation_time
+            )
+            k_mag, k_bias_mag = get_ki_kbias(
+                convergence_mag, overshoot_mag, t2 - self.prev_orientation_time
+            )
 
             grav = np.asarray(unit_vector(self.get_grav()))
             mag = unit_vector(np.asarray(self.get_mag()))
@@ -153,9 +164,27 @@ class IMU(object):
                     gyro += self.prev_bias
 
             gy = Quaternion.from_eulers(gyro * (t2 - self.prev_orientation_time))
-            pred_west = (~gy * Quaternion(np.pad(self.prev_west, (0,1), 'constant', constant_values=0)) * gy)
-            pred_up = (~gy * Quaternion(np.pad(self.prev_up, (0,1), 'constant', constant_values=0)) * gy)
-            pred_north = (~gy * Quaternion(np.pad(self.prev_north, (0,1), 'constant', constant_values=0)) * gy)
+            pred_west = (
+                ~gy
+                * Quaternion(
+                    np.pad(self.prev_west, (0, 1), "constant", constant_values=0)
+                )
+                * gy
+            )
+            pred_up = (
+                ~gy
+                * Quaternion(
+                    np.pad(self.prev_up, (0, 1), "constant", constant_values=0)
+                )
+                * gy
+            )
+            pred_north = (
+                ~gy
+                * Quaternion(
+                    np.pad(self.prev_north, (0, 1), "constant", constant_values=0)
+                )
+                * gy
+            )
 
             pred_north_v = np.asarray(pred_north.xyz)
             pred_west_v = np.asarray(pred_west.xyz)
@@ -167,9 +196,11 @@ class IMU(object):
 
             x_acc = np.cross(up, pred_up_v)
             x_mag = np.cross(north, pred_north_v)
-            pb0 = k_bias_acc*x_acc + k_bias_mag*x_mag
+            pb0 = k_bias_acc * x_acc + k_bias_mag * x_mag
             if self.prev_bias is not None:
-                self.prev_bias = self.prev_bias * (t2 - self.prev_orientation_time) + pb0
+                self.prev_bias = (
+                    self.prev_bias * (t2 - self.prev_orientation_time) + pb0
+                )
             else:
                 self.prev_bias = pb0
 

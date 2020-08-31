@@ -9,7 +9,11 @@ from virtualreality.util.utilz import BlobTracker
 def test_init():
     with MockReadUpdates(0, [rgby_tracking_image_np]):
         with mock.patch("virtualreality.utilz.time.sleep"):
-            b = BlobTracker(color_masks={"tracker1": {"h": (98, 10), "s": (200, 55), "v": (250, 32)}})
+            b = BlobTracker(
+                color_masks={
+                    "tracker1": {"h": (98, 10), "s": (200, 55), "v": (250, 32)}
+                }
+            )
 
             assert b.camera_focal_length == 490
             assert b.BALL_RADIUS_CM == 2
@@ -21,7 +25,9 @@ def test_init():
             assert b.frame_height == 358
             assert b.frame_width == 638
 
-            assert b.markerMasks == {"tracker1": {"h": (98, 10), "s": (200, 55), "v": (250, 32)}}
+            assert b.markerMasks == {
+                "tracker1": {"h": (98, 10), "s": (200, 55), "v": (250, 32)}
+            }
 
             assert b.poses == {"tracker1": {"x": 0, "y": 0, "z": 0}}
             assert b.blobs == {"tracker1": None}
@@ -30,7 +36,11 @@ def test_init():
 def test_find_blobs_in_frame():
     with MockReadUpdates(0, [rgby_tracking_image_np]):
         with mock.patch("virtualreality.utilz.time.sleep"):
-            b = BlobTracker(color_masks={"tracker1": {"h": (98, 10), "s": (200, 55), "v": (250, 32)}})
+            b = BlobTracker(
+                color_masks={
+                    "tracker1": {"h": (98, 10), "s": (200, 55), "v": (250, 32)}
+                }
+            )
 
             b.find_blobs_in_frame()
 
@@ -72,15 +82,29 @@ def test_find_blobs_in_frame():
 def test_solve_blob_poses():
     with MockReadUpdates(0, [rgby_tracking_image_np]):
         with mock.patch("virtualreality.utilz.time.sleep"):
-            b = BlobTracker(color_masks={"tracker1": {"h": (98, 10), "s": (200, 55), "v": (250, 32)}})
+            b = BlobTracker(
+                color_masks={
+                    "tracker1": {"h": (98, 10), "s": (200, 55), "v": (250, 32)}
+                }
+            )
 
             b.find_blobs_in_frame()
             b.solve_blob_poses()
 
             assert b.poses == {
-                "tracker1": {"x": -0.34523609690742246, "y": -0.28970498418772483, "z": 1.4035486226748464}
+                "tracker1": {
+                    "x": -0.34523609690742246,
+                    "y": -0.28970498418772483,
+                    "z": 1.4035486226748464,
+                }
             }
 
             b.solve_blob_poses()
 
-            assert b.poses == {"tracker1": {"x": -0.6575314351920128, "y": 0.11647778625690625, "z": 1.466077432585446}}
+            assert b.poses == {
+                "tracker1": {
+                    "x": -0.6575314351920128,
+                    "y": 0.11647778625690625,
+                    "z": 1.466077432585446,
+                }
+            }

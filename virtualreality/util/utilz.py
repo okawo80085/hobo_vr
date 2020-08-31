@@ -13,11 +13,12 @@ from pykalman import KalmanFilter
 
 try:
     from displayarray import read_updates
+
     HAVE_VOD = True
 
 except Exception as e:
-    print (f'failed to import displayarray, reason: {e}')
-    print ('camera based tracking methods will not be available')
+    print(f"failed to import displayarray, reason: {e}")
+    print("camera based tracking methods will not be available")
     HAVE_VOD = False
 
 from itertools import islice, takewhile
@@ -60,6 +61,7 @@ def read2(reader, read_len=20):
 
     return "".join(data)
 
+
 async def read3(reader: StreamReader, read_len: int = 20) -> str:
     """Read one line from reader asynchronously."""
     data = bytearray()
@@ -71,6 +73,7 @@ async def read3(reader: StreamReader, read_len: int = 20) -> str:
 
     return data
 
+
 def rotate(points, angls):
     """
     Rotate a set of points around the x, y, then z axes.
@@ -78,28 +81,37 @@ def rotate(points, angls):
     :param points: a point dictionary, such as: [[0, 0, 0], [1, 0, 0]]
     :param angles: the degrees to rotate on the x, y, and z axis
     """
-    rotx = np.array([
-                [1, 0, 0],
-                [0, np.cos(angls[0]), -np.sin(angls[0])],
-                [0, np.sin(angls[0]), np.cos(angls[0])]
-            ], dtype=np.float64)
+    rotx = np.array(
+        [
+            [1, 0, 0],
+            [0, np.cos(angls[0]), -np.sin(angls[0])],
+            [0, np.sin(angls[0]), np.cos(angls[0])],
+        ],
+        dtype=np.float64,
+    )
 
-    roty = np.array([
-                [np.cos(angls[1]), 0, np.sin(angls[1])],
-                [ 0, 1, 0],
-                [ -np.sin(angls[1]), 0, np.cos(angls[1])]
-            ], dtype=np.float64)
+    roty = np.array(
+        [
+            [np.cos(angls[1]), 0, np.sin(angls[1])],
+            [0, 1, 0],
+            [-np.sin(angls[1]), 0, np.cos(angls[1])],
+        ],
+        dtype=np.float64,
+    )
 
-    rotz = np.array([
-                [np.cos(angls[2]), -np.sin(angls[2]), 0],
-                [ np.sin(angls[2]), np.cos(angls[2]), 0],
-                [ 0,            0,            1]
-            ], dtype=np.float64)
+    rotz = np.array(
+        [
+            [np.cos(angls[2]), -np.sin(angls[2]), 0],
+            [np.sin(angls[2]), np.cos(angls[2]), 0],
+            [0, 0, 1],
+        ],
+        dtype=np.float64,
+    )
 
     rot = np.matmul(np.matmul(rotx, roty), rotz)
 
     for i, p in enumerate(points):
-        points[i] = np.around(np.sum(rot* p, axis=1), decimals=6)
+        points[i] = np.around(np.sum(rot * p, axis=1), decimals=6)
 
     return points
 
@@ -129,7 +141,12 @@ def get_numbers_from_text(text, separator="\t"):
         if isinstance(text, bytearray) or isinstance(text, bytes):
             text = text.decode("utf-8")
 
-        if strings_share_characters(text.lower(), "qwrtyuiopsasdfghjklzxcvbnm><*[]{}()") or len(text) == 0:
+        if (
+            strings_share_characters(
+                text.lower(), "qwrtyuiopsasdfghjklzxcvbnm><*[]{}()"
+            )
+            or len(text) == 0
+        ):
             return []
 
         return [float(i) for i in text.split(separator)]
@@ -139,22 +156,28 @@ def get_numbers_from_text(text, separator="\t"):
 
         return []
 
+
 def get_pose_struct_from_text(text):
-    '''returns struct from :text:, :text: has to be styled so that it completely matches this regex: ([htc][0-9]+[ ])*([htc][0-9]+)$'''
-    res = re.search('([htc][0-9]+[ ])*([htc][0-9]+)$', text)
+    """returns struct from :text:, :text: has to be styled so that it completely matches this regex: ([htc][0-9]+[ ])*([htc][0-9]+)$"""
+    res = re.search("([htc][0-9]+[ ])*([htc][0-9]+)$", text)
     if res != None:
         if res.group(0) == text:
-            return tuple(i[0] for i in text.split(' ')), tuple(int(i[1:]) for i in text.split(' '))
+            return tuple(i[0] for i in text.split(" ")), tuple(
+                int(i[1:]) for i in text.split(" ")
+            )
     return (), ()
 
+
 def parse_poses_from_packet(packet, struct):
-    '''parses all poses from a :packet:, provided a packet :struct:'''
+    """parses all poses from a :packet:, provided a packet :struct:"""
     it = iter(packet)
     return [tuple(islice(it, 0, i)) for i in struct]
 
+
 def get_poses_shape(poses):
-    '''returns a shape of :poses: parsed by parse_poses_from_packet'''
+    """returns a shape of :poses: parsed by parse_poses_from_packet"""
     return tuple(len(i) for i in poses)
+
 
 def has_nan_in_pose(pose):
     """Determine if any numbers in pose are invalid."""
@@ -174,7 +197,9 @@ class LazyKalman:
             print (t.apply([5+i, 6+i, 7+i])) # apply and update filter
     """
 
-    def __init__(self, init_state, transition_matrix, observation_matrix, n_iter=5, train_size=15):
+    def __init__(
+        self, init_state, transition_matrix, observation_matrix, n_iter=5, train_size=15
+    ):
         """
         Create the Kalman filter.
 
@@ -219,7 +244,9 @@ class LazyKalman:
         assert obz.shape == self._expected_shape, "shape miss match"
 
         self._x_now, self._p_now = self._filter.filter_update(
-            filtered_state_mean=self._x_now, filtered_state_covariance=self._p_now, observation=obz,
+            filtered_state_mean=self._x_now,
+            filtered_state_covariance=self._p_now,
+            observation=obz,
         )
 
         if self._calibration_countdown:
@@ -232,7 +259,9 @@ class LazyKalman:
     def _run_calibration(self):
         """Update the Kalman filter so that noise matrices are more accurate."""
         t_start = time.time()
-        self._filter = self._filter.em(self._calibration_observations, n_iter=self._em_iter)
+        self._filter = self._filter.em(
+            self._calibration_observations, n_iter=self._em_iter
+        )
         print(f" kalman filter calibrated, took {time.time() - t_start}s")
         f_means, f_covars = self._filter.filter(self._calibration_observations)
         self._x_now = f_means[-1, :]
@@ -279,11 +308,19 @@ class SerialReaderFactory(serial.threaded.LineReader):
 
     def connection_lost(self, exc):
         """Notify the user that the connection was lost."""
-        print(f"SerialReaderFactory: port {repr(self.transport.serial.port)} closed {repr(exc)}")
+        print(
+            f"SerialReaderFactory: port {repr(self.transport.serial.port)} closed {repr(exc)}"
+        )
+
 
 def cnt_2_x_y_w(cnt):
     nc = cnt.reshape((cnt.shape[0], 2))
-    return (nc[:, 0].min() + nc[:, 0].max())/2, (nc[:, 1].min() + nc[:, 1].max())/2, nc[:, 0].max() - nc[:, 0].min()
+    return (
+        (nc[:, 0].min() + nc[:, 0].max()) / 2,
+        (nc[:, 1].min() + nc[:, 1].max()) / 2,
+        nc[:, 0].max() - nc[:, 0].min(),
+    )
+
 
 class BlobTracker(threading.Thread):
     """
@@ -298,7 +335,12 @@ class BlobTracker(threading.Thread):
     """
 
     def __init__(
-        self, cam_index=0, *, focal_length_px=490, ball_radius_cm=2, color_masks={},
+        self,
+        cam_index=0,
+        *,
+        focal_length_px=490,
+        ball_radius_cm=2,
+        color_masks={},
     ):
         """
         Create a blob tracker.
@@ -327,7 +369,9 @@ class BlobTracker(threading.Thread):
         :param color_masks: color mask parameters, in opencv hsv color space, for color detection
         """
         if not HAVE_VOD:
-            raise RuntimeError('displayarray is not installed, no camera based tracking methods are available')
+            raise RuntimeError(
+                "displayarray is not installed, no camera based tracking methods are available"
+            )
 
         super().__init__()
         self._vs = read_updates(cam_index)
@@ -346,8 +390,7 @@ class BlobTracker(threading.Thread):
         if not self.can_track:
             self._vs.end()
             self._vs = None
-            raise RuntimeError('invalid video source')
-
+            raise RuntimeError("invalid video source")
 
         self.frame_height, self.frame_width, _ = frame.shape
         self.markerMasks = color_masks
@@ -357,7 +400,6 @@ class BlobTracker(threading.Thread):
 
         self.kalmanFilterz = []
         self.kalmanFilterz2 = []
-
 
         for i in range(len(self.markerMasks)):
             self.blobs.append(None)
@@ -438,7 +480,9 @@ class BlobTracker(threading.Thread):
 
                     mask = cv2.inRange(hsv, tuple(color_low), tuple(color_high))
 
-                    temp = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                    temp = cv2.findContours(
+                        mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+                    )
 
                     if len(temp) == 3:
                         _, cnts, hr = temp
@@ -448,7 +492,9 @@ class BlobTracker(threading.Thread):
 
                     if len(cnts) > 0:
                         c = max(cnts, key=cv2.contourArea)
-                        self.blobs[key] = c if len(c) >= 5 and cv2.contourArea(c) > 10 else None
+                        self.blobs[key] = (
+                            c if len(c) >= 5 and cv2.contourArea(c) > 10 else None
+                        )
 
     def solve_blob_poses(self):
         """Solve for and set the poses of all blobs visible by the camera."""
@@ -461,7 +507,9 @@ class BlobTracker(threading.Thread):
                 # x, y, w = cnt_2_x_y_w(blob)
 
                 if not self.kalmanFilterz2[key][0]:
-                    self.kalmanFilterz2[key][1] = LazyKalman([x, y, w], np.eye(3), np.eye(3))
+                    self.kalmanFilterz2[key][1] = LazyKalman(
+                        [x, y, w], np.eye(3), np.eye(3)
+                    )
                     self.kalmanFilterz2[key][0] = True
 
                 else:
@@ -500,10 +548,14 @@ class BlobTracker(threading.Thread):
 
                 if not has_nan_in_pose(self.poses[key]):
                     if not self.kalmanFilterz[key][0]:
-                        self.kalmanFilterz[key][1] = LazyKalman(self.poses[key], np.eye(3), np.eye(3))
+                        self.kalmanFilterz[key][1] = LazyKalman(
+                            self.poses[key], np.eye(3), np.eye(3)
+                        )
                         self.kalmanFilterz[key][0] = True
                     else:
-                        self.poses[key] = self.kalmanFilterz[key][1].apply(self.poses[key])
+                        self.poses[key] = self.kalmanFilterz[key][1].apply(
+                            self.poses[key]
+                        )
 
     def stop(self):
         """Stop the blob tracking thread."""

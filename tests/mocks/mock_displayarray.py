@@ -10,7 +10,9 @@ class MockReadUpdates(object):
         self.prepend = prepend
 
     def __enter__(self):
-        self.patches.append(mock.patch(self.prepend + "displayarray.window.subscriber_windows.display"))
+        self.patches.append(
+            mock.patch(self.prepend + "displayarray.window.subscriber_windows.display")
+        )
 
         for m in self.patches:
             self.mocks.append(m.__enter__())

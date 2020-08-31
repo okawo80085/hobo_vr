@@ -1,4 +1,4 @@
-'''pose objects'''
+"""pose objects"""
 
 
 class PoseEuler(object):
@@ -166,6 +166,7 @@ class Pose(object):
     def __len__(self):
         return len(self.__slots__)
 
+
 class ControllerState(Pose):
     """Struct containing all variables needed for instantaneous controller state."""
 
@@ -235,6 +236,7 @@ class ControllerState(Pose):
         self.trackpad_y: float = trackpad_y  # from -1 to 1
         self.trackpad_touch: int = trackpad_touch  # 0 or 1
         self.trigger_click: int = trigger_click  # 0 or 1
+
 
 def get_slot_values(slotted_instance):
     """Get all slot values in a class with slots."""

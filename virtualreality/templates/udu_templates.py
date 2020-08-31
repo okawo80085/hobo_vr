@@ -51,38 +51,50 @@ class UduPoserTemplate(PoserTemplateBase):
         """
         super().__init__(**kwargs)
 
-        re_s = re.search('([htc][ ])*([htc]$)', device_list_manifest)
+        re_s = re.search("([htc][ ])*([htc]$)", device_list_manifest)
 
         if not device_list_manifest or re_s is None:
-            raise RuntimeError('empty pose struct')
+            raise RuntimeError("empty pose struct")
 
         if re_s.group() != device_list_manifest:
-            raise RuntimeError(f'invalid pose struct: {repr(device_list_manifest)}')
+            raise RuntimeError(f"invalid pose struct: {repr(device_list_manifest)}")
 
         self.poses = []
-        self.device_types = device_list_manifest.split(' ')
+        self.device_types = device_list_manifest.split(" ")
 
         new_struct = []
         for i in self.device_types:
-            if i == 'h' or i == 't':
+            if i == "h" or i == "t":
                 self.poses.append(Pose())
-                new_struct.append(f'{i}{len(self.poses[-1])}')
+                new_struct.append(f"{i}{len(self.poses[-1])}")
 
-            elif i == 'c':
+            elif i == "c":
                 self.poses.append(ControllerState())
-                new_struct.append(f'{i}{len(self.poses[-1])}')
+                new_struct.append(f"{i}{len(self.poses[-1])}")
 
-        new_struct = ' '.join(new_struct)
+        new_struct = " ".join(new_struct)
 
-        print (f'total of {len(self.poses)} device(s) have been added, a new pose struct has been generated: {repr(new_struct)}')
-        print ('full device list is now available through self.device_types, all device poses are in self.poses')
+        print(
+            f"total of {len(self.poses)} device(s) have been added, a new pose struct has been generated: {repr(new_struct)}"
+        )
+        print(
+            "full device list is now available through self.device_types, all device poses are in self.poses"
+        )
 
     async def send(self):
         """Send all poses thread."""
         poses_index = range(len(self.device_types))
         while self.coro_keep_alive["send"].is_alive:
             try:
-                msg = u.format_str_for_write(' '.join([str(j) for i in poses_index for j in get_slot_values(self.poses[i])]))
+                msg = u.format_str_for_write(
+                    " ".join(
+                        [
+                            str(j)
+                            for i in poses_index
+                            for j in get_slot_values(self.poses[i])
+                        ]
+                    )
+                )
 
                 self.writer.write(msg)
                 await self.writer.drain()
@@ -115,5 +127,7 @@ class UduPoserClient(UduPoserTemplate, PoserClientBase):
 
     def __init__(self, *args, **kwargs):
         """init"""
-        print ('starting udu client') # this is here bc otherwise it looks sad, useless and empty
+        print(
+            "starting udu client"
+        )  # this is here bc otherwise it looks sad, useless and empty
         super().__init__(*args, **kwargs)

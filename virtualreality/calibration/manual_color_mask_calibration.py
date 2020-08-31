@@ -27,15 +27,16 @@ from virtualreality import __version__
 
 
 class ColorRange(object):
-    def __init__(self,
-                 color_num,
-                 hue_center=0,
-                 hue_range=180,
-                 sat_center=0,
-                 sat_range=180,
-                 val_center=0,
-                 val_range=180
-                 ):
+    def __init__(
+        self,
+        color_num,
+        hue_center=0,
+        hue_range=180,
+        sat_center=0,
+        sat_range=180,
+        val_center=0,
+        val_range=180,
+    ):
         self.color_num = color_num
         self.hue_center = hue_center
         self.hue_range = hue_range
@@ -46,7 +47,15 @@ class ColorRange(object):
 
 
 class CalibrationData(object):
-    def __init__(self, width=1, height=1, auto_exposure=0.25, exposure=0, saturation=50, num_colors=4):
+    def __init__(
+        self,
+        width=1,
+        height=1,
+        auto_exposure=0.25,
+        exposure=0,
+        saturation=50,
+        num_colors=4,
+    ):
         self.width = width
         self.height = height
         self.exposure = exposure
@@ -56,11 +65,14 @@ class CalibrationData(object):
 
         color_dist = 180 // num_colors
         for color in range(num_colors):
-            self.color_ranges.append(ColorRange(color, *[color * color_dist, color_dist] * 3))
+            self.color_ranges.append(
+                ColorRange(color, *[color * color_dist, color_dist] * 3)
+            )
 
     @classmethod
-    def load_from_file(cls, load_file: str = str(Path(__file__).parent) + "ranges.pickle") -> Optional[
-        'CalibrationData']:
+    def load_from_file(
+        cls, load_file: str = str(Path(__file__).parent) + "ranges.pickle"
+    ) -> Optional["CalibrationData"]:
         """Load the calibration data from a file."""
         try:
             with open(load_file, "rb") as file:
@@ -69,43 +81,49 @@ class CalibrationData(object):
         except FileNotFoundError as fe:
             logging.warning(f"Could not load calibration file '{load_file}'.")
 
-    def save_to_file(self, save_file: str = str(Path(__file__).parent) + "ranges.pickle") -> None:
+    def save_to_file(
+        self, save_file: str = str(Path(__file__).parent) + "ranges.pickle"
+    ) -> None:
         with open(save_file, "wb") as file:
             pickle.dump(self, file)
 
+
 def colordata_to_blob(colordata, mapdata):
-    '''
+    """
     translates CalibrationData object to BlobTracker format masks
 
     :colordata: CalibrationData object
     :mapdata: a map dict with key representing the mask name and value representing the mask number
 
-    '''
+    """
     out = {}
 
     for key, clr_range_index in mapdata.items():
         temp = colordata.color_ranges[clr_range_index]
         out[key] = {
-                'h':(temp.hue_center, temp.hue_range),
-                's':(temp.sat_center, temp.sat_range),
-                'v':(temp.val_center, temp.val_range),
-                    }
+            "h": (temp.hue_center, temp.hue_range),
+            "s": (temp.sat_center, temp.sat_range),
+            "v": (temp.val_center, temp.val_range),
+        }
 
     return out
 
+
 def load_mapdata_from_file(path):
-    '''
+    """
     loads mapdata from file, for use in colordata_to_blob
-    '''
-    with open(path, 'rb') as file:
+    """
+    with open(path, "rb") as file:
         return pickle.load(file)
 
+
 def save_mapdata_to_file(path, mapdata):
-    '''
+    """
     save mapdata to file, for use in colordata_to_blob
-    '''
+    """
     with open(path, "wb") as file:
         pickle.dump(mapdata, file)
+
 
 def list_supported_capture_properties(cap: cv2.VideoCapture):
     """List the properties supported by the capture device."""
@@ -133,7 +151,7 @@ def get_color_mask(hsv, color_range: ColorRange):
     color_low_neg = copy(color_low)
     color_high_neg = copy(color_high)
     for c in range(3):
-        if c==0:
+        if c == 0:
             c_max = 180
         else:
             c_max = 255
@@ -185,7 +203,12 @@ def _set_default_camera_properties(vs, cam, vs_supported, frame_width, frame_hei
 
 
 def manual_calibration(
-        cam=0, num_colors_to_track=4, frame_width=-1, frame_height=-1, load_file="", save_file="ranges.pickle"
+    cam=0,
+    num_colors_to_track=4,
+    frame_width=-1,
+    frame_height=-1,
+    load_file="",
+    save_file="ranges.pickle",
 ):
     """Manually calibrate the hsv ranges and camera settings used for blob tracking."""
     vs = cv2.VideoCapture(cam)
@@ -198,11 +221,19 @@ def manual_calibration(
     cv2.namedWindow(cam_window)
     if "CAP_PROP_EXPOSURE" in vs_supported:
         cv2.createTrackbar(
-            "exposure", cam_window, 0, 16, lambda x: vs.set(cv2.CAP_PROP_EXPOSURE, x - 8),
+            "exposure",
+            cam_window,
+            0,
+            16,
+            lambda x: vs.set(cv2.CAP_PROP_EXPOSURE, x - 8),
         )
     if "CAP_PROP_SATURATION" in vs_supported:
         cv2.createTrackbar(
-            "saturation", cam_window, 0, 100, lambda x: vs.set(cv2.CAP_PROP_SATURATION, x),
+            "saturation",
+            cam_window,
+            0,
+            100,
+            lambda x: vs.set(cv2.CAP_PROP_SATURATION, x),
         )
     else:
         logging.warning(f"Camera {cam} does not support setting saturation.")
@@ -211,7 +242,9 @@ def manual_calibration(
     if load_file:
         ranges = CalibrationData.load_from_file(load_file)
     if ranges is None:
-        ranges = CalibrationData(width=frame_width, height=frame_height, num_colors=num_colors_to_track)
+        ranges = CalibrationData(
+            width=frame_width, height=frame_height, num_colors=num_colors_to_track
+        )
 
     tracker_window_names = []
     for color in range(num_colors_to_track):
@@ -219,22 +252,46 @@ def manual_calibration(
         cv2.namedWindow(tracker_window_names[color])
 
         cv2.createTrackbar(
-            "hue center", tracker_window_names[color], ranges.color_ranges[color].hue_center, 180, lambda _: None,
+            "hue center",
+            tracker_window_names[color],
+            ranges.color_ranges[color].hue_center,
+            180,
+            lambda _: None,
         )
         cv2.createTrackbar(
-            "hue range", tracker_window_names[color], ranges.color_ranges[color].hue_range, 180, lambda _: None,
+            "hue range",
+            tracker_window_names[color],
+            ranges.color_ranges[color].hue_range,
+            180,
+            lambda _: None,
         )
         cv2.createTrackbar(
-            "sat center", tracker_window_names[color], ranges.color_ranges[color].sat_center, 255, lambda _: None,
+            "sat center",
+            tracker_window_names[color],
+            ranges.color_ranges[color].sat_center,
+            255,
+            lambda _: None,
         )
         cv2.createTrackbar(
-            "sat range", tracker_window_names[color], ranges.color_ranges[color].sat_range, 255, lambda _: None,
+            "sat range",
+            tracker_window_names[color],
+            ranges.color_ranges[color].sat_range,
+            255,
+            lambda _: None,
         )
         cv2.createTrackbar(
-            "val center", tracker_window_names[color], ranges.color_ranges[color].val_center, 255, lambda _: None,
+            "val center",
+            tracker_window_names[color],
+            ranges.color_ranges[color].val_center,
+            255,
+            lambda _: None,
         )
         cv2.createTrackbar(
-            "val range", tracker_window_names[color], ranges.color_ranges[color].val_range, 255, lambda _: None,
+            "val range",
+            tracker_window_names[color],
+            ranges.color_ranges[color].val_range,
+            255,
+            lambda _: None,
         )
 
     while 1:
@@ -298,7 +355,9 @@ def manual_calibration(
     if save_file:
         ranges.save_to_file(save_file)
         print(f'ranges saved to list in "{save_file}".')
-        print("You can use this in the pyvr tracker using the --calibration-file argument.")
+        print(
+            "You can use this in the pyvr tracker using the --calibration-file argument."
+        )
 
     vs.release()
     cv2.destroyAllWindows()

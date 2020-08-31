@@ -24,7 +24,9 @@ class EulerKalman(object):
         """
         init_state = np.array(init_state)
         if init_state.size != 18:
-            raise ValueError("EulerKalman expects init: [x,y,z,vx,vy,vz,ax,ay,az,r,p,w,vr,vp,vw,ar,ap,aw]")
+            raise ValueError(
+                "EulerKalman expects init: [x,y,z,vx,vy,vz,ax,ay,az,r,p,w,vr,vp,vw,ar,ap,aw]"
+            )
         self.t_prev = time.time()
 
         transition_matrix = self._get_transition_matrix()
@@ -78,7 +80,9 @@ class EulerKalman(object):
         t_now = time.time()
         dt = t_now - self.t_prev
         a[tuple(i - 3 for i in range(3, 9)), tuple(i for i in range(3, 9))] = dt
-        a[tuple(i - 6 for i in range(6, 9)), tuple(i for i in range(6, 9))] = 0.5 * dt ** 2
+        a[tuple(i - 6 for i in range(6, 9)), tuple(i for i in range(6, 9))] = (
+            0.5 * dt ** 2
+        )
         m = np.zeros((18, 18))
         m[0:9, 0:9] = a
         m[9:18, 9:18] = a
@@ -110,7 +114,9 @@ class EulerKalman(object):
         partial_obz[15:18] = orient
 
         self._x_now, new_p_now = self._filter.filter_update(
-            filtered_state_mean=self._x_now, filtered_state_covariance=self._p_now, observation=partial_obz,
+            filtered_state_mean=self._x_now,
+            filtered_state_covariance=self._p_now,
+            observation=partial_obz,
         )
 
         # only update measured variances of things we actually measured
@@ -139,7 +145,9 @@ class EulerKalman(object):
         partial_obz[0:3] = xyz
 
         self._x_now, new_p_now = self._filter.filter_update(
-            filtered_state_mean=self._x_now, filtered_state_covariance=self._p_now, observation=partial_obz,
+            filtered_state_mean=self._x_now,
+            filtered_state_covariance=self._p_now,
+            observation=partial_obz,
         )
 
         # only update measured variances of things we actually measured
@@ -152,7 +160,9 @@ class EulerKalman(object):
     def _run_calibration(self):
         """Update the Kalman filter so that noise matrices are more accurate."""
         t_start = time.time()
-        self._filter = self._filter.em(self._calibration_observations, n_iter=self._em_iter)
+        self._filter = self._filter.em(
+            self._calibration_observations, n_iter=self._em_iter
+        )
         print(f" kalman filter calibrated, took {time.time() - t_start}s")
         f_means, f_covars = self._filter.filter(self._calibration_observations)
         self._x_now = f_means[-1, :]

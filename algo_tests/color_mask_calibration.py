@@ -56,7 +56,9 @@ while 1:
     # mask = cv2.erode(mask, None, iterations=1)
     # mask = cv2.dilate(mask, None, iterations=3)
 
-    _, cnts, hr = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    _, cnts, hr = cv2.findContours(
+        mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+    )
     # cnts = imutils.grab_contours(cnts)
 
     # if len(cnts) > 0:
