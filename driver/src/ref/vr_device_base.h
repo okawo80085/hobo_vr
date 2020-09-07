@@ -3,20 +3,14 @@
 #ifndef VR_DEVICE_BASE_H
 #define VR_DEVICE_BASE_H
 
-#include "openvr_driver.h"
-#include "driverlog.h"
-
 #if defined(_WIN32)
-#include "ref/receiver_win.h"
+#include "receiver_win.h"
 
 #elif defined(__linux__)
-#include "ref/receiver_linux.h"
+#include "receiver_linux.h"
 #define _stricmp strcasecmp
 
 #endif
-
-using namespace vr;
-
 
 namespace hobovr {
   struct HobovrComponent
@@ -36,7 +30,7 @@ namespace hobovr {
       m_sModelNumber = deviceBreed + m_sSerialNumber;
 
       if (m_pBrodcastSocket == nullptr) {
-        DriverLog("communication socket object is not supplied, this device will not have back communication features(e.g. haptics)");
+        DriverLog("communication socket object is not supplied, this device will not have back communication features(e.g. haptics)\n");
       }
 
     }
@@ -80,10 +74,13 @@ namespace hobovr {
         pchResponseBuffer[0] = 0;
     }
 
-    virtual DriverPose_t GetPose() { return m_Pose; }
+    virtual vr::DriverPose_t GetPose() { return m_Pose; }
 
     void *GetComponent(const char *pchComponentNameAndVersion) {
-      // TODO: this
+      for (auto &i : m_vComponents) {
+        if (!_stricmp(pchComponentNameAndVersion, i.type))
+          return i.get();
+      }
 
       return NULL;
     }
@@ -119,13 +116,13 @@ namespace hobovr {
     std::string m_sModelNumber;
     std::string m_sRenderModelPath;
 
-    std::string m_sBindPath;
+    std::string m_sBindPath; // path to the device's bindings
 
-    DriverPose_t m_Pose;
+    vr::DriverPose_t m_Pose; // device's pose
 
     vr::VRInputComponentHandle_t m_compHaptic;
 
-    std::vector<HobovrComponent> m_vComponents;
+    std::vector<HobovrComponent> m_vComponents; // components that this device has, should be populated in the constructor of the derived class
 
     // not openvr api stuff
     std::shared_ptr<SockReceiver::DriverReceiver> m_pBrodcastSocket;
