@@ -8,9 +8,6 @@ namespace hobovr {
   public:
     HobovrExtendedDisplayComponent(bool doUndistort=true): m_bDoLensUndistort(doUndistort){
 
-      m_flIPD = vr::VRSettings()->GetFloat(k_pch_Hobovr_Section,
-                                         k_pch_Hobovr_IPD_Float);
-
       m_nWindowX = vr::VRSettings()->GetInt32(k_pch_Hobovr_Section,
                                               k_pch_Hobovr_WindowX_Int32);
       m_nWindowY = vr::VRSettings()->GetInt32(k_pch_Hobovr_Section,
@@ -23,10 +20,6 @@ namespace hobovr {
                                                   k_pch_Hobovr_RenderWidth_Int32);
       m_nRenderHeight = vr::VRSettings()->GetInt32(
           k_pch_Hobovr_Section, k_pch_Hobovr_RenderHeight_Int32);
-      m_flSecondsFromVsyncToPhotons = vr::VRSettings()->GetFloat(
-          k_pch_Hobovr_Section, k_pch_Hobovr_SecondsFromVsyncToPhotons_Float);
-      m_flDisplayFrequency = vr::VRSettings()->GetFloat(
-          k_pch_Hobovr_Section, k_pch_Hobovr_DisplayFrequency_Float);
 
       m_fDistortionK1 = vr::VRSettings()->GetFloat(
           k_pch_Hobovr_Section, k_pch_Hobovr_DistortionK1_Float);
@@ -37,6 +30,10 @@ namespace hobovr {
       m_fZoomHeight = vr::VRSettings()->GetFloat(k_pch_Hobovr_Section,
                                                  k_pch_Hobovr_ZoomHeight_Float);
 
+      DriverLog("Extended display component created\n");
+      DriverLog("distortion koeffs: k1=%f, k2=%f\n", m_fDistortionK1, m_fDistortionK2);
+      DriverLog("render targer: %dx%d\n", m_nRenderWidth, m_nRenderHeight);
+      DriverLog("window targer: %dx%d\n", m_nWindowWidth, m_nWindowHeight);
 
     }
 
@@ -126,9 +123,6 @@ namespace hobovr {
     int32_t m_nWindowHeight;
     int32_t m_nRenderWidth;
     int32_t m_nRenderHeight;
-    float m_flSecondsFromVsyncToPhotons;
-    float m_flDisplayFrequency;
-    float m_flIPD;
 
     float m_fDistortionK1;
     float m_fDistortionK2;
