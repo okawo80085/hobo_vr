@@ -58,20 +58,20 @@ namespace hobovr {
       *pnHeight = m_nRenderHeight;
     }
 
-    virtual void GetEyeOutputViewport(EVREye eEye, uint32_t *pnX, uint32_t *pnY,
+    virtual void GetEyeOutputViewport(vr::EVREye eEye, uint32_t *pnX, uint32_t *pnY,
                                       uint32_t *pnWidth, uint32_t *pnHeight) {
       *pnY = 0;
       *pnWidth = m_nWindowWidth / 2;
       *pnHeight = m_nWindowHeight;
 
-      if (eEye == Eye_Left) {
+      if (eEye == vr::Eye_Left) {
         *pnX = 0;
       } else {
         *pnX = m_nWindowWidth / 2;
       }
     }
 
-    virtual void GetProjectionRaw(EVREye eEye, float *pfLeft, float *pfRight,
+    virtual void GetProjectionRaw(vr::EVREye eEye, float *pfLeft, float *pfRight,
                                   float *pfTop, float *pfBottom) {
       *pfLeft = -1.0;
       *pfRight = 1.0;
@@ -79,7 +79,7 @@ namespace hobovr {
       *pfBottom = 1.0;
     }
 
-    virtual DistortionCoordinates_t ComputeDistortion(EVREye eEye, float fU,
+    virtual DistortionCoordinates_t ComputeDistortion(vr::EVREye eEye, float fU,
                                                       float fV) {
       DistortionCoordinates_t coordinates;
 
