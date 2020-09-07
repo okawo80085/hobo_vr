@@ -12,26 +12,34 @@
 
 #endif
 
+#include <vecotr>
+#include <string>
+#include <memory>
+
 namespace hobovr {
   struct HobovrComponent
   {
-    std::string type;
-    std::shared_ptr<HobovrExtendedDisplayComponent> component;
+    const char* componentNameAndVersion;
+    std::shared_ptr<HobovrExtendedDisplayComponent> componentHandle;
   };
 
-  // should be privately inherited
+  // should be publicly inherited
   class HobovrDevice: public vr::ITrackedDeviceServerDriver {
   public:
-    HobovrDevice(std::string myserial, std::string deviceBreed, const std::shared_ptr<SockReceiver::DriverReceiver> commSocket=nullptr): m_pBrodcastSocket(commSocket) {
+    HobovrDevice(std::string myserial, std::string deviceBreed,
+    const std::shared_ptr<SockReceiver::DriverReceiver> commSocket=nullptr): m_pBrodcastSocket(commSocket),
+        m_sSerialNumber(myserial) {
+
       m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
       m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
 
-      m_sSerialNumber = myserial;
       m_sModelNumber = deviceBreed + m_sSerialNumber;
+      DriverLog("device created\n");
+      DriverLog("device breed: %s\n", deviceBreed);
+      DriverLog("device serial: %s\n", m_sSerialNumber);
 
-      if (m_pBrodcastSocket == nullptr) {
+      if (m_pBrodcastSocket == nullptr)
         DriverLog("communication socket object is not supplied, this device will not have back communication features(e.g. haptics)\n");
-      }
 
     }
 
@@ -67,7 +75,7 @@ namespace hobovr {
 
     virtual void PowerOff() {}
 
-    /** debug request from a client */
+    /** debug request from a client, TODO: uh... actually implement this? */
     virtual void DebugRequest(const char *pchRequest, char *pchResponseBuffer,
                               uint32_t unResponseBufferSize) {
       if (unResponseBufferSize >= 1)
@@ -78,8 +86,8 @@ namespace hobovr {
 
     void *GetComponent(const char *pchComponentNameAndVersion) {
       for (auto &i : m_vComponents) {
-        if (!_stricmp(pchComponentNameAndVersion, i.type))
-          return i.get();
+        if (!_stricmp(pchComponentNameAndVersion, i.componentNameAndVersion))
+          return i.componentHandle.get();
       }
 
       return NULL;
@@ -93,7 +101,7 @@ namespace hobovr {
         {
           case vr::VREvent_Input_HapticVibration: {
             if (vrEvent.data.hapticVibration.componentHandle == m_compHaptic) {
-              // haptic!
+                // haptic!
                 m_pBrodcastSocket->send2((m_sSerialNumber +
                 std::to_string(vrEvent.data.hapticVibration.fDurationSeconds) + ',' +
                 std::to_string(vrEvent.data.hapticVibration.fFrequency) + ',' +
@@ -105,9 +113,9 @@ namespace hobovr {
     }
 
     template <typename Number>
-    virtual void RunFrame(std::vector<Number> &lastRead) = 0;
+    virtual void RunFrame(std::vector<Number> &trackingPacket) = 0; // override this
 
-  public:
+  protected:
     // openvr api stuff
     vr::TrackedDeviceIndex_t m_unObjectId;
     vr::PropertyContainerHandle_t m_ulPropertyContainer;
@@ -124,9 +132,9 @@ namespace hobovr {
 
     std::vector<HobovrComponent> m_vComponents; // components that this device has, should be populated in the constructor of the derived class
 
-    // not openvr api stuff
+    // hobovr stuff
     std::shared_ptr<SockReceiver::DriverReceiver> m_pBrodcastSocket;
-  }
+  };
 }
 
 #endif // VR_DEVICE_BASE_H
