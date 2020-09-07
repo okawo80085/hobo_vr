@@ -65,8 +65,6 @@ namespace hobovr {
       return VRInitError_None;
     }
 
-    virtual ~HobovrDevice() {}
-
     virtual void Deactivate() {
       m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
     }
