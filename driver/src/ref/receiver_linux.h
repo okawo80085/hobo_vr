@@ -1,7 +1,8 @@
+#pragma once
+
 #ifndef RECEIVER_H
 #define RECEIVER_H
 
-#pragma once
 
 #include "util.h"
 

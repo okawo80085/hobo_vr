@@ -1,9 +1,10 @@
+#pragma once
+
 #ifndef RECEIVER_H
 #define RECEIVER_H
 
 #include <tchar.h>
 
-#pragma once
 
 #include <Ws2tcpip.h>
 #include <winsock2.h>
