@@ -6,7 +6,37 @@
 namespace hobovr {
   class HobovrExtendedDisplayComponent: public vr::IVRDisplayComponent{
   public:
-    HobovrExtendedDisplayComponent(){
+    HobovrExtendedDisplayComponent(bool doUndistort=true): m_bDoLensUndistort(doUndistort){
+
+      m_flIPD = vr::VRSettings()->GetFloat(k_pch_Hobovr_Section,
+                                         k_pch_Hobovr_IPD_Float);
+
+      m_nWindowX = vr::VRSettings()->GetInt32(k_pch_Hobovr_Section,
+                                              k_pch_Hobovr_WindowX_Int32);
+      m_nWindowY = vr::VRSettings()->GetInt32(k_pch_Hobovr_Section,
+                                              k_pch_Hobovr_WindowY_Int32);
+      m_nWindowWidth = vr::VRSettings()->GetInt32(k_pch_Hobovr_Section,
+                                                  k_pch_Hobovr_WindowWidth_Int32);
+      m_nWindowHeight = vr::VRSettings()->GetInt32(
+          k_pch_Hobovr_Section, k_pch_Hobovr_WindowHeight_Int32);
+      m_nRenderWidth = vr::VRSettings()->GetInt32(k_pch_Hobovr_Section,
+                                                  k_pch_Hobovr_RenderWidth_Int32);
+      m_nRenderHeight = vr::VRSettings()->GetInt32(
+          k_pch_Hobovr_Section, k_pch_Hobovr_RenderHeight_Int32);
+      m_flSecondsFromVsyncToPhotons = vr::VRSettings()->GetFloat(
+          k_pch_Hobovr_Section, k_pch_Hobovr_SecondsFromVsyncToPhotons_Float);
+      m_flDisplayFrequency = vr::VRSettings()->GetFloat(
+          k_pch_Hobovr_Section, k_pch_Hobovr_DisplayFrequency_Float);
+
+      m_fDistortionK1 = vr::VRSettings()->GetFloat(
+          k_pch_Hobovr_Section, k_pch_Hobovr_DistortionK1_Float);
+      m_fDistortionK2 = vr::VRSettings()->GetFloat(
+          k_pch_Hobovr_Section, k_pch_Hobovr_DistortionK2_Float);
+      m_fZoomWidth = vr::VRSettings()->GetFloat(k_pch_Hobovr_Section,
+                                                k_pch_Hobovr_ZoomWidth_Float);
+      m_fZoomHeight = vr::VRSettings()->GetFloat(k_pch_Hobovr_Section,
+                                                 k_pch_Hobovr_ZoomHeight_Float);
+
 
     }
 
@@ -53,38 +83,59 @@ namespace hobovr {
                                                       float fV) {
       DistortionCoordinates_t coordinates;
 
-      // Distortion for lens implementation from
-      // https://github.com/HelenXR/openvr_survivor/blob/master/src/head_mount_display_device.cc
-      float hX;
-      float hY;
-      double rr;
-      double r2;
-      double theta;
+      if constexpr(m_bDoLensUndistort) {
+        // Distortion for lens implementation from
+        // https://github.com/HelenXR/openvr_survivor/blob/master/src/head_mount_display_device.cc
+        float hX;
+        float hY;
+        double rr;
+        double r2;
+        double theta;
 
-      rr = sqrt((fU - 0.5f) * (fU - 0.5f) + (fV - 0.5f) * (fV - 0.5f));
-      r2 = rr * (1 + m_fDistortionK1 * (rr * rr) +
-                 m_fDistortionK2 * (rr * rr * rr * rr));
-      theta = atan2(fU - 0.5f, fV - 0.5f);
-      hX = float(sin(theta) * r2) * m_fZoomWidth;
-      hY = float(cos(theta) * r2) * m_fZoomHeight;
+        rr = sqrt((fU - 0.5f) * (fU - 0.5f) + (fV - 0.5f) * (fV - 0.5f));
+        r2 = rr * (1 + m_fDistortionK1 * (rr * rr) +
+                   m_fDistortionK2 * (rr * rr * rr * rr));
+        theta = atan2(fU - 0.5f, fV - 0.5f);
+        hX = float(sin(theta) * r2) * m_fZoomWidth;
+        hY = float(cos(theta) * r2) * m_fZoomHeight;
 
-      coordinates.rfBlue[0] = hX + 0.5f;
-      coordinates.rfBlue[1] = hY + 0.5f;
-      coordinates.rfGreen[0] = hX + 0.5f;
-      coordinates.rfGreen[1] = hY + 0.5f;
-      coordinates.rfRed[0] = hX + 0.5f;
-      coordinates.rfRed[1] = hY + 0.5f;
-      // coordinates.rfBlue[0] = fU;
-      // coordinates.rfBlue[1] = fV;
-      // coordinates.rfGreen[0] = fU;
-      // coordinates.rfGreen[1] = fV;
-      // coordinates.rfRed[0] = fU;
-      // coordinates.rfRed[1] = fV;
+        coordinates.rfBlue[0] = hX + 0.5f;
+        coordinates.rfBlue[1] = hY + 0.5f;
+        coordinates.rfGreen[0] = hX + 0.5f;
+        coordinates.rfGreen[1] = hY + 0.5f;
+        coordinates.rfRed[0] = hX + 0.5f;
+        coordinates.rfRed[1] = hY + 0.5f;
+      } else {
+        coordinates.rfBlue[0] = fU;
+        coordinates.rfBlue[1] = fV;
+        coordinates.rfGreen[0] = fU;
+        coordinates.rfGreen[1] = fV;
+        coordinates.rfRed[0] = fU;
+        coordinates.rfRed[1] = fV;
+      }
 
       return coordinates;
     }
 
+    const char* GetComponentNameAndVersion() {return vr::IVRDisplayComponent_Version;}
+
   private:
+    int32_t m_nWindowX;
+    int32_t m_nWindowY;
+    int32_t m_nWindowWidth;
+    int32_t m_nWindowHeight;
+    int32_t m_nRenderWidth;
+    int32_t m_nRenderHeight;
+    float m_flSecondsFromVsyncToPhotons;
+    float m_flDisplayFrequency;
+    float m_flIPD;
+
+    float m_fDistortionK1;
+    float m_fDistortionK2;
+    float m_fZoomWidth;
+    float m_fZoomHeight;
+
+    bool m_bDoLensUndistort;
   };
 }
 

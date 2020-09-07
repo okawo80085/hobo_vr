@@ -53,6 +53,10 @@ namespace hobovr {
       vr::VRProperties()->SetStringProperty(
           m_ulPropertyContainer, Prop_RenderModelName_String, m_sRenderModelPath.c_str());
 
+      // return a constant that's not 0 (invalid) or 1 (reserved for Oculus)
+      vr::VRProperties()->SetUint64Property(m_ulPropertyContainer,
+                                            Prop_CurrentUniverseId_Uint64, 2);
+
       vr::VRProperties()->SetStringProperty(
           m_ulPropertyContainer, Prop_InputProfilePath_String,
           m_sBindPath.c_str());

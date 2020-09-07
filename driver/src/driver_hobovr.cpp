@@ -53,21 +53,6 @@ inline HmdQuaternion_t HmdQuaternion_Init(double w, double x, double y,
   return quat;
 }
 
-inline void HmdMatrix_SetIdentity(HmdMatrix34_t *pMatrix) {
-  pMatrix->m[0][0] = 1.f;
-  pMatrix->m[0][1] = 0.f;
-  pMatrix->m[0][2] = 0.f;
-  pMatrix->m[0][3] = 0.f;
-  pMatrix->m[1][0] = 0.f;
-  pMatrix->m[1][1] = 1.f;
-  pMatrix->m[1][2] = 0.f;
-  pMatrix->m[1][3] = 0.f;
-  pMatrix->m[2][0] = 0.f;
-  pMatrix->m[2][1] = 0.f;
-  pMatrix->m[2][2] = 1.f;
-  pMatrix->m[2][3] = 0.f;
-}
-
 // keys for use with the settings API
 static const char *const k_pch_Hobovr_Section = "driver_hobovr";
 static const char *const k_pch_Hobovr_WindowX_Int32 = "windowX";
@@ -173,6 +158,8 @@ public:
     vr::VRProperties()->SetStringProperty(m_ulPropertyContainer,
                                           Prop_RenderModelName_String,
                                           m_sRenderModelPath.c_str());
+
+
     vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer,
                                          Prop_UserIpdMeters_Float, m_flIPD);
     vr::VRProperties()->SetFloatProperty(
