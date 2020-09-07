@@ -124,11 +124,11 @@ namespace hobovr {
 
     std::string m_sSerialNumber;
     std::string m_sModelNumber;
-    std::string m_sRenderModelPath;
+    std::string m_sRenderModelPath; // should be populated in the constructor of the derived class
 
-    std::string m_sBindPath; // path to the device's bindings
+    std::string m_sBindPath; // path to the device's bindings, should be populated in the constructor of the derived class
 
-    vr::DriverPose_t m_Pose; // device's pose
+    vr::DriverPose_t m_Pose; // device's pose, use this at runtime
 
     vr::VRInputComponentHandle_t m_compHaptic;
 
