@@ -25,8 +25,9 @@ namespace hobovr {
 
       m_sModelNumber = deviceBreed + m_sSerialNumber;
       DriverLog("device created\n");
-      DriverLog("device breed: %s\n", deviceBreed);
-      DriverLog("device serial: %s\n", m_sSerialNumber);
+      DriverLog("device breed: %s\n", deviceBreed.c_str());
+      DriverLog("device serial: %s\n", m_sSerialNumber.c_str());
+      DriverLog("device model: %s\n", m_sModelNumber.c_str());
 
       if (m_pBrodcastSocket == nullptr && UseHaptics)
         DriverLog("communication socket object is not supplied and haptics are enabled, this device will break on back communication requests(e.g. haptics)\n");
@@ -51,16 +52,23 @@ namespace hobovr {
           m_ulPropertyContainer, Prop_InputProfilePath_String,
           m_sBindPath.c_str());
 
+      DriverLog("device activated\n");
+      DriverLog("device render model: %s\n", m_sRenderModelPath.c_str());
+      DriverLog("device input binding: %s\n", m_sBindPath.c_str());
+
       if constexpr(UseHaptics) {
-          vr::VRDriverInput()->CreateHapticComponent(m_ulPropertyContainer,
+        DriverLog("device haptics added\n");
+        vr::VRDriverInput()->CreateHapticComponent(m_ulPropertyContainer,
                                                        "/output/haptic", &m_compHaptic);
       }
+
 
       return VRInitError_None;
     }
 
     virtual void Deactivate() {
       m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
+      DriverLog("device with serial %s deactivated\n", m_sSerialNumber.c_str());
     }
 
     virtual void EnterStandby() {}
