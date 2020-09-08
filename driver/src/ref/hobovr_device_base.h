@@ -8,14 +8,9 @@
 namespace hobovr {
   enum THobovrCompType
   {
-    THobovrComp_None = 0,
+    THobovrComp_Invalid = 0,
     THobovrComp_ExtendedDisplay = 100, // HobovrExtendedDisplayComponent component
   };
-
-  typedef union
-  {
-    std::shared_ptr<HobovrExtendedDisplayComponent> extDisplay;
-  } Hobovr_ComponentHandle_t;
 
   struct HobovrComponent_t
   {
@@ -23,12 +18,8 @@ namespace hobovr {
     const char* componentNameAndVersion; // for component search
 
     // must be the end of the struct as its size is variable
-    Hobovr_ComponentHandle_t componentHandle;
+    std::variant<std::shared_ptr<HobovrExtendedDisplayComponent>> compHandle;
   };
-  // example:
-  // hobovr::HobovrComponent_t extDisplayComp = {hobovr::THobovrCompType::THobovrComp_ExtendedDisplay};
-  // extDisplayComp.componentHandle.extDisplay = std::make_shared<hobovr::HobovrExtendedDisplayComponent>();
-  // extDisplayComp.componentNameAndVersion = extDisplayComp.componentHandle.extDisplay->GetComponentNameAndVersion();
 
   // should be publicly inherited
   template<bool UseHaptics>
@@ -52,7 +43,7 @@ namespace hobovr {
 
     }
 
-    virtual ~HobovrDevice(){
+    ~HobovrDevice(){
       m_vComponents.clear();
       DriverLog("device with serial %s yeeted out of existence\n", m_sSerialNumber.c_str());
 
@@ -77,6 +68,7 @@ namespace hobovr {
           m_sBindPath.c_str());
 
       DriverLog("device activated\n");
+      DriverLog("device serial: %s\n", m_sSerialNumber.c_str());
       DriverLog("device render model: \"%s\"\n", m_sRenderModelPath.c_str());
       DriverLog("device input binding: \"%s\"\n", m_sBindPath.c_str());
 
@@ -110,11 +102,12 @@ namespace hobovr {
 
     void *GetComponent(const char *pchComponentNameAndVersion) {
       for (auto &i : m_vComponents) {
-        if (!_stricmp(pchComponentNameAndVersion, i.componentNameAndVersion))
+        if (!_stricmp(pchComponentNameAndVersion, i.componentNameAndVersion)){
           switch(i.compType){
             case THobovrCompType::THobovrComp_ExtendedDisplay:
-              return i.componentHandle.extDisplay.get();
+              return std::get<std::shared_ptr<HobovrExtendedDisplayComponent>>(i.compHandle).get();
           }
+        }
       }
 
       return NULL;
