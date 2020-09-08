@@ -97,22 +97,16 @@ public:
     m_flIPD = vr::VRSettings()->GetFloat(k_pch_Hobovr_Section,
                                          k_pch_Hobovr_IPD_Float);
 
-    hobovr::HobovrComponent extDisplayComp;
-    extDisplayComp.componentHandle = std::make_shared<hobovr::HobovrExtendedDisplayComponent>();
-    extDisplayComp.componentNameAndVersion = extDisplayComp.componentHandle->GetComponentNameAndVersion();
+    hobovr::HobovrComponent_t extDisplayComp = {hobovr::THobovrCompType::THobovrComp_ExtendedDisplay};
+    extDisplayComp.componentHandle.extDisplay = std::make_shared<hobovr::HobovrExtendedDisplayComponent>();
+    extDisplayComp.componentNameAndVersion = extDisplayComp.componentHandle.extDisplay->GetComponentNameAndVersion();
     m_vComponents.push_back(extDisplayComp);
 
     m_Pose.poseTimeOffset = 0;
     m_Pose.poseIsValid = true;
     m_Pose.deviceIsConnected = true;
     m_Pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    m_Pose.vecWorldFromDriverTranslation[0] = 0.;
-    m_Pose.vecWorldFromDriverTranslation[1] = 0.;
-    m_Pose.vecWorldFromDriverTranslation[2] = 0.;
     m_Pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    m_Pose.vecDriverFromHeadTranslation[0] = 0.;
-    m_Pose.vecDriverFromHeadTranslation[1] = 0.;
-    m_Pose.vecDriverFromHeadTranslation[2] = 0.;
     m_Pose.vecPosition[0] = 0.;
     m_Pose.vecPosition[1] = 0.;
     m_Pose.vecPosition[2] = 0.;
@@ -189,12 +183,7 @@ public:
     m_Pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
     m_Pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
     m_Pose.vecPosition[0] = 0.;
-    if (side) {
-      m_Pose.vecPosition[1] = 1.;
-    } else {
-      m_Pose.vecPosition[1] = 1.1;
-    }
-
+    m_Pose.vecPosition[1] = 0.;
     m_Pose.vecPosition[2] = 0.;
     m_Pose.willDriftInYaw = true;
   }
@@ -333,7 +322,7 @@ public:
     m_Pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
     m_Pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
     m_Pose.vecPosition[0] = 0.;
-
+    m_Pose.vecPosition[1] = 0.;
     m_Pose.vecPosition[2] = 0.;
     m_Pose.willDriftInYaw = true;
   }

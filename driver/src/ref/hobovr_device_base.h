@@ -6,11 +6,29 @@
 #include "hobovr_components.h"
 
 namespace hobovr {
-  struct HobovrComponent
+  enum THobovrCompType
   {
-    const char* componentNameAndVersion;
-    std::shared_ptr<HobovrExtendedDisplayComponent> componentHandle;
+    THobovrComp_None = 0,
+    THobovrComp_ExtendedDisplay = 100, // HobovrExtendedDisplayComponent component
   };
+
+  typedef union
+  {
+    std::shared_ptr<HobovrExtendedDisplayComponent> extDisplay;
+  } Hobovr_ComponentHandle_t;
+
+  struct HobovrComponent_t
+  {
+    uint32_t compType; // THobovrCompType enum, component type
+    const char* componentNameAndVersion; // for component search
+
+    // must be the end of the struct as its size is variable
+    Hobovr_ComponentHandle_t componentHandle;
+  };
+  // example:
+  // hobovr::HobovrComponent_t extDisplayComp = {hobovr::THobovrCompType::THobovrComp_ExtendedDisplay};
+  // extDisplayComp.componentHandle.extDisplay = std::make_shared<hobovr::HobovrExtendedDisplayComponent>();
+  // extDisplayComp.componentNameAndVersion = extDisplayComp.componentHandle.extDisplay->GetComponentNameAndVersion();
 
   // should be publicly inherited
   template<bool UseHaptics>
@@ -93,7 +111,10 @@ namespace hobovr {
     void *GetComponent(const char *pchComponentNameAndVersion) {
       for (auto &i : m_vComponents) {
         if (!_stricmp(pchComponentNameAndVersion, i.componentNameAndVersion))
-          return i.componentHandle.get();
+          switch(i.compType){
+            case THobovrCompType::THobovrComp_ExtendedDisplay:
+              return i.componentHandle.extDisplay.get();
+          }
       }
 
       return NULL;
@@ -136,7 +157,7 @@ namespace hobovr {
 
     vr::VRInputComponentHandle_t m_compHaptic;
 
-    std::vector<HobovrComponent> m_vComponents; // components that this device has, should be populated in the constructor of the derived class
+    std::vector<HobovrComponent_t> m_vComponents; // components that this device has, should be populated in the constructor of the derived class
 
     // hobovr stuff
     std::shared_ptr<SockReceiver::DriverReceiver> m_pBrodcastSocket;
