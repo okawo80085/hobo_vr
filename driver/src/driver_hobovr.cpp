@@ -98,11 +98,8 @@ public:
     m_flIPD = vr::VRSettings()->GetFloat(k_pch_Hobovr_Section,
                                          k_pch_Hobovr_IPD_Float);
 
-    hobovr::HobovrComponent_t extDisplayComp = {hobovr::THobovrCompType::THobovrComp_ExtendedDisplay};
+    hobovr::HobovrComponent_t extDisplayComp = {hobovr::THobovrCompType::THobovrComp_ExtendedDisplay, vr::IVRDisplayComponent_Version};
     extDisplayComp.compHandle = std::make_shared<hobovr::HobovrExtendedDisplayComponent>();
-    // wtf
-    extDisplayComp.componentNameAndVersion = std::get<std::shared_ptr<hobovr::HobovrExtendedDisplayComponent>>(extDisplayComp.compHandle)->GetComponentNameAndVersion();
-    // shrek help
     m_vComponents.push_back(extDisplayComp);
 
     m_Pose.poseTimeOffset = 0;
@@ -384,10 +381,11 @@ enum THobovrDeviceType
   THobovrDevice_Controller = 103,
   THobovrDevice_Tracker = 105,
 };
+
 struct HoboDevice_t
 {
   uint32_t deviceType; // THobovrDeviceType enum
-  std::variant<std::shared_ptr<HeadsetDriver>, std::shared_ptr<ControllerDriver>, std::shared_ptr<TrackerDriver>> deviceHandle; // ahhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
+  std::variant<HeadsetDriver*, ControllerDriver*, TrackerDriver*> deviceHandle; // ahhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
 };
 
 class CServerDriver_hobovr : public IServerTrackedDeviceProvider {
@@ -447,35 +445,35 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
   for (std::string i:remotePoser->device_list) {
     if (i == "h") {
       HoboDevice_t temp = {THobovrDeviceType::THobovrDevice_Hmd};
-      temp.deviceHandle = std::make_shared<HeadsetDriver>("h" + std::to_string(counter_hmd));
+      temp.deviceHandle = new HeadsetDriver("h" + std::to_string(counter_hmd));
 
       m_vDevices.push_back(temp);
       vr::VRServerDriverHost()->TrackedDeviceAdded(
-                    std::get<std::shared_ptr<HeadsetDriver>>(m_vDevices.back().deviceHandle)->GetSerialNumber().c_str(), vr::TrackedDeviceClass_HMD,
-                    std::get<std::shared_ptr<HeadsetDriver>>(m_vDevices.back().deviceHandle).get());
+                    std::get<HeadsetDriver*>(m_vDevices.back().deviceHandle)->GetSerialNumber().c_str(), vr::TrackedDeviceClass_HMD,
+                    std::get<HeadsetDriver*>(m_vDevices.back().deviceHandle));
 
       counter_hmd++;
 
     } else if (i == "c") {
       HoboDevice_t temp = {THobovrDeviceType::THobovrDevice_Controller};
-      temp.deviceHandle = std::make_shared<ControllerDriver>(controller_hs, "c" + std::to_string(counter_cntrlr), remotePoser);
+      temp.deviceHandle = new ControllerDriver(controller_hs, "c" + std::to_string(counter_cntrlr), remotePoser);
 
       m_vDevices.push_back(temp);
       vr::VRServerDriverHost()->TrackedDeviceAdded(
-                    std::get<std::shared_ptr<ControllerDriver>>(m_vDevices.back().deviceHandle)->GetSerialNumber().c_str(), vr::TrackedDeviceClass_Controller,
-                    std::get<std::shared_ptr<ControllerDriver>>(m_vDevices.back().deviceHandle).get());
+                    std::get<ControllerDriver*>(m_vDevices.back().deviceHandle)->GetSerialNumber().c_str(), vr::TrackedDeviceClass_Controller,
+                    std::get<ControllerDriver*>(m_vDevices.back().deviceHandle));
 
       controller_hs = (controller_hs) ? 0 : 1;
       counter_cntrlr++;
 
     } else if (i == "t") {
       HoboDevice_t temp = {THobovrDeviceType::THobovrDevice_Tracker};
-      temp.deviceHandle = std::make_shared<TrackerDriver>("t" + std::to_string(counter_trkr), remotePoser);
+      temp.deviceHandle = new TrackerDriver("t" + std::to_string(counter_trkr), remotePoser);
 
       m_vDevices.push_back(temp);
       vr::VRServerDriverHost()->TrackedDeviceAdded(
-                    std::get<std::shared_ptr<TrackerDriver>>(m_vDevices.back().deviceHandle)->GetSerialNumber().c_str(), vr::TrackedDeviceClass_GenericTracker,
-                    std::get<std::shared_ptr<TrackerDriver>>(m_vDevices.back().deviceHandle).get());
+                    std::get<TrackerDriver*>(m_vDevices.back().deviceHandle)->GetSerialNumber().c_str(), vr::TrackedDeviceClass_GenericTracker,
+                    std::get<TrackerDriver*>(m_vDevices.back().deviceHandle));
 
       counter_trkr++;
 
@@ -504,6 +502,20 @@ void CServerDriver_hobovr::Cleanup() {
     m_pMyTread->join();
     delete m_pMyTread;
     m_pMyTread = nullptr;
+  }
+
+  for (auto &i : m_vDevices) {
+    switch (i.deviceType){
+      case THobovrDeviceType::THobovrDevice_Hmd:
+        delete std::get<HeadsetDriver*>(i.deviceHandle);
+        break;
+      case THobovrDeviceType::THobovrDevice_Controller:
+        delete std::get<ControllerDriver*>(i.deviceHandle);
+        break;
+      case THobovrDeviceType::THobovrDevice_Tracker:
+        delete std::get<TrackerDriver*>(i.deviceHandle);
+        break;
+    }
   }
 
   m_vDevices.clear();
@@ -540,15 +552,15 @@ void CServerDriver_hobovr::myTrackingThread() {
       switch (m_vDevices[i].deviceType)
       {
         case THobovrDeviceType::THobovrDevice_Hmd:
-          std::get<std::shared_ptr<HeadsetDriver>>(m_vDevices[i].deviceHandle)->RunFrame(tempPose[i]);
+          std::get<HeadsetDriver*>(m_vDevices[i].deviceHandle)->RunFrame(tempPose[i]);
           break;
 
         case THobovrDeviceType::THobovrDevice_Controller:
-          std::get<std::shared_ptr<ControllerDriver>>(m_vDevices[i].deviceHandle)->RunFrame(tempPose[i]);
+          std::get<ControllerDriver*>(m_vDevices[i].deviceHandle)->RunFrame(tempPose[i]);
           break;
 
         case THobovrDeviceType::THobovrDevice_Tracker:
-          std::get<std::shared_ptr<TrackerDriver>>(m_vDevices[i].deviceHandle)->RunFrame(tempPose[i]);
+          std::get<TrackerDriver*>(m_vDevices[i].deviceHandle)->RunFrame(tempPose[i]);
           break;
 
       }
@@ -560,13 +572,13 @@ void CServerDriver_hobovr::myTrackingThread() {
 
         switch (i.deviceType){
           case THobovrDeviceType::THobovrDevice_Hmd:
-            std::get<std::shared_ptr<HeadsetDriver>>(i.deviceHandle)->ProcessEvent(vrEvent);
+            std::get<HeadsetDriver*>(i.deviceHandle)->ProcessEvent(vrEvent);
             break;
           case THobovrDeviceType::THobovrDevice_Controller:
-            std::get<std::shared_ptr<ControllerDriver>>(i.deviceHandle)->ProcessEvent(vrEvent);
+            std::get<ControllerDriver*>(i.deviceHandle)->ProcessEvent(vrEvent);
             break;
           case THobovrDeviceType::THobovrDevice_Tracker:
-            std::get<std::shared_ptr<TrackerDriver>>(i.deviceHandle)->ProcessEvent(vrEvent);
+            std::get<TrackerDriver*>(i.deviceHandle)->ProcessEvent(vrEvent);
             break;
         }
 
