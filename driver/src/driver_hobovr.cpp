@@ -83,7 +83,7 @@ static const char *const k_pch_Hobovr_IPD_Float = "IPD";
 
 class HeadsetDriver : public hobovr::HobovrDevice<false> {
 public:
-  HeadsetDriver(std::string myserial, std::string modelsuffix = "hobovr_hmd_m"):HobovrDevice(myserial, modelsuffix) {
+  HeadsetDriver(std::string myserial):HobovrDevice(myserial, "hobovr_hmd_m") {
 
     m_sRenderModelPath = "{hobovr}/rendermodels/hobovr_hmd_mh0";
     m_sBindPath = "{hobovr}/input/hobovr_hmd_profile.json";
