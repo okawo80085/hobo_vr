@@ -34,6 +34,12 @@ namespace hobovr {
 
     }
 
+    virtual ~HobovrDevice(){
+      m_vComponents.clear();
+      DriverLog("device with serial %s yeeted out of existence\n", m_sSerialNumber.c_str());
+
+    }
+
     virtual EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId) {
       m_unObjectId = unObjectId;
       m_ulPropertyContainer =
@@ -53,8 +59,8 @@ namespace hobovr {
           m_sBindPath.c_str());
 
       DriverLog("device activated\n");
-      DriverLog("device render model: %s\n", m_sRenderModelPath.c_str());
-      DriverLog("device input binding: %s\n", m_sBindPath.c_str());
+      DriverLog("device render model: \"%s\"\n", m_sRenderModelPath.c_str());
+      DriverLog("device input binding: \"%s\"\n", m_sBindPath.c_str());
 
       if constexpr(UseHaptics) {
         DriverLog("device haptics added\n");

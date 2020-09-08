@@ -386,7 +386,7 @@ public:
 // Purpose: serverDriver
 //-----------------------------------------------------------------------------
 
-struct HoboDevice
+struct HoboDevice_t
 {
   enum{HMD, CNTRLR, TRKR} tag;
   bool active;
@@ -418,7 +418,7 @@ public:
   void myTrackingThread();
 
 private:
-  std::vector<HoboDevice> m_vDevices;
+  std::vector<HoboDevice_t> m_vDevices;
 
   std::shared_ptr<SockReceiver::DriverReceiver> remotePoser;
 
@@ -443,6 +443,7 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
     remotePoser->start();
   } catch (...){
     DriverLog("remotePoser broke on create or broke on start, either way you're fucked\n");
+    return VRInitError_Init_WebServerFailed;
   }
 
   int counter_hmd = 0;
@@ -452,7 +453,7 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
 
   for (std::string i:remotePoser->device_list) {
     if (i == "h") {
-      HoboDevice temp = {HoboDevice::HMD, 1};
+      HoboDevice_t temp = {HoboDevice_t::HMD, 1};
       temp.hmd = new HeadsetDriver("h" + std::to_string(counter_hmd));
 
       m_vDevices.push_back(temp);
@@ -463,7 +464,7 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
       counter_hmd++;
 
     } else if (i == "c") {
-      HoboDevice temp = {HoboDevice::CNTRLR, 1};
+      HoboDevice_t temp = {HoboDevice_t::CNTRLR, 1};
       temp.controller = new ControllerDriver(controller_hs, "c" + std::to_string(counter_cntrlr), remotePoser);
 
       m_vDevices.push_back(temp);
@@ -475,7 +476,7 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
       counter_cntrlr++;
 
     } else if (i == "t") {
-      HoboDevice temp = {HoboDevice::TRKR, 1};
+      HoboDevice_t temp = {HoboDevice_t::TRKR, 1};
       temp.tracker = new TrackerDriver("t" + std::to_string(counter_trkr), remotePoser);
 
       m_vDevices.push_back(temp);
@@ -487,7 +488,7 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
 
     } else {
       DriverLog("unsopported device type: %s", i);
-      return VRInitError_Driver_Failed;
+      return VRInitError_VendorSpecific_HmdFound_ConfigFailedSanityCheck;
     }
   }
 
@@ -504,7 +505,6 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
 }
 
 void CServerDriver_hobovr::Cleanup() {
-  CleanupDriverLog();
 
   m_bMyThreadKeepAlive = false;
   if (m_pMyTread) {
@@ -514,27 +514,26 @@ void CServerDriver_hobovr::Cleanup() {
   }
 
   for (auto &i: m_vDevices) {
+    i.active = 0;
     switch (i.tag) {
-      case HoboDevice::HMD:
+      case HoboDevice_t::HMD:
         delete i.hmd;
-        i.hmd = NULL;
-        i.active = 0;
+        i.hmd = nullptr;
         break;
 
-      case HoboDevice::CNTRLR:
+      case HoboDevice_t::CNTRLR:
         delete i.controller;
-        i.controller = NULL;
-        i.active = 0;
+        i.controller = nullptr;
         break;
 
-      case HoboDevice::TRKR:
+      case HoboDevice_t::TRKR:
         delete i.tracker;
-        i.tracker = NULL;
-        i.active = 0;
+        i.tracker = nullptr;
         break;
     }
   }
 
+  CleanupDriverLog();
   VR_CLEANUP_SERVER_DRIVER_CONTEXT();
 }
 
@@ -556,23 +555,24 @@ void CServerDriver_hobovr::myTrackingThread() {
 
   std::vector<std::vector<double>> tempPose;
   vr::VREvent_t vrEvent;
+  auto iTotal_devices = m_vDevices.size();
 
   while (m_bMyThreadKeepAlive) {
     tempPose = remotePoser->get_pose();
 
-    for (int i=0; i<m_vDevices.size(); i++){
+    for (int i=0; i<iTotal_devices; i++){
       if (m_vDevices[i].active) {
         switch (m_vDevices[i].tag)
         {
-          case HoboDevice::HMD:
+          case HoboDevice_t::HMD:
             m_vDevices[i].hmd->RunFrame(tempPose[i]);
             break;
 
-          case HoboDevice::CNTRLR:
+          case HoboDevice_t::CNTRLR:
             m_vDevices[i].controller->RunFrame(tempPose[i]);
             break;
 
-          case HoboDevice::TRKR:
+          case HoboDevice_t::TRKR:
             m_vDevices[i].tracker->RunFrame(tempPose[i]);
             break;
 
@@ -582,8 +582,18 @@ void CServerDriver_hobovr::myTrackingThread() {
 
     while (vr::VRServerDriverHost()->PollNextEvent(&vrEvent, sizeof(vrEvent))) {
       for (auto &i : m_vDevices){
-        if (i.active && i.tag == HoboDevice::CNTRLR) {
-          i.controller->ProcessEvent(vrEvent);
+        if (i.active) {
+          switch (i.tag){
+            case HoboDevice_t::HMD:
+              i.hmd->ProcessEvent(vrEvent);
+              break;
+            case HoboDevice_t::CNTRLR:
+              i.controller->ProcessEvent(vrEvent);
+              break;
+            case HoboDevice_t::TRKR:
+              i.tracker->ProcessEvent(vrEvent);
+              break;
+          }
         }
       }
     }

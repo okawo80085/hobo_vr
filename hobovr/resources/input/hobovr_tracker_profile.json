@@ -53,6 +53,10 @@
     "/pose/raw" : {
         "type" : "pose",
         "binding_image_point" : [ 63, 148 ]
+    },
+    "/output/haptic" : {
+        "type" : "vibration",
+        "binding_image_point" : [ 63, 148 ]
     }
   }
 }
