@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 set(TARGET_NAME driver_hobovr)
+set(CMAKE_CXX_STANDARD 17)
 
 add_library(${TARGET_NAME} SHARED
   driverlog.cpp

@@ -3,18 +3,7 @@
 #ifndef VR_DEVICE_BASE_H
 #define VR_DEVICE_BASE_H
 
-#if defined(_WIN32)
-#include "receiver_win.h"
-
-#elif defined(__linux__)
-#include "receiver_linux.h"
-#define _stricmp strcasecmp
-
-#endif
-
-#include <vecotr>
-#include <string>
-#include <memory>
+#include "hobovr_components.h"
 
 namespace hobovr {
   struct HobovrComponent
@@ -24,6 +13,7 @@ namespace hobovr {
   };
 
   // should be publicly inherited
+  template<bool UseHaptics>
   class HobovrDevice: public vr::ITrackedDeviceServerDriver {
   public:
     HobovrDevice(std::string myserial, std::string deviceBreed,
@@ -38,8 +28,8 @@ namespace hobovr {
       DriverLog("device breed: %s\n", deviceBreed);
       DriverLog("device serial: %s\n", m_sSerialNumber);
 
-      if (m_pBrodcastSocket == nullptr)
-        DriverLog("communication socket object is not supplied, this device will not have back communication features(e.g. haptics)\n");
+      if (m_pBrodcastSocket == nullptr && UseHaptics)
+        DriverLog("communication socket object is not supplied and haptics are enabled, this device will break on back communication requests(e.g. haptics)\n");
 
     }
 
@@ -61,7 +51,7 @@ namespace hobovr {
           m_ulPropertyContainer, Prop_InputProfilePath_String,
           m_sBindPath.c_str());
 
-      if constexpr(m_pBrodcastSocket != nullptr) {
+      if constexpr(UseHaptics) {
           vr::VRDriverInput()->CreateHapticComponent(m_ulPropertyContainer,
                                                        "/output/haptic", &m_compHaptic);
       }
@@ -98,9 +88,9 @@ namespace hobovr {
     std::string GetSerialNumber() const { return m_sSerialNumber; }
 
     void ProcessEvent(const vr::VREvent_t &vrEvent) {
-      switch (vrEvent.eventType) {
-        if constexpr(m_pBrodcastSocket != nullptr)
-        {
+      if constexpr(UseHaptics)
+      {
+        switch (vrEvent.eventType) {
           case vr::VREvent_Input_HapticVibration: {
             if (vrEvent.data.hapticVibration.componentHandle == m_compHaptic) {
                 // haptic!
@@ -114,8 +104,8 @@ namespace hobovr {
       }
     }
 
-    template <typename Number>
-    virtual void RunFrame(std::vector<Number> &trackingPacket) = 0; // override this
+    template<typename Number>
+    void RunFrame(std::vector<Number> &trackingPacket) {} // override this
 
   protected:
     // openvr api stuff

@@ -4,9 +4,10 @@
 #define HOBOVR_COMPONENTS_H
 
 namespace hobovr {
+  static const bool HobovrExtDisplayComp_doLensStuff = true;
   class HobovrExtendedDisplayComponent: public vr::IVRDisplayComponent{
   public:
-    HobovrExtendedDisplayComponent(bool doUndistort=true): m_bDoLensUndistort(doUndistort){
+    HobovrExtendedDisplayComponent(){
 
       m_nWindowX = vr::VRSettings()->GetInt32(k_pch_Hobovr_Section,
                                               k_pch_Hobovr_WindowX_Int32);
@@ -80,7 +81,7 @@ namespace hobovr {
                                                       float fV) {
       DistortionCoordinates_t coordinates;
 
-      if constexpr(m_bDoLensUndistort) {
+      if constexpr(HobovrExtDisplayComp_doLensStuff) {
         // Distortion for lens implementation from
         // https://github.com/HelenXR/openvr_survivor/blob/master/src/head_mount_display_device.cc
         float hX;
@@ -128,8 +129,6 @@ namespace hobovr {
     float m_fDistortionK2;
     float m_fZoomWidth;
     float m_fZoomHeight;
-
-    bool m_bDoLensUndistort;
   };
 }
 

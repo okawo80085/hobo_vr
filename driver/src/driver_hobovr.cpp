@@ -73,92 +73,56 @@ static const char *const k_pch_Hobovr_ZoomHeight_Float = "ZoomHeight";
 static const char *const k_pch_Hobovr_UduDeviceManifestList_String = "DeviceManifestList";
 static const char *const k_pch_Hobovr_IPD_Float = "IPD";
 
+// include has to be here, dont ask
+#include "ref/hobovr_device_base.h"
+#include "ref/hobovr_components.h"
+
 //-----------------------------------------------------------------------------
-// Purpose: hmdDriver
+// Purpose: hmd device implementation
 //-----------------------------------------------------------------------------
 
-class HeadsetDriver : public vr::ITrackedDeviceServerDriver,
-                      public vr::IVRDisplayComponent {
+class HeadsetDriver : public hobovr::HobovrDevice<false> {
 public:
-  HeadsetDriver(std::string myserial) {
-    m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
-    m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
+  HeadsetDriver(std::string myserial, std::string modelsuffix = "hobovr_hmd_m"):HobovrDevice(myserial, modelsuffix) {
 
-    DriverLog("Using settings values\n");
-    m_flIPD = vr::VRSettings()->GetFloat(k_pch_Hobovr_Section,
-                                         k_pch_Hobovr_IPD_Float);
-
-    m_sSerialNumber = myserial;
-
-    m_sModelNumber = "hobovr_hmd_m" + m_sSerialNumber;
     m_sRenderModelPath = "{hobovr}/rendermodels/hobovr_hmd_mh0";
+    m_sBindPath = "{hobovr}/input/hobovr_hmd_profile.json";
 
-    m_nWindowX = vr::VRSettings()->GetInt32(k_pch_Hobovr_Section,
-                                            k_pch_Hobovr_WindowX_Int32);
-    m_nWindowY = vr::VRSettings()->GetInt32(k_pch_Hobovr_Section,
-                                            k_pch_Hobovr_WindowY_Int32);
-    m_nWindowWidth = vr::VRSettings()->GetInt32(k_pch_Hobovr_Section,
-                                                k_pch_Hobovr_WindowWidth_Int32);
-    m_nWindowHeight = vr::VRSettings()->GetInt32(
-        k_pch_Hobovr_Section, k_pch_Hobovr_WindowHeight_Int32);
-    m_nRenderWidth = vr::VRSettings()->GetInt32(k_pch_Hobovr_Section,
-                                                k_pch_Hobovr_RenderWidth_Int32);
-    m_nRenderHeight = vr::VRSettings()->GetInt32(
-        k_pch_Hobovr_Section, k_pch_Hobovr_RenderHeight_Int32);
     m_flSecondsFromVsyncToPhotons = vr::VRSettings()->GetFloat(
         k_pch_Hobovr_Section, k_pch_Hobovr_SecondsFromVsyncToPhotons_Float);
+
     m_flDisplayFrequency = vr::VRSettings()->GetFloat(
         k_pch_Hobovr_Section, k_pch_Hobovr_DisplayFrequency_Float);
 
-    m_fDistortionK1 = vr::VRSettings()->GetFloat(
-        k_pch_Hobovr_Section, k_pch_Hobovr_DistortionK1_Float);
-    m_fDistortionK2 = vr::VRSettings()->GetFloat(
-        k_pch_Hobovr_Section, k_pch_Hobovr_DistortionK2_Float);
-    m_fZoomWidth = vr::VRSettings()->GetFloat(k_pch_Hobovr_Section,
-                                              k_pch_Hobovr_ZoomWidth_Float);
-    m_fZoomHeight = vr::VRSettings()->GetFloat(k_pch_Hobovr_Section,
-                                               k_pch_Hobovr_ZoomHeight_Float);
+    m_flIPD = vr::VRSettings()->GetFloat(k_pch_Hobovr_Section,
+                                         k_pch_Hobovr_IPD_Float);
 
-    DriverLog("Serial Number: %s\n", m_sSerialNumber.c_str());
-    DriverLog("Model Number: %s\n", m_sModelNumber.c_str());
-    DriverLog("Window: %d %d %d %d\n", m_nWindowX, m_nWindowY, m_nWindowWidth,
-              m_nWindowHeight);
-    DriverLog("Render Target: %d %d\n", m_nRenderWidth, m_nRenderHeight);
-    DriverLog("Seconds from Vsync to Photons: %f\n",
-              m_flSecondsFromVsyncToPhotons);
-    DriverLog("Display Frequency: %f\n", m_flDisplayFrequency);
-    DriverLog("IPD: %f\n", m_flIPD);
+    hobovr::HobovrComponent extDisplayComp;
+    extDisplayComp.componentHandle = std::make_shared<hobovr::HobovrExtendedDisplayComponent>();
+    extDisplayComp.componentNameAndVersion = extDisplayComp.componentHandle->GetComponentNameAndVersion();
+    m_vComponents.push_back(extDisplayComp);
 
-    pose.poseTimeOffset = 0;
-    pose.poseIsValid = true;
-    pose.deviceIsConnected = true;
-    pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    pose.vecWorldFromDriverTranslation[0] = 0.;
-    pose.vecWorldFromDriverTranslation[1] = 0.;
-    pose.vecWorldFromDriverTranslation[2] = 0.;
-    pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    pose.vecDriverFromHeadTranslation[0] = 0.;
-    pose.vecDriverFromHeadTranslation[1] = 0.;
-    pose.vecDriverFromHeadTranslation[2] = 0.;
-    pose.vecPosition[0] = 0.;
-    pose.vecPosition[1] = 0.;
-    pose.vecPosition[2] = 0.;
-    pose.willDriftInYaw = true;
+    m_Pose.poseTimeOffset = 0;
+    m_Pose.poseIsValid = true;
+    m_Pose.deviceIsConnected = true;
+    m_Pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
+    m_Pose.vecWorldFromDriverTranslation[0] = 0.;
+    m_Pose.vecWorldFromDriverTranslation[1] = 0.;
+    m_Pose.vecWorldFromDriverTranslation[2] = 0.;
+    m_Pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
+    m_Pose.vecDriverFromHeadTranslation[0] = 0.;
+    m_Pose.vecDriverFromHeadTranslation[1] = 0.;
+    m_Pose.vecDriverFromHeadTranslation[2] = 0.;
+    m_Pose.vecPosition[0] = 0.;
+    m_Pose.vecPosition[1] = 0.;
+    m_Pose.vecPosition[2] = 0.;
+    m_Pose.willDriftInYaw = true;
   }
 
   virtual ~HeadsetDriver() {}
 
   virtual EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId) {
-    m_unObjectId = unObjectId;
-    m_ulPropertyContainer =
-        vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
-
-    vr::VRProperties()->SetStringProperty(
-        m_ulPropertyContainer, Prop_ModelNumber_String, m_sModelNumber.c_str());
-    vr::VRProperties()->SetStringProperty(m_ulPropertyContainer,
-                                          Prop_RenderModelName_String,
-                                          m_sRenderModelPath.c_str());
-
+    HobovrDevice::Activate(unObjectId); // let the parent handle boilerplate stuff
 
     vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer,
                                          Prop_UserIpdMeters_Float, m_flIPD);
@@ -171,174 +135,43 @@ public:
                                          Prop_SecondsFromVsyncToPhotons_Float,
                                          m_flSecondsFromVsyncToPhotons);
 
-    // return a constant that's not 0 (invalid) or 1 (reserved for Oculus)
-    vr::VRProperties()->SetUint64Property(m_ulPropertyContainer,
-                                          Prop_CurrentUniverseId_Uint64, 2);
-
     // avoid "not fullscreen" warnings from vrmonitor
     vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
                                         Prop_IsOnDesktop_Bool, false);
 
-    vr::VRProperties()->SetStringProperty(
-        m_ulPropertyContainer, Prop_InputProfilePath_String,
-        "{hobovr}/input/hobovr_hmd_profile.json");
-
     return VRInitError_None;
   }
 
-  virtual void Deactivate() {
-    m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
-  }
+  template <typename Number>
+  void RunFrame(std::vector<Number> &trackingPacket) {
+    m_Pose.result = TrackingResult_Running_OK;
+    m_Pose.vecPosition[0] = trackingPacket[0];
+    m_Pose.vecPosition[1] = trackingPacket[1];
+    m_Pose.vecPosition[2] = trackingPacket[2];
 
-  virtual void EnterStandby() {}
+    m_Pose.qRotation =
+        HmdQuaternion_Init(trackingPacket[3], trackingPacket[4],
+                           trackingPacket[5], trackingPacket[6]);
 
-  void *GetComponent(const char *pchComponentNameAndVersion) {
-    if (!_stricmp(pchComponentNameAndVersion,
-                  vr::IVRDisplayComponent_Version)) {
-      return (vr::IVRDisplayComponent *)this;
-    }
-    // override this to add a component to a driver
-    return NULL;
-  }
+    m_Pose.vecVelocity[0] = trackingPacket[7];
+    m_Pose.vecVelocity[1] = trackingPacket[8];
+    m_Pose.vecVelocity[2] = trackingPacket[9];
 
-  virtual void PowerOff() {}
-
-  /** debug request from a client */
-  virtual void DebugRequest(const char *pchRequest, char *pchResponseBuffer,
-                            uint32_t unResponseBufferSize) {
-    if (unResponseBufferSize >= 1)
-      pchResponseBuffer[0] = 0;
-  }
-
-  virtual void GetWindowBounds(int32_t *pnX, int32_t *pnY, uint32_t *pnWidth,
-                               uint32_t *pnHeight) {
-    *pnX = m_nWindowX;
-    *pnY = m_nWindowY;
-    *pnWidth = m_nWindowWidth;
-    *pnHeight = m_nWindowHeight;
-  }
-
-  virtual bool IsDisplayOnDesktop() { return true; }
-
-  virtual bool IsDisplayRealDisplay() { return false; }
-
-  virtual void GetRecommendedRenderTargetSize(uint32_t *pnWidth,
-                                              uint32_t *pnHeight) {
-    *pnWidth = m_nRenderWidth;
-    *pnHeight = m_nRenderHeight;
-  }
-
-  virtual void GetEyeOutputViewport(EVREye eEye, uint32_t *pnX, uint32_t *pnY,
-                                    uint32_t *pnWidth, uint32_t *pnHeight) {
-    *pnY = 0;
-    *pnWidth = m_nWindowWidth / 2;
-    *pnHeight = m_nWindowHeight;
-
-    if (eEye == Eye_Left) {
-      *pnX = 0;
-    } else {
-      *pnX = m_nWindowWidth / 2;
-    }
-  }
-
-  virtual void GetProjectionRaw(EVREye eEye, float *pfLeft, float *pfRight,
-                                float *pfTop, float *pfBottom) {
-    *pfLeft = -1.0;
-    *pfRight = 1.0;
-    *pfTop = -1.0;
-    *pfBottom = 1.0;
-  }
-
-  virtual DistortionCoordinates_t ComputeDistortion(EVREye eEye, float fU,
-                                                    float fV) {
-    DistortionCoordinates_t coordinates;
-
-    // Distortion for lens implementation from
-    // https://github.com/HelenXR/openvr_survivor/blob/master/src/head_mount_display_device.cc
-    float hX;
-    float hY;
-    double rr;
-    double r2;
-    double theta;
-
-    rr = sqrt((fU - 0.5f) * (fU - 0.5f) + (fV - 0.5f) * (fV - 0.5f));
-    r2 = rr * (1 + m_fDistortionK1 * (rr * rr) +
-               m_fDistortionK2 * (rr * rr * rr * rr));
-    theta = atan2(fU - 0.5f, fV - 0.5f);
-    hX = float(sin(theta) * r2) * m_fZoomWidth;
-    hY = float(cos(theta) * r2) * m_fZoomHeight;
-
-    coordinates.rfBlue[0] = hX + 0.5f;
-    coordinates.rfBlue[1] = hY + 0.5f;
-    coordinates.rfGreen[0] = hX + 0.5f;
-    coordinates.rfGreen[1] = hY + 0.5f;
-    coordinates.rfRed[0] = hX + 0.5f;
-    coordinates.rfRed[1] = hY + 0.5f;
-    // coordinates.rfBlue[0] = fU;
-    // coordinates.rfBlue[1] = fV;
-    // coordinates.rfGreen[0] = fU;
-    // coordinates.rfGreen[1] = fV;
-    // coordinates.rfRed[0] = fU;
-    // coordinates.rfRed[1] = fV;
-
-    return coordinates;
-  }
-
-  virtual DriverPose_t GetPose() { return pose; }
-
-  void RunFrame(std::vector<double> &lastRead) {
-    pose.result = TrackingResult_Running_OK;
-    pose.vecPosition[0] = lastRead[0];
-    pose.vecPosition[1] = lastRead[1];
-    pose.vecPosition[2] = lastRead[2];
-
-    pose.qRotation =
-        HmdQuaternion_Init(lastRead[3], lastRead[4],
-                           lastRead[5], lastRead[6]);
-
-    pose.vecVelocity[0] = lastRead[7];
-    pose.vecVelocity[1] = lastRead[8];
-    pose.vecVelocity[2] = lastRead[9];
-
-    pose.vecAngularVelocity[0] = lastRead[10];
-    pose.vecAngularVelocity[1] = lastRead[11];
-    pose.vecAngularVelocity[2] = lastRead[12];
+    m_Pose.vecAngularVelocity[0] = trackingPacket[10];
+    m_Pose.vecAngularVelocity[1] = trackingPacket[11];
+    m_Pose.vecAngularVelocity[2] = trackingPacket[12];
 
     if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
       vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
-          m_unObjectId, pose, sizeof(DriverPose_t));
+          m_unObjectId, m_Pose, sizeof(DriverPose_t));
     }
   }
 
-  std::string GetSerialNumber() const { return m_sSerialNumber; }
 
 private:
-  vr::TrackedDeviceIndex_t m_unObjectId;
-  vr::PropertyContainerHandle_t m_ulPropertyContainer;
-
-  vr::VRInputComponentHandle_t m_compSystem;
-
-
-  std::string m_sSerialNumber;
-  std::string m_sModelNumber;
-  std::string m_sRenderModelPath;
-
-  int32_t m_nWindowX;
-  int32_t m_nWindowY;
-  int32_t m_nWindowWidth;
-  int32_t m_nWindowHeight;
-  int32_t m_nRenderWidth;
-  int32_t m_nRenderHeight;
   float m_flSecondsFromVsyncToPhotons;
   float m_flDisplayFrequency;
   float m_flIPD;
-
-  float m_fDistortionK1;
-  float m_fDistortionK2;
-  float m_fZoomWidth;
-  float m_fZoomHeight;
-
-  DriverPose_t pose;
 };
 
 //-----------------------------------------------------------------------------
