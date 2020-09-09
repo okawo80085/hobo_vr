@@ -1,6 +1,7 @@
+#pragma once
+
 #ifndef UTIL_H
 #define UTIL_H
-#pragma once
 
 #include <vector>
 #include <iterator>
@@ -131,6 +132,11 @@ namespace SockReceiver {
     }
     return false;
   }
+
+  class Callback {
+  public:
+    virtual void OnPacket(std::string packet) {};
+  };
 }
 
 #endif // UTIL_H

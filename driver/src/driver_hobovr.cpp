@@ -171,8 +171,8 @@ private:
 //-----------------------------------------------------------------------------
 class ControllerDriver : public hobovr::HobovrDevice<true> {
 public:
-  ControllerDriver(bool side, std::string myserial, const std::shared_ptr<SockReceiver::DriverReceiver> remotePoser):
-  HobovrDevice(myserial, "hobovr_controller_m", remotePoser), m_bHandSide(side) {
+  ControllerDriver(bool side, std::string myserial, const std::shared_ptr<SockReceiver::DriverReceiver> ReceiverObj):
+  HobovrDevice(myserial, "hobovr_controller_m", ReceiverObj), m_bHandSide(side) {
 
     m_sRenderModelPath = "{hobovr}/rendermodels/hobovr_controller_mc0";
     m_sBindPath = "{hobovr}/input/hobovr_controller_profile.json";
@@ -310,8 +310,8 @@ private:
 //-----------------------------------------------------------------------------
 class TrackerDriver : public hobovr::HobovrDevice<true> {
 public:
-  TrackerDriver(std::string myserial, const std::shared_ptr<SockReceiver::DriverReceiver> remotePoser):
-  HobovrDevice(myserial, "hobovr_tracker_m", remotePoser) {
+  TrackerDriver(std::string myserial, const std::shared_ptr<SockReceiver::DriverReceiver> ReceiverObj):
+  HobovrDevice(myserial, "hobovr_tracker_m", ReceiverObj) {
 
     m_sRenderModelPath = "{hobovr}/rendermodels/hobovr_tracker_mt0";
     m_sBindPath = "{hobovr}/input/hobovr_tracker_profile.json";
@@ -388,12 +388,9 @@ struct HoboDevice_t
   std::variant<HeadsetDriver*, ControllerDriver*, TrackerDriver*> deviceHandle; // ahhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
 };
 
-class CServerDriver_hobovr : public IServerTrackedDeviceProvider {
+class CServerDriver_hobovr : public IServerTrackedDeviceProvider, public SockReceiver::Callback {
 public:
-  CServerDriver_hobovr() {
-    m_bMyThreadKeepAlive = false;
-    m_pMyTread = nullptr;
-  }
+  CServerDriver_hobovr() {}
   virtual EVRInitError Init(vr::IVRDriverContext *pDriverContext);
   virtual void Cleanup();
   virtual const char *const *GetInterfaceVersions() {
@@ -402,19 +399,14 @@ public:
   virtual bool ShouldBlockStandbyMode() { return false; }
   virtual void EnterStandby() {}
   virtual void LeaveStandby() {}
-  virtual void RunFrame() {}
-  static void myThreadEnter(CServerDriver_hobovr *pClass) {
-    pClass->myTrackingThread();
-  }
-  void myTrackingThread();
+  virtual void RunFrame();
+  void OnPacket(std::string);
 
 private:
   std::vector<HoboDevice_t> m_vDevices;
 
-  std::shared_ptr<SockReceiver::DriverReceiver> remotePoser;
+  std::shared_ptr<SockReceiver::DriverReceiver> m_pSocketComm;
 
-  bool m_bMyThreadKeepAlive;
-  std::thread *m_pMyTread;
 };
 
 EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
@@ -430,10 +422,10 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
   DriverLog("device manifest list: '%s'\n", uduThing.c_str());
 
   try{
-    remotePoser = std::make_shared<SockReceiver::DriverReceiver>(uduThing);
-    remotePoser->start();
+    m_pSocketComm = std::make_shared<SockReceiver::DriverReceiver>(uduThing);
+    m_pSocketComm->start();
   } catch (...){
-    DriverLog("remotePoser broke on create or broke on start, either way you're fucked\n");
+    DriverLog("m_pSocketComm broke on create or broke on start, either way you're fucked\n");
     return VRInitError_Init_WebServerFailed;
   }
 
@@ -442,7 +434,7 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
   int counter_trkr = 0;
   int controller_hs = 1;
 
-  for (std::string i:remotePoser->device_list) {
+  for (std::string i:m_pSocketComm->device_list) {
     if (i == "h") {
       HoboDevice_t temp = {THobovrDeviceType::THobovrDevice_Hmd};
       temp.deviceHandle = new HeadsetDriver("h" + std::to_string(counter_hmd));
@@ -456,7 +448,7 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
 
     } else if (i == "c") {
       HoboDevice_t temp = {THobovrDeviceType::THobovrDevice_Controller};
-      temp.deviceHandle = new ControllerDriver(controller_hs, "c" + std::to_string(counter_cntrlr), remotePoser);
+      temp.deviceHandle = new ControllerDriver(controller_hs, "c" + std::to_string(counter_cntrlr), m_pSocketComm);
 
       m_vDevices.push_back(temp);
       vr::VRServerDriverHost()->TrackedDeviceAdded(
@@ -468,7 +460,7 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
 
     } else if (i == "t") {
       HoboDevice_t temp = {THobovrDeviceType::THobovrDevice_Tracker};
-      temp.deviceHandle = new TrackerDriver("t" + std::to_string(counter_trkr), remotePoser);
+      temp.deviceHandle = new TrackerDriver("t" + std::to_string(counter_trkr), m_pSocketComm);
 
       m_vDevices.push_back(temp);
       vr::VRServerDriverHost()->TrackedDeviceAdded(
@@ -483,26 +475,13 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
     }
   }
 
-  m_bMyThreadKeepAlive = true;
-  std::this_thread::sleep_for(std::chrono::microseconds(20000));
-  m_pMyTread = new std::thread(myThreadEnter, this);
-
-  if (!m_pMyTread) {
-    DriverLog("failed to start tracking thread\n");
-    return VRInitError_Driver_Failed;
-  }
+  m_pSocketComm->setCallback(this);
 
   return VRInitError_None;
 }
 
 void CServerDriver_hobovr::Cleanup() {
-
-  m_bMyThreadKeepAlive = false;
-  if (m_pMyTread) {
-    m_pMyTread->join();
-    delete m_pMyTread;
-    m_pMyTread = nullptr;
-  }
+  m_pSocketComm->stop();
 
   for (auto &i : m_vDevices) {
     switch (i.deviceType){
@@ -524,30 +503,12 @@ void CServerDriver_hobovr::Cleanup() {
   VR_CLEANUP_SERVER_DRIVER_CONTEXT();
 }
 
-void CServerDriver_hobovr::myTrackingThread() {
-#if defined(_WINDOWS)
+void CServerDriver_hobovr::OnPacket(std::string packet) {
+  auto tempPose = SockReceiver::split_pk(SockReceiver::split_to_number<double>(SockReceiver::split_string(packet)), m_pSocketComm->eps);
 
-  DWORD dwError, dwThreadPri;
-
-  if(!SetThreadPriority(GetCurrentThread(), 15))
+  if (SockReceiver::get_poses_shape(tempPose) == m_pSocketComm->eps)
   {
-    dwError = GetLastError();
-    DriverLog("failed to set tracking thread priority to 15: %d", dwError);
-  }
-
-  dwThreadPri = GetThreadPriority(GetCurrentThread());
-  DriverLog("current tracking thread priority: %d", dwThreadPri);
-#endif
-
-
-  std::vector<std::vector<double>> tempPose;
-  vr::VREvent_t vrEvent;
-  auto iTotal_devices = m_vDevices.size();
-
-  while (m_bMyThreadKeepAlive) {
-    tempPose = remotePoser->get_pose();
-
-    for (int i=0; i<iTotal_devices; i++){
+    for (int i=0; i<m_vDevices.size(); i++){
 
       switch (m_vDevices[i].deviceType)
       {
@@ -567,25 +528,39 @@ void CServerDriver_hobovr::myTrackingThread() {
 
     }
 
-    while (vr::VRServerDriverHost()->PollNextEvent(&vrEvent, sizeof(vrEvent))) {
-      for (auto &i : m_vDevices){
+  } else {
+    DriverLog("received packet shape miss match, expected:");
+    for (auto i : m_pSocketComm->eps)
+      DriverLog("%d, ", i);
 
-        switch (i.deviceType){
-          case THobovrDeviceType::THobovrDevice_Hmd:
-            std::get<HeadsetDriver*>(i.deviceHandle)->ProcessEvent(vrEvent);
-            break;
-          case THobovrDeviceType::THobovrDevice_Controller:
-            std::get<ControllerDriver*>(i.deviceHandle)->ProcessEvent(vrEvent);
-            break;
-          case THobovrDeviceType::THobovrDevice_Tracker:
-            std::get<TrackerDriver*>(i.deviceHandle)->ProcessEvent(vrEvent);
-            break;
-        }
+    DriverLog("got:");
+    for (auto i : SockReceiver::get_poses_shape(tempPose))
+      DriverLog("%d, ", i);
 
+    DriverLog("double check your udu settings\n");
+  }
+
+
+}
+
+void CServerDriver_hobovr::RunFrame() {
+  vr::VREvent_t vrEvent;
+  while (vr::VRServerDriverHost()->PollNextEvent(&vrEvent, sizeof(vrEvent))) {
+    for (auto &i : m_vDevices){
+
+      switch (i.deviceType){
+        case THobovrDeviceType::THobovrDevice_Hmd:
+          std::get<HeadsetDriver*>(i.deviceHandle)->ProcessEvent(vrEvent);
+          break;
+        case THobovrDeviceType::THobovrDevice_Controller:
+          std::get<ControllerDriver*>(i.deviceHandle)->ProcessEvent(vrEvent);
+          break;
+        case THobovrDeviceType::THobovrDevice_Tracker:
+          std::get<TrackerDriver*>(i.deviceHandle)->ProcessEvent(vrEvent);
+          break;
       }
-    }
 
-    std::this_thread::sleep_for(std::chrono::microseconds(200));
+    }
   }
 }
 
