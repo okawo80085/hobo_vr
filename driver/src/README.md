@@ -21,3 +21,15 @@ just use the `driver_hobovr.vcxproj` file, so far its the only thing that works
 
 ### install compiled
 move the the 32 bit dll into `hobovr/bin/win32` and 64 bit dll into `hobovr/bin/win64`
+
+
+# wtf is all of this?!?!?!
+
+## `hobovr_device_base.h`
+`hobovr::HobovrDevice<bool UseHaptics>(std::string myserial, std::string deviceBreed, const std::shared_ptr<SockReceiver::DriverReceiver> commSocket=nullptr)`
+
+this thing is supposed to be a base class for any vr device, set `UseHaptics` to `true` if you want the device to have haptics compiled
+
+publicly inherit it, give it a serial number, a device breed(model number will then be `deviceBreed + serialNumber`)
+
+it does allot of boiler plait stuff, in fact the only 2 methods that you might want to override are `Activate()`(but still call the parent `Activate`) and `RunFrame()`(this should update the device's pose `m_Pose`)
