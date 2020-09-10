@@ -73,6 +73,7 @@ static const char *const k_pch_Hobovr_ZoomWidth_Float = "ZoomWidth";
 static const char *const k_pch_Hobovr_ZoomHeight_Float = "ZoomHeight";
 static const char *const k_pch_Hobovr_UduDeviceManifestList_String = "DeviceManifestList";
 static const char *const k_pch_Hobovr_IPD_Float = "IPD";
+static const char *const k_pch_Hobovr_EyeGapOffset_Int = "EyeGapOffsetPx";
 
 // include has to be here, dont ask
 #include "ref/hobovr_device_base.h"

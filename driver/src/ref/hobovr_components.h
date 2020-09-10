@@ -31,10 +31,14 @@ namespace hobovr {
       m_fZoomHeight = vr::VRSettings()->GetFloat(k_pch_Hobovr_Section,
                                                  k_pch_Hobovr_ZoomHeight_Float);
 
+      m_iEyeGapOff = vr::VRSettings()->GetFloat(k_pch_Hobovr_Section,
+                                                 k_pch_Hobovr_EyeGapOffset_Int);
+
       DriverLog("Extended display component created\n");
       DriverLog("distortion koeffs: k1=%f, k2=%f\n", m_fDistortionK1, m_fDistortionK2);
       DriverLog("render targer: %dx%d\n", m_nRenderWidth, m_nRenderHeight);
       DriverLog("window targer: %dx%d\n", m_nWindowWidth, m_nWindowHeight);
+      DriverLog("eye gap offset: %d", m_iEyeGapOff);
 
     }
 
@@ -65,7 +69,7 @@ namespace hobovr {
       if (eEye == vr::Eye_Left) {
         *pnX = 0;
       } else {
-        *pnX = m_nWindowWidth / 2;
+        *pnX = m_nWindowWidth / 2 + m_iEyeGapOff;
       }
     }
 
@@ -124,6 +128,7 @@ namespace hobovr {
     int32_t m_nWindowHeight;
     int32_t m_nRenderWidth;
     int32_t m_nRenderHeight;
+    int32_t m_iEyeGapOff;
 
     float m_fDistortionK1;
     float m_fDistortionK2;
