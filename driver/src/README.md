@@ -30,6 +30,14 @@ move the the 32 bit dll into `hobovr/bin/win32` and 64 bit dll into `hobovr/bin/
 
 this thing is supposed to be a base class for any vr device, set `UseHaptics` to `true` if you want the device to have haptics compiled
 
-publicly inherit it, give it a serial number, a device breed(model number will then be `deviceBreed + serialNumber`)
+publicly inherit it, give it a serial number, a device breed(model number will then be `deviceBreed + serialNumber`), oh and give it a socket object pointer if you enabled haptics
 
-it does allot of boiler plait stuff, in fact the only 2 methods that you might want to override are `Activate()`(but still call the parent `Activate`) and `RunFrame()`(this should update the device's pose `m_Pose`)
+it does allot of boiler plait stuff, in fact the only 2 methods that you might want to override are `Activate()`(but still call the parent `Activate` before anything else) and `RunFrame()`(this should update the device's pose `m_Pose`)
+
+oh also you need to supply your own `m_sRenderModelPath` and `m_sBindPath`
+
+another thing it does is manage components, just init it a component, add it to the `m_vComponents` vector and you can forget about it, just don't everride the `GetComponent()` member function
+
+also parent `ProcessEvent()` will process haptic events using that socket object if it is used in a `vr::VREvent_t` processing loop
+
+oh and lasttly, don't put event processing in tracking loops
