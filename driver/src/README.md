@@ -41,3 +41,9 @@ another thing it does is manage components, just init it a component, add it to 
 also parent `ProcessEvent()` will process haptic events using that socket object if it is used in a `vr::VREvent_t` processing loop
 
 oh and lasttly, don't put event processing in tracking loops
+
+## `hobovr_components.h`
+
+supported implementations of components are in it, thats it really
+
+rn it only has the `vr::IVRDisplayComponent` implemented
