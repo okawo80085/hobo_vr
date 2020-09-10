@@ -78,8 +78,9 @@ class PoserTemplateBase(object):
             "send": KeepAliveTrigger(True, send_delay),
             "recv": KeepAliveTrigger(True, recv_delay),
         }
-        self.last_read = ""
+        self.last_read = b""
         self.id_message = "holla"
+        self._terminator = b"\r\n"
 
     async def _socket_init(self):
         """
@@ -102,10 +103,21 @@ class PoserTemplateBase(object):
 
     async def recv(self):
         """Receive messages thread."""
+        backBuffer = bytearray()
         while self.coro_keep_alive["recv"].is_alive:
             try:
-                data = await u.read3(self.reader)
-                self.last_read = data
+                # data = await u.read3(self.reader)
+                # self.last_read = data
+                data = await self.reader.read(200)
+                backBuffer.extend(data)
+
+                if not data:
+                    break
+
+                while self._terminator in backBuffer:
+                    self.last_read, backBuffer = backBuffer.split(
+                        self._terminator, 1
+                    )
 
                 await asyncio.sleep(self.coro_keep_alive["recv"].sleep_delay)
             except Exception as e:

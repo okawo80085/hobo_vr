@@ -45,7 +45,13 @@ class Server:
 
         addr = writer.get_extra_info("peername")
 
-        id_msg, first_msg = (await reader.read(50)).split(self._terminator)
+        first_msg = await reader.read(50)
+
+        if self._terminator in first_msg:
+            id_msg, first_msg = first_msg.split(self._terminator)
+
+        else:
+            id_msg = b""
 
         me = (
             addr,
