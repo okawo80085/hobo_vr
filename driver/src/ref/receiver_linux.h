@@ -1,7 +1,8 @@
+#pragma once
+
 #ifndef RECEIVER_H
 #define RECEIVER_H
 
-#pragma once
 
 #include "util.h"
 
@@ -54,6 +55,7 @@ namespace SockReceiver {
   class DriverReceiver {
   public:
     std::vector<std::string> device_list;
+    std::vector<int> eps;
 
     DriverReceiver(std::string expected_pose_struct, char *port="6969", char* addr="127.0.01") {
       std::regex rgx("[htc]");
@@ -62,13 +64,6 @@ namespace SockReceiver {
       this->eps = split_to_number<int>(get_rgx_vector(expected_pose_struct, rgx2));
       this->device_list = get_rgx_vector(expected_pose_struct, rgx);
       this->threadKeepAlive = false;
-
-      for (auto i:this->eps) {
-        std::vector<double> temp;
-        for (auto j=0; j<i; j++)
-          temp.push_back(0.0);
-        this->newPose.push_back(temp);
-      }
 
       // placeholders
       int portno, n;
@@ -140,6 +135,7 @@ namespace SockReceiver {
 
     void stop() {
       this->threadKeepAlive = false;
+      m_pCallback = &m_NullCallback;
       if (this->m_pMyTread) {
         this->m_pMyTread->join();
         delete this->m_pMyTread;
@@ -158,18 +154,21 @@ namespace SockReceiver {
       this->mySoc = NULL;
     }
 
-    std::vector<std::vector<double>> get_pose() {return this->newPose;}
-
     int send2(const char* message) {
       return write(this->mySoc, message, (int)strlen(message));
     }
 
+    void setCallback(Callback* pCb){
+      m_pCallback = pCb;
+    }
+
   private:
-    std::vector<std::vector<double>> newPose;
-    std::vector<int> eps;
 
     bool threadKeepAlive;
     std::thread *m_pMyTread;
+
+    Callback m_NullCallback;
+    Callback* m_pCallback = &m_NullCallback;
 
     int mySoc;
 
@@ -179,7 +178,7 @@ namespace SockReceiver {
 
     void my_thread() {
       char mybuff[2048];
-      int numbit = 0, msglen, packErr;
+      int numbit = 0, msglen;
 
 #ifdef DRIVERLOG_H
       DriverLog("receiver thread started\n");
@@ -193,17 +192,9 @@ namespace SockReceiver {
 
           if (msglen == -1) break;
 
-          auto packet = buffer_to_string(mybuff, msglen-1);
+          m_pCallback->OnPacket(buffer_to_string(mybuff, msglen-1));
 
           remove_message_from_buffer(mybuff, numbit, msglen);
-
-          packErr = this->_handle(packet);
-          if (packErr != -1) {
-            // log packet process error
-#ifdef DRIVERLOG_H
-            DriverLog("receiver packet size miss match, got %d\n", packErr);
-#endif
-          }
 
           std::this_thread::sleep_for(std::chrono::microseconds(1));
 
@@ -221,17 +212,17 @@ namespace SockReceiver {
 
     }
 
-    int _handle(std::string packet) {
-      auto temp = split_pk(split_to_number<double>(split_string(packet)), this->eps);
+    // int _handle(std::string packet) {
+    //   auto temp = split_pk(split_to_number<double>(split_string(packet)), this->eps);
 
-      if (get_poses_shape(temp) == this->eps) {
-        this->newPose = temp;
-        return -1;
-      }
+    //   if (get_poses_shape(temp) == this->eps) {
+    //     this->newPose = temp;
+    //     return -1;
+    //   }
 
-      else
-        return temp.size();
-    }
+    //   else
+    //     return temp.size();
+    // }
   };
 
 };

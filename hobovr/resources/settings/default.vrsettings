@@ -14,6 +14,8 @@
       "DistortionK2" : 0.5,
       "ZoomWidth" : 1,
       "ZoomHeight" : 1,
+      "EyeGapOffsetPx" : 0,
+      "PoseTimeOffset" : 0.0,
       "DeviceManifestList" : "h13 c22 c22"
    }
 }

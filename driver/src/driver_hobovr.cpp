@@ -30,6 +30,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
+#include <variant>
 
 using namespace vr;
 
@@ -53,21 +54,6 @@ inline HmdQuaternion_t HmdQuaternion_Init(double w, double x, double y,
   return quat;
 }
 
-inline void HmdMatrix_SetIdentity(HmdMatrix34_t *pMatrix) {
-  pMatrix->m[0][0] = 1.f;
-  pMatrix->m[0][1] = 0.f;
-  pMatrix->m[0][2] = 0.f;
-  pMatrix->m[0][3] = 0.f;
-  pMatrix->m[1][0] = 0.f;
-  pMatrix->m[1][1] = 1.f;
-  pMatrix->m[1][2] = 0.f;
-  pMatrix->m[1][3] = 0.f;
-  pMatrix->m[2][0] = 0.f;
-  pMatrix->m[2][1] = 0.f;
-  pMatrix->m[2][2] = 1.f;
-  pMatrix->m[2][3] = 0.f;
-}
-
 // keys for use with the settings API
 static const char *const k_pch_Hobovr_Section = "driver_hobovr";
 static const char *const k_pch_Hobovr_WindowX_Int32 = "windowX";
@@ -87,92 +73,41 @@ static const char *const k_pch_Hobovr_ZoomWidth_Float = "ZoomWidth";
 static const char *const k_pch_Hobovr_ZoomHeight_Float = "ZoomHeight";
 static const char *const k_pch_Hobovr_UduDeviceManifestList_String = "DeviceManifestList";
 static const char *const k_pch_Hobovr_IPD_Float = "IPD";
+static const char *const k_pch_Hobovr_EyeGapOffset_Int = "EyeGapOffsetPx";
+static const char *const k_pch_Hobovr_PoseTimeOffset_Float = "PoseTimeOffset";
+
+// include has to be here, dont ask
+#include "ref/hobovr_device_base.h"
+#include "ref/hobovr_components.h"
 
 //-----------------------------------------------------------------------------
-// Purpose: hmdDriver
+// Purpose: hmd device implementation
 //-----------------------------------------------------------------------------
 
-class HeadsetDriver : public vr::ITrackedDeviceServerDriver,
-                      public vr::IVRDisplayComponent {
+class HeadsetDriver : public hobovr::HobovrDevice<false> {
 public:
-  HeadsetDriver(std::string myserial) {
-    m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
-    m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
+  HeadsetDriver(std::string myserial):HobovrDevice(myserial, "hobovr_hmd_m") {
 
-    DriverLog("Using settings values\n");
-    m_flIPD = vr::VRSettings()->GetFloat(k_pch_Hobovr_Section,
-                                         k_pch_Hobovr_IPD_Float);
-
-    m_sSerialNumber = myserial;
-
-    m_sModelNumber = "hobovr_hmd_m" + m_sSerialNumber;
     m_sRenderModelPath = "{hobovr}/rendermodels/hobovr_hmd_mh0";
+    m_sBindPath = "{hobovr}/input/hobovr_hmd_profile.json";
 
-    m_nWindowX = vr::VRSettings()->GetInt32(k_pch_Hobovr_Section,
-                                            k_pch_Hobovr_WindowX_Int32);
-    m_nWindowY = vr::VRSettings()->GetInt32(k_pch_Hobovr_Section,
-                                            k_pch_Hobovr_WindowY_Int32);
-    m_nWindowWidth = vr::VRSettings()->GetInt32(k_pch_Hobovr_Section,
-                                                k_pch_Hobovr_WindowWidth_Int32);
-    m_nWindowHeight = vr::VRSettings()->GetInt32(
-        k_pch_Hobovr_Section, k_pch_Hobovr_WindowHeight_Int32);
-    m_nRenderWidth = vr::VRSettings()->GetInt32(k_pch_Hobovr_Section,
-                                                k_pch_Hobovr_RenderWidth_Int32);
-    m_nRenderHeight = vr::VRSettings()->GetInt32(
-        k_pch_Hobovr_Section, k_pch_Hobovr_RenderHeight_Int32);
     m_flSecondsFromVsyncToPhotons = vr::VRSettings()->GetFloat(
         k_pch_Hobovr_Section, k_pch_Hobovr_SecondsFromVsyncToPhotons_Float);
+
     m_flDisplayFrequency = vr::VRSettings()->GetFloat(
         k_pch_Hobovr_Section, k_pch_Hobovr_DisplayFrequency_Float);
 
-    m_fDistortionK1 = vr::VRSettings()->GetFloat(
-        k_pch_Hobovr_Section, k_pch_Hobovr_DistortionK1_Float);
-    m_fDistortionK2 = vr::VRSettings()->GetFloat(
-        k_pch_Hobovr_Section, k_pch_Hobovr_DistortionK2_Float);
-    m_fZoomWidth = vr::VRSettings()->GetFloat(k_pch_Hobovr_Section,
-                                              k_pch_Hobovr_ZoomWidth_Float);
-    m_fZoomHeight = vr::VRSettings()->GetFloat(k_pch_Hobovr_Section,
-                                               k_pch_Hobovr_ZoomHeight_Float);
+    m_flIPD = vr::VRSettings()->GetFloat(k_pch_Hobovr_Section,
+                                         k_pch_Hobovr_IPD_Float);
 
-    DriverLog("Serial Number: %s\n", m_sSerialNumber.c_str());
-    DriverLog("Model Number: %s\n", m_sModelNumber.c_str());
-    DriverLog("Window: %d %d %d %d\n", m_nWindowX, m_nWindowY, m_nWindowWidth,
-              m_nWindowHeight);
-    DriverLog("Render Target: %d %d\n", m_nRenderWidth, m_nRenderHeight);
-    DriverLog("Seconds from Vsync to Photons: %f\n",
-              m_flSecondsFromVsyncToPhotons);
-    DriverLog("Display Frequency: %f\n", m_flDisplayFrequency);
-    DriverLog("IPD: %f\n", m_flIPD);
-
-    pose.poseTimeOffset = 0;
-    pose.poseIsValid = true;
-    pose.deviceIsConnected = true;
-    pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    pose.vecWorldFromDriverTranslation[0] = 0.;
-    pose.vecWorldFromDriverTranslation[1] = 0.;
-    pose.vecWorldFromDriverTranslation[2] = 0.;
-    pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    pose.vecDriverFromHeadTranslation[0] = 0.;
-    pose.vecDriverFromHeadTranslation[1] = 0.;
-    pose.vecDriverFromHeadTranslation[2] = 0.;
-    pose.vecPosition[0] = 0.;
-    pose.vecPosition[1] = 0.;
-    pose.vecPosition[2] = 0.;
-    pose.willDriftInYaw = true;
+    hobovr::HobovrComponent_t extDisplayComp = {hobovr::THobovrCompType::THobovrComp_ExtendedDisplay, vr::IVRDisplayComponent_Version};
+    extDisplayComp.compHandle = std::make_shared<hobovr::HobovrExtendedDisplayComponent>();
+    m_vComponents.push_back(extDisplayComp);
   }
 
-  virtual ~HeadsetDriver() {}
-
   virtual EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId) {
-    m_unObjectId = unObjectId;
-    m_ulPropertyContainer =
-        vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
+    HobovrDevice::Activate(unObjectId); // let the parent handle boilerplate stuff
 
-    vr::VRProperties()->SetStringProperty(
-        m_ulPropertyContainer, Prop_ModelNumber_String, m_sModelNumber.c_str());
-    vr::VRProperties()->SetStringProperty(m_ulPropertyContainer,
-                                          Prop_RenderModelName_String,
-                                          m_sRenderModelPath.c_str());
     vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer,
                                          Prop_UserIpdMeters_Float, m_flIPD);
     vr::VRProperties()->SetFloatProperty(
@@ -184,227 +119,62 @@ public:
                                          Prop_SecondsFromVsyncToPhotons_Float,
                                          m_flSecondsFromVsyncToPhotons);
 
-    // return a constant that's not 0 (invalid) or 1 (reserved for Oculus)
-    vr::VRProperties()->SetUint64Property(m_ulPropertyContainer,
-                                          Prop_CurrentUniverseId_Uint64, 2);
-
     // avoid "not fullscreen" warnings from vrmonitor
     vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
                                         Prop_IsOnDesktop_Bool, false);
 
-    vr::VRProperties()->SetStringProperty(
-        m_ulPropertyContainer, Prop_InputProfilePath_String,
-        "{hobovr}/input/hobovr_hmd_profile.json");
-
     return VRInitError_None;
   }
 
-  virtual void Deactivate() {
-    m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
-  }
+  template <typename Number>
+  void RunFrame(std::vector<Number> &trackingPacket) {
+    m_Pose.result = TrackingResult_Running_OK;
+    m_Pose.vecPosition[0] = trackingPacket[0];
+    m_Pose.vecPosition[1] = trackingPacket[1];
+    m_Pose.vecPosition[2] = trackingPacket[2];
 
-  virtual void EnterStandby() {}
+    m_Pose.qRotation =
+        HmdQuaternion_Init(trackingPacket[3], trackingPacket[4],
+                           trackingPacket[5], trackingPacket[6]);
 
-  void *GetComponent(const char *pchComponentNameAndVersion) {
-    if (!_stricmp(pchComponentNameAndVersion,
-                  vr::IVRDisplayComponent_Version)) {
-      return (vr::IVRDisplayComponent *)this;
-    }
-    // override this to add a component to a driver
-    return NULL;
-  }
+    m_Pose.vecVelocity[0] = trackingPacket[7];
+    m_Pose.vecVelocity[1] = trackingPacket[8];
+    m_Pose.vecVelocity[2] = trackingPacket[9];
 
-  virtual void PowerOff() {}
-
-  /** debug request from a client */
-  virtual void DebugRequest(const char *pchRequest, char *pchResponseBuffer,
-                            uint32_t unResponseBufferSize) {
-    if (unResponseBufferSize >= 1)
-      pchResponseBuffer[0] = 0;
-  }
-
-  virtual void GetWindowBounds(int32_t *pnX, int32_t *pnY, uint32_t *pnWidth,
-                               uint32_t *pnHeight) {
-    *pnX = m_nWindowX;
-    *pnY = m_nWindowY;
-    *pnWidth = m_nWindowWidth;
-    *pnHeight = m_nWindowHeight;
-  }
-
-  virtual bool IsDisplayOnDesktop() { return true; }
-
-  virtual bool IsDisplayRealDisplay() { return false; }
-
-  virtual void GetRecommendedRenderTargetSize(uint32_t *pnWidth,
-                                              uint32_t *pnHeight) {
-    *pnWidth = m_nRenderWidth;
-    *pnHeight = m_nRenderHeight;
-  }
-
-  virtual void GetEyeOutputViewport(EVREye eEye, uint32_t *pnX, uint32_t *pnY,
-                                    uint32_t *pnWidth, uint32_t *pnHeight) {
-    *pnY = 0;
-    *pnWidth = m_nWindowWidth / 2;
-    *pnHeight = m_nWindowHeight;
-
-    if (eEye == Eye_Left) {
-      *pnX = 0;
-    } else {
-      *pnX = m_nWindowWidth / 2;
-    }
-  }
-
-  virtual void GetProjectionRaw(EVREye eEye, float *pfLeft, float *pfRight,
-                                float *pfTop, float *pfBottom) {
-    *pfLeft = -1.0;
-    *pfRight = 1.0;
-    *pfTop = -1.0;
-    *pfBottom = 1.0;
-  }
-
-  virtual DistortionCoordinates_t ComputeDistortion(EVREye eEye, float fU,
-                                                    float fV) {
-    DistortionCoordinates_t coordinates;
-
-    // Distortion for lens implementation from
-    // https://github.com/HelenXR/openvr_survivor/blob/master/src/head_mount_display_device.cc
-    float hX;
-    float hY;
-    double rr;
-    double r2;
-    double theta;
-
-    rr = sqrt((fU - 0.5f) * (fU - 0.5f) + (fV - 0.5f) * (fV - 0.5f));
-    r2 = rr * (1 + m_fDistortionK1 * (rr * rr) +
-               m_fDistortionK2 * (rr * rr * rr * rr));
-    theta = atan2(fU - 0.5f, fV - 0.5f);
-    hX = float(sin(theta) * r2) * m_fZoomWidth;
-    hY = float(cos(theta) * r2) * m_fZoomHeight;
-
-    coordinates.rfBlue[0] = hX + 0.5f;
-    coordinates.rfBlue[1] = hY + 0.5f;
-    coordinates.rfGreen[0] = hX + 0.5f;
-    coordinates.rfGreen[1] = hY + 0.5f;
-    coordinates.rfRed[0] = hX + 0.5f;
-    coordinates.rfRed[1] = hY + 0.5f;
-    // coordinates.rfBlue[0] = fU;
-    // coordinates.rfBlue[1] = fV;
-    // coordinates.rfGreen[0] = fU;
-    // coordinates.rfGreen[1] = fV;
-    // coordinates.rfRed[0] = fU;
-    // coordinates.rfRed[1] = fV;
-
-    return coordinates;
-  }
-
-  virtual DriverPose_t GetPose() { return pose; }
-
-  void RunFrame(std::vector<double> &lastRead) {
-    pose.result = TrackingResult_Running_OK;
-    pose.vecPosition[0] = lastRead[0];
-    pose.vecPosition[1] = lastRead[1];
-    pose.vecPosition[2] = lastRead[2];
-
-    pose.qRotation =
-        HmdQuaternion_Init(lastRead[3], lastRead[4],
-                           lastRead[5], lastRead[6]);
-
-    pose.vecVelocity[0] = lastRead[7];
-    pose.vecVelocity[1] = lastRead[8];
-    pose.vecVelocity[2] = lastRead[9];
-
-    pose.vecAngularVelocity[0] = lastRead[10];
-    pose.vecAngularVelocity[1] = lastRead[11];
-    pose.vecAngularVelocity[2] = lastRead[12];
+    m_Pose.vecAngularVelocity[0] = trackingPacket[10];
+    m_Pose.vecAngularVelocity[1] = trackingPacket[11];
+    m_Pose.vecAngularVelocity[2] = trackingPacket[12];
 
     if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
       vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
-          m_unObjectId, pose, sizeof(DriverPose_t));
+          m_unObjectId, m_Pose, sizeof(DriverPose_t));
     }
   }
 
-  std::string GetSerialNumber() const { return m_sSerialNumber; }
 
 private:
-  vr::TrackedDeviceIndex_t m_unObjectId;
-  vr::PropertyContainerHandle_t m_ulPropertyContainer;
-
-  vr::VRInputComponentHandle_t m_compSystem;
-
-
-  std::string m_sSerialNumber;
-  std::string m_sModelNumber;
-  std::string m_sRenderModelPath;
-
-  int32_t m_nWindowX;
-  int32_t m_nWindowY;
-  int32_t m_nWindowWidth;
-  int32_t m_nWindowHeight;
-  int32_t m_nRenderWidth;
-  int32_t m_nRenderHeight;
   float m_flSecondsFromVsyncToPhotons;
   float m_flDisplayFrequency;
   float m_flIPD;
-
-  float m_fDistortionK1;
-  float m_fDistortionK2;
-  float m_fZoomWidth;
-  float m_fZoomHeight;
-
-  DriverPose_t pose;
 };
 
 //-----------------------------------------------------------------------------
-// Purpose:controllerDriver
+// Purpose:controller device implementation
 //-----------------------------------------------------------------------------
-class ControllerDriver : public vr::ITrackedDeviceServerDriver {
+class ControllerDriver : public hobovr::HobovrDevice<true> {
 public:
-  ControllerDriver(bool side, std::string myserial, SockReceiver::DriverReceiver *remotePoser) {
-    this->remotePoser = remotePoser;
-    m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
-    m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
+  ControllerDriver(bool side, std::string myserial, const std::shared_ptr<SockReceiver::DriverReceiver> ReceiverObj):
+  HobovrDevice(myserial, "hobovr_controller_m", ReceiverObj), m_bHandSide(side) {
 
-    m_sSerialNumber = myserial;
-    m_sModelNumber = "hobovr_controller_m" + m_sSerialNumber;
     m_sRenderModelPath = "{hobovr}/rendermodels/hobovr_controller_mc0";
-
-    poseController.poseTimeOffset = 0;
-    poseController.poseIsValid = true;
-    poseController.deviceIsConnected = true;
-    poseController.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    poseController.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    poseController.vecPosition[0] = 0.;
-    if (side) {
-      poseController.vecPosition[1] = 1.;
-    } else {
-      poseController.vecPosition[1] = 1.1;
-    }
-
-    poseController.vecPosition[2] = 0.;
-    poseController.willDriftInYaw = true;
-    handSide_ = side;
+    m_sBindPath = "{hobovr}/input/hobovr_controller_profile.json";
   }
 
-  virtual ~ControllerDriver() {}
-
   virtual EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId) {
-    m_unObjectId = unObjectId;
-    m_ulPropertyContainer =
-        vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
+    HobovrDevice::Activate(unObjectId); // let the parent handle boilerplate stuff
 
-    vr::VRProperties()->SetStringProperty(
-        m_ulPropertyContainer, Prop_ModelNumber_String, m_sModelNumber.c_str());
-    vr::VRProperties()->SetStringProperty(m_ulPropertyContainer,
-                                          Prop_RenderModelName_String,
-                                          m_sRenderModelPath.c_str());
 
-    // return a constant that's not 0 (invalid) or 1 (reserved for Oculus)
-    vr::VRProperties()->SetUint64Property(m_ulPropertyContainer,
-                                          Prop_CurrentUniverseId_Uint64, 2);
-
-    // even though we won't ever track we want to pretend to be the right hand
-    // so binding will work as expected
-    if (handSide_) {
+    if (m_bHandSide) {
       vr::VRProperties()->SetInt32Property(m_ulPropertyContainer,
                                            Prop_ControllerRoleHint_Int32,
                                            TrackedControllerRole_RightHand);
@@ -413,13 +183,6 @@ public:
                                            Prop_ControllerRoleHint_Int32,
                                            TrackedControllerRole_LeftHand);
     }
-
-    // this file tells the UI what to show the user for binding this controller
-    // as well as what default bindings should
-    // be for legacy or other apps
-    vr::VRProperties()->SetStringProperty(
-        m_ulPropertyContainer, Prop_InputProfilePath_String,
-        "{hobovr}/input/hobovr_controller_profile.json");
 
     // create all the bool input components
     vr::VRDriverInput()->CreateBooleanComponent(
@@ -448,59 +211,35 @@ public:
         m_ulPropertyContainer, "/input/trackpad/y", &m_compTrackpadY,
         vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedTwoSided);
 
-    // create our haptic component
-    vr::VRDriverInput()->CreateHapticComponent(m_ulPropertyContainer,
-                                               "/output/haptic", &m_compHaptic);
 
     return VRInitError_None;
   }
 
-  virtual void Deactivate() {
-    m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
-  }
-
-  virtual void EnterStandby() {}
-
-  void *GetComponent(const char *pchComponentNameAndVersion) {
-    // override this to add a component to a driver
-    return NULL;
-  }
-
-  virtual void PowerOff() {}
-
-  /** debug request from a client */
-  virtual void DebugRequest(const char *pchRequest, char *pchResponseBuffer,
-                            uint32_t unResponseBufferSize) {
-    if (unResponseBufferSize >= 1)
-      pchResponseBuffer[0] = 0;
-  }
-
-  virtual DriverPose_t GetPose() { return poseController; } // this is called like once 
-
-  void RunFrame(std::vector<double> &lastRead) {
+  template <typename Number>
+  void RunFrame(std::vector<Number> &lastRead) {
     // update all the things
 
-    poseController.result = TrackingResult_Running_OK;
+    m_Pose.result = TrackingResult_Running_OK;
 
-    poseController.vecPosition[0] = lastRead[0];
-    poseController.vecPosition[1] = lastRead[1];
-    poseController.vecPosition[2] = lastRead[2];
+    m_Pose.vecPosition[0] = lastRead[0];
+    m_Pose.vecPosition[1] = lastRead[1];
+    m_Pose.vecPosition[2] = lastRead[2];
 
-    poseController.qRotation =
+    m_Pose.qRotation =
         HmdQuaternion_Init(lastRead[3],
                            lastRead[4],
                            lastRead[5],
                            lastRead[6]);
 
-    poseController.vecVelocity[0] = lastRead[7];
-    poseController.vecVelocity[1] = lastRead[8];
-    poseController.vecVelocity[2] = lastRead[9];
+    m_Pose.vecVelocity[0] = lastRead[7];
+    m_Pose.vecVelocity[1] = lastRead[8];
+    m_Pose.vecVelocity[2] = lastRead[9];
 
-    poseController.vecAngularVelocity[0] =
+    m_Pose.vecAngularVelocity[0] =
         lastRead[10];
-    poseController.vecAngularVelocity[1] =
+    m_Pose.vecAngularVelocity[1] =
         lastRead[11];
-    poseController.vecAngularVelocity[2] =
+    m_Pose.vecAngularVelocity[2] =
         lastRead[12];
 
     vr::VRDriverInput()->UpdateBooleanComponent(
@@ -529,29 +268,11 @@ public:
 
     if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
       vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
-          m_unObjectId, poseController, sizeof(DriverPose_t));
+          m_unObjectId, m_Pose, sizeof(DriverPose_t));
     }
   }
-
-  void ProcessEvent(const vr::VREvent_t &vrEvent) {
-    switch (vrEvent.eventType) {
-    case vr::VREvent_Input_HapticVibration: {
-      if (vrEvent.data.hapticVibration.componentHandle == m_compHaptic) {
-        // haptic!
-        if (remotePoser != NULL) {
-          remotePoser->send2((m_sSerialNumber + "\n").c_str());
-        }
-      }
-    } break;
-    }
-  }
-
-  std::string GetSerialNumber() const { return m_sSerialNumber; }
 
 private:
-  vr::TrackedDeviceIndex_t m_unObjectId;
-  vr::PropertyContainerHandle_t m_ulPropertyContainer;
-
   vr::VRInputComponentHandle_t m_compGrip;
   vr::VRInputComponentHandle_t m_compSystem;
   vr::VRInputComponentHandle_t m_compAppMenu;
@@ -561,166 +282,87 @@ private:
   vr::VRInputComponentHandle_t m_compTrackpadTouch;
   vr::VRInputComponentHandle_t m_compTriggerClick;
   vr::VRInputComponentHandle_t m_compTrackpadClick;
-  vr::VRInputComponentHandle_t m_compHaptic;
 
-  std::string m_sSerialNumber;
-  std::string m_sModelNumber;
-  std::string m_sRenderModelPath;
-
-  DriverPose_t poseController;
-  bool handSide_;
-  SockReceiver::DriverReceiver *remotePoser;
+  bool m_bHandSide;
 };
 
 
 //-----------------------------------------------------------------------------
-// Purpose: trackerDriver
+// Purpose: tracker device implementation
 //-----------------------------------------------------------------------------
-class TrackerDriver : public vr::ITrackedDeviceServerDriver {
+class TrackerDriver : public hobovr::HobovrDevice<true> {
 public:
-  TrackerDriver(std::string myserial, SockReceiver::DriverReceiver *remotePoser) {
-    this->remotePoser = remotePoser;
-    m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
-    m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
+  TrackerDriver(std::string myserial, const std::shared_ptr<SockReceiver::DriverReceiver> ReceiverObj):
+  HobovrDevice(myserial, "hobovr_tracker_m", ReceiverObj) {
 
-    m_sSerialNumber = myserial;
-    m_sModelNumber = "hobovr_tracker_m" + m_sSerialNumber;
     m_sRenderModelPath = "{hobovr}/rendermodels/hobovr_tracker_mt0";
-
-    poseTracker.poseTimeOffset = 0;
-    poseTracker.poseIsValid = true;
-    poseTracker.deviceIsConnected = true;
-    poseTracker.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    poseTracker.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    poseTracker.vecPosition[0] = 0.;
-
-    poseTracker.vecPosition[2] = 0.;
-    poseTracker.willDriftInYaw = true;
+    m_sBindPath = "{hobovr}/input/hobovr_tracker_profile.json";
   }
 
-  virtual ~TrackerDriver() {}
-
   virtual EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId) {
-    m_unObjectId = unObjectId;
-    m_ulPropertyContainer =
-        vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
+    HobovrDevice::Activate(unObjectId); // let the parent handle boilerplate stuff
 
-    vr::VRProperties()->SetStringProperty(
-        m_ulPropertyContainer, Prop_ModelNumber_String, m_sModelNumber.c_str());
-    vr::VRProperties()->SetStringProperty(m_ulPropertyContainer,
-                                          Prop_RenderModelName_String,
-                                          m_sRenderModelPath.c_str());
-
-    // return a constant that's not 0 (invalid) or 1 (reserved for Oculus)
-    vr::VRProperties()->SetUint64Property(m_ulPropertyContainer,
-                                          Prop_CurrentUniverseId_Uint64, 2);
-
-    // even though we won't ever track we want to pretend to be the right hand
-    // so binding will work as expected
     vr::VRProperties()->SetInt32Property(m_ulPropertyContainer,
                                          Prop_ControllerRoleHint_Int32,
                                          TrackedControllerRole_RightHand);
 
-
-    // this file tells the UI what to show the user for binding this controller
-    // as well as what default bindings should
-    // be for legacy or other apps
-    vr::VRProperties()->SetStringProperty(
-        m_ulPropertyContainer, Prop_InputProfilePath_String,
-        "{hobovr}/input/hobovr_tracker_profile.json");
-
     return VRInitError_None;
   }
 
-  virtual void Deactivate() {
-    m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
-  }
-
-  virtual void EnterStandby() {}
-
-  void *GetComponent(const char *pchComponentNameAndVersion) {
-    // override this to add a component to a driver
-    return NULL;
-  }
-
-  virtual void PowerOff() {}
-
-  /** debug request from a client */
-  virtual void DebugRequest(const char *pchRequest, char *pchResponseBuffer,
-                            uint32_t unResponseBufferSize) {
-    if (unResponseBufferSize >= 1)
-      pchResponseBuffer[0] = 0;
-  }
-
-  virtual DriverPose_t GetPose() { return poseTracker; } // this is called like once 
-
-  void RunFrame(std::vector<double> &lastRead) {
+  template <typename Number>
+  void RunFrame(std::vector<Number> &lastRead) {
     // update all the things
 
-    poseTracker.result = TrackingResult_Running_OK;
+    m_Pose.result = TrackingResult_Running_OK;
 
-    poseTracker.vecPosition[0] = lastRead[0];
-    poseTracker.vecPosition[1] = lastRead[1];
-    poseTracker.vecPosition[2] = lastRead[2];
+    m_Pose.vecPosition[0] = lastRead[0];
+    m_Pose.vecPosition[1] = lastRead[1];
+    m_Pose.vecPosition[2] = lastRead[2];
 
-    poseTracker.qRotation =
+    m_Pose.qRotation =
         HmdQuaternion_Init(lastRead[3],
                            lastRead[4],
                            lastRead[5],
                            lastRead[6]);
 
-    poseTracker.vecVelocity[0] = lastRead[7];
-    poseTracker.vecVelocity[1] = lastRead[8];
-    poseTracker.vecVelocity[2] = lastRead[9];
+    m_Pose.vecVelocity[0] = lastRead[7];
+    m_Pose.vecVelocity[1] = lastRead[8];
+    m_Pose.vecVelocity[2] = lastRead[9];
 
-    poseTracker.vecAngularVelocity[0] =
+    m_Pose.vecAngularVelocity[0] =
         lastRead[10];
-    poseTracker.vecAngularVelocity[1] =
+    m_Pose.vecAngularVelocity[1] =
         lastRead[11];
-    poseTracker.vecAngularVelocity[2] =
+    m_Pose.vecAngularVelocity[2] =
         lastRead[12];
 
     if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
       vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
-          m_unObjectId, poseTracker, sizeof(DriverPose_t));
+          m_unObjectId, m_Pose, sizeof(DriverPose_t));
     }
   }
-
-  std::string GetSerialNumber() const { return m_sSerialNumber; }
-
-private:
-  vr::TrackedDeviceIndex_t m_unObjectId;
-  vr::PropertyContainerHandle_t m_ulPropertyContainer;
-
-  std::string m_sSerialNumber;
-  std::string m_sModelNumber;
-  std::string m_sRenderModelPath;
-
-  DriverPose_t poseTracker;
-  SockReceiver::DriverReceiver *remotePoser;
 };
 
 //-----------------------------------------------------------------------------
 // Purpose: serverDriver
 //-----------------------------------------------------------------------------
-
-struct HoboDevice
+enum THobovrDeviceType
 {
-  enum{HMD, CNTRLR, TRKR} tag;
-  bool active;
-  union {
-    HeadsetDriver* hmd;
-    ControllerDriver* controller;
-    TrackerDriver* tracker;
-  };
+  THobovrDevice_Invalid = 0,
+  THobovrDevice_Hmd = 100, // HeadsetDriver
+  THobovrDevice_Controller = 103, // ControllerDriver
+  THobovrDevice_Tracker = 105, // TrackerDriver
 };
 
-class CServerDriver_hobovr : public IServerTrackedDeviceProvider {
+struct HoboDevice_t
+{
+  uint32_t deviceType; // THobovrDeviceType enum
+  std::variant<HeadsetDriver*, ControllerDriver*, TrackerDriver*> deviceHandle; // ahhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
+};
+
+class CServerDriver_hobovr : public IServerTrackedDeviceProvider, public SockReceiver::Callback {
 public:
-  CServerDriver_hobovr() {
-    m_bMyThreadKeepAlive = false;
-    m_pMyTread = nullptr;
-  }
+  CServerDriver_hobovr() {}
   virtual EVRInitError Init(vr::IVRDriverContext *pDriverContext);
   virtual void Cleanup();
   virtual const char *const *GetInterfaceVersions() {
@@ -729,19 +371,14 @@ public:
   virtual bool ShouldBlockStandbyMode() { return false; }
   virtual void EnterStandby() {}
   virtual void LeaveStandby() {}
-  virtual void RunFrame() {}
-  static void myThreadEnter(CServerDriver_hobovr *pClass) {
-    pClass->myTrackingThread();
-  }
-  void myTrackingThread();
+  virtual void RunFrame();
+  void OnPacket(std::string);
 
 private:
-  std::vector<HoboDevice> m_vDevices;
+  std::vector<HoboDevice_t> m_vDevices;
 
-  SockReceiver::DriverReceiver *remotePoser;
+  std::shared_ptr<SockReceiver::DriverReceiver> m_pSocketComm;
 
-  bool m_bMyThreadKeepAlive;
-  std::thread *m_pMyTread;
 };
 
 EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
@@ -757,11 +394,11 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
   DriverLog("device manifest list: '%s'\n", uduThing.c_str());
 
   try{
-    remotePoser = new SockReceiver::DriverReceiver(uduThing);
-    remotePoser->start();
+    m_pSocketComm = std::make_shared<SockReceiver::DriverReceiver>(uduThing);
+    m_pSocketComm->start();
   } catch (...){
-    remotePoser = NULL;
-    DriverLog("remotePoser broke on create or broke on start, either way you're fucked\n");
+    DriverLog("m_pSocketComm broke on create or broke on start, either way you're fucked\n");
+    return VRInitError_Init_WebServerFailed;
   }
 
   int counter_hmd = 0;
@@ -769,152 +406,137 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
   int counter_trkr = 0;
   int controller_hs = 1;
 
-  for (std::string i:remotePoser->device_list) {
+  for (std::string i:m_pSocketComm->device_list) {
     if (i == "h") {
-      HoboDevice temp = {HoboDevice::HMD, 1};
-      temp.hmd = new HeadsetDriver("h" + std::to_string(counter_hmd));
+      HoboDevice_t temp = {THobovrDeviceType::THobovrDevice_Hmd};
+      temp.deviceHandle = new HeadsetDriver("h" + std::to_string(counter_hmd));
 
       m_vDevices.push_back(temp);
       vr::VRServerDriverHost()->TrackedDeviceAdded(
-                    m_vDevices.back().hmd->GetSerialNumber().c_str(), vr::TrackedDeviceClass_HMD,
-                    m_vDevices.back().hmd);
+                    std::get<HeadsetDriver*>(m_vDevices.back().deviceHandle)->GetSerialNumber().c_str(), vr::TrackedDeviceClass_HMD,
+                    std::get<HeadsetDriver*>(m_vDevices.back().deviceHandle));
 
       counter_hmd++;
 
     } else if (i == "c") {
-      HoboDevice temp = {HoboDevice::CNTRLR, 1};
-      temp.controller = new ControllerDriver(controller_hs, "c" + std::to_string(counter_cntrlr), remotePoser);
+      HoboDevice_t temp = {THobovrDeviceType::THobovrDevice_Controller};
+      temp.deviceHandle = new ControllerDriver(controller_hs, "c" + std::to_string(counter_cntrlr), m_pSocketComm);
 
       m_vDevices.push_back(temp);
       vr::VRServerDriverHost()->TrackedDeviceAdded(
-                    m_vDevices.back().controller->GetSerialNumber().c_str(), vr::TrackedDeviceClass_Controller,
-                    m_vDevices.back().controller);
+                    std::get<ControllerDriver*>(m_vDevices.back().deviceHandle)->GetSerialNumber().c_str(), vr::TrackedDeviceClass_Controller,
+                    std::get<ControllerDriver*>(m_vDevices.back().deviceHandle));
 
       controller_hs = (controller_hs) ? 0 : 1;
       counter_cntrlr++;
 
     } else if (i == "t") {
-      HoboDevice temp = {HoboDevice::TRKR, 1};
-      temp.tracker = new TrackerDriver("t" + std::to_string(counter_trkr), remotePoser);
+      HoboDevice_t temp = {THobovrDeviceType::THobovrDevice_Tracker};
+      temp.deviceHandle = new TrackerDriver("t" + std::to_string(counter_trkr), m_pSocketComm);
 
       m_vDevices.push_back(temp);
       vr::VRServerDriverHost()->TrackedDeviceAdded(
-                    m_vDevices.back().tracker->GetSerialNumber().c_str(), vr::TrackedDeviceClass_GenericTracker,
-                    m_vDevices.back().tracker);
+                    std::get<TrackerDriver*>(m_vDevices.back().deviceHandle)->GetSerialNumber().c_str(), vr::TrackedDeviceClass_GenericTracker,
+                    std::get<TrackerDriver*>(m_vDevices.back().deviceHandle));
 
       counter_trkr++;
 
     } else {
-      DriverLog("unsopported device type: %s", i);
-      return VRInitError_Driver_Failed;
+      DriverLog("unsupported device type: %s", i);
+      return VRInitError_VendorSpecific_HmdFound_ConfigFailedSanityCheck;
     }
   }
 
-  m_bMyThreadKeepAlive = true;
-  std::this_thread::sleep_for(std::chrono::microseconds(20000));
-  m_pMyTread = new std::thread(myThreadEnter, this);
-
-  if (!m_pMyTread) {
-    DriverLog("failed to start tracking thread\n");
-    return VRInitError_Driver_Failed;
-  }
+  m_pSocketComm->setCallback(this);
 
   return VRInitError_None;
 }
 
 void CServerDriver_hobovr::Cleanup() {
-  CleanupDriverLog();
+  m_pSocketComm->stop();
 
-  m_bMyThreadKeepAlive = false;
-  if (m_pMyTread) {
-    m_pMyTread->join();
-    delete m_pMyTread;
-    m_pMyTread = nullptr;
-  }
-
-  delete remotePoser;
-  remotePoser = NULL;
-
-  for (auto &i: m_vDevices) {
-    switch (i.tag) {
-      case HoboDevice::HMD:
-        delete i.hmd;
-        i.hmd = NULL;
-        i.active = 0;
+  for (auto &i : m_vDevices) {
+    switch (i.deviceType){
+      case THobovrDeviceType::THobovrDevice_Hmd:
+        delete std::get<HeadsetDriver*>(i.deviceHandle);
         break;
-
-      case HoboDevice::CNTRLR:
-        delete i.controller;
-        i.controller = NULL;
-        i.active = 0;
+      case THobovrDeviceType::THobovrDevice_Controller:
+        delete std::get<ControllerDriver*>(i.deviceHandle);
         break;
-
-      case HoboDevice::TRKR:
-        delete i.tracker;
-        i.tracker = NULL;
-        i.active = 0;
+      case THobovrDeviceType::THobovrDevice_Tracker:
+        delete std::get<TrackerDriver*>(i.deviceHandle);
         break;
     }
   }
 
+  m_vDevices.clear();
+
+  CleanupDriverLog();
   VR_CLEANUP_SERVER_DRIVER_CONTEXT();
 }
 
-void CServerDriver_hobovr::myTrackingThread() {
-#if defined(_WINDOWS)
+void CServerDriver_hobovr::OnPacket(std::string packet) {
+  auto tempPose = SockReceiver::split_pk(SockReceiver::split_to_number<double>(SockReceiver::split_string(packet)), m_pSocketComm->eps);
 
-  DWORD dwError, dwThreadPri;
-
-  if(!SetThreadPriority(GetCurrentThread(), 15))
+  if (SockReceiver::get_poses_shape(tempPose) == m_pSocketComm->eps)
   {
-    dwError = GetLastError();
-    DriverLog("failed to set tracking thread priority to 15: %d", dwError);
+    for (int i=0; i<m_vDevices.size(); i++){
+
+      switch (m_vDevices[i].deviceType)
+      {
+        case THobovrDeviceType::THobovrDevice_Hmd:
+          std::get<HeadsetDriver*>(m_vDevices[i].deviceHandle)->RunFrame(tempPose[i]);
+          break;
+
+        case THobovrDeviceType::THobovrDevice_Controller:
+          std::get<ControllerDriver*>(m_vDevices[i].deviceHandle)->RunFrame(tempPose[i]);
+          break;
+
+        case THobovrDeviceType::THobovrDevice_Tracker:
+          std::get<TrackerDriver*>(m_vDevices[i].deviceHandle)->RunFrame(tempPose[i]);
+          break;
+
+      }
+
+    }
+
+  } else {
+    DriverLog("received packet shape miss match, expected:");
+    for (auto i : m_pSocketComm->eps)
+      DriverLog("%d, ", i);
+
+    DriverLog("got:");
+    for (auto i : SockReceiver::get_poses_shape(tempPose))
+      DriverLog("%d, ", i);
+
+    DriverLog("double check your udu settings\n");
   }
 
-  dwThreadPri = GetThreadPriority(GetCurrentThread());
-  DriverLog("current tracking thread priority: %d", dwThreadPri);
-#endif
 
+}
 
-  std::vector<std::vector<double>> tempPose;
+void CServerDriver_hobovr::RunFrame() {
   vr::VREvent_t vrEvent;
+  while (vr::VRServerDriverHost()->PollNextEvent(&vrEvent, sizeof(vrEvent))) {
+    for (auto &i : m_vDevices){
 
-  while (m_bMyThreadKeepAlive) {
-    tempPose = remotePoser->get_pose();
-
-    for (int i=0; i<m_vDevices.size(); i++){
-      if (m_vDevices[i].active) {
-        switch (m_vDevices[i].tag)
-        {
-          case HoboDevice::HMD:
-            m_vDevices[i].hmd->RunFrame(tempPose[i]);
-            break;
-
-          case HoboDevice::CNTRLR:
-            m_vDevices[i].controller->RunFrame(tempPose[i]);
-            break;
-
-          case HoboDevice::TRKR:
-            m_vDevices[i].tracker->RunFrame(tempPose[i]);
-            break;
-
-        }
+      switch (i.deviceType){
+        case THobovrDeviceType::THobovrDevice_Hmd:
+          std::get<HeadsetDriver*>(i.deviceHandle)->ProcessEvent(vrEvent);
+          break;
+        case THobovrDeviceType::THobovrDevice_Controller:
+          std::get<ControllerDriver*>(i.deviceHandle)->ProcessEvent(vrEvent);
+          break;
+        case THobovrDeviceType::THobovrDevice_Tracker:
+          std::get<TrackerDriver*>(i.deviceHandle)->ProcessEvent(vrEvent);
+          break;
       }
-    }
 
-    while (vr::VRServerDriverHost()->PollNextEvent(&vrEvent, sizeof(vrEvent))) {
-      for (auto &i : m_vDevices){
-        if (i.active && i.tag == HoboDevice::CNTRLR) {
-          i.controller->ProcessEvent(vrEvent);
-        }
-      }
     }
-
-    std::this_thread::sleep_for(std::chrono::microseconds(200));
   }
 }
 
-CServerDriver_hobovr g_serverDriverNull;
+CServerDriver_hobovr g_hobovrServerDriver;
 
 //-----------------------------------------------------------------------------
 // Purpose: driverFactory
@@ -922,11 +544,8 @@ CServerDriver_hobovr g_serverDriverNull;
 HMD_DLL_EXPORT void *HmdDriverFactory(const char *pInterfaceName,
                                       int *pReturnCode) {
   if (0 == strcmp(IServerTrackedDeviceProvider_Version, pInterfaceName)) {
-    return &g_serverDriverNull;
+    return &g_hobovrServerDriver;
   }
-  // if (0 == strcmp(IVRWatchdogProvider_Version, pInterfaceName)) {
-  //   return &g_watchdogDriverNull;
-  // }
 
   if (pReturnCode)
     *pReturnCode = VRInitError_Init_InterfaceNotFound;

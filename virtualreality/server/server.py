@@ -3,6 +3,7 @@ import asyncio
 
 from ..templates import PoserTemplate
 from ..util import utilz as u
+from .__init__ import __version__
 
 DOMAIN = (None, 6969)
 
@@ -45,7 +46,13 @@ class Server:
 
         addr = writer.get_extra_info("peername")
 
-        id_msg, first_msg = (await reader.read(50)).split(self._terminator)
+        first_msg = await reader.read(50)
+
+        if self._terminator in first_msg:
+            id_msg, first_msg = first_msg.split(self._terminator)
+
+        else:
+            id_msg = b""
 
         me = (
             addr,
@@ -107,6 +114,7 @@ def run_til_dead(poser: PoserTemplate = None, conn_handle=Server()):
         poser_result = asyncio.run_coroutine_threadsafe(poser.main(), loop)
 
     # Serve requests until Ctrl+C is pressed
+    print (f"server version: {repr(__version__)}")
     print("Serving on {}".format(server.sockets[0].getsockname()))
     try:
         loop.run_forever()
