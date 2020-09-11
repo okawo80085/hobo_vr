@@ -15,6 +15,7 @@
       "ZoomWidth" : 1,
       "ZoomHeight" : 1,
       "EyeGapOffsetPx" : 0,
-      "DeviceManifestList" : "h13 c22 c22"
+      "PoseTimeOffset" : 0.0,
+      "DeviceManifestList" : "h13 c22 c22 t13 t13"
    }
 }

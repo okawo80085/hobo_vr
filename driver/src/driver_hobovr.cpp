@@ -74,6 +74,7 @@ static const char *const k_pch_Hobovr_ZoomHeight_Float = "ZoomHeight";
 static const char *const k_pch_Hobovr_UduDeviceManifestList_String = "DeviceManifestList";
 static const char *const k_pch_Hobovr_IPD_Float = "IPD";
 static const char *const k_pch_Hobovr_EyeGapOffset_Int = "EyeGapOffsetPx";
+static const char *const k_pch_Hobovr_PoseTimeOffset_Float = "PoseTimeOffset";
 
 // include has to be here, dont ask
 #include "ref/hobovr_device_base.h"
@@ -102,16 +103,6 @@ public:
     hobovr::HobovrComponent_t extDisplayComp = {hobovr::THobovrCompType::THobovrComp_ExtendedDisplay, vr::IVRDisplayComponent_Version};
     extDisplayComp.compHandle = std::make_shared<hobovr::HobovrExtendedDisplayComponent>();
     m_vComponents.push_back(extDisplayComp);
-
-    m_Pose.poseTimeOffset = 0;
-    m_Pose.poseIsValid = true;
-    m_Pose.deviceIsConnected = true;
-    m_Pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    m_Pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    m_Pose.vecPosition[0] = 0.;
-    m_Pose.vecPosition[1] = 0.;
-    m_Pose.vecPosition[2] = 0.;
-    m_Pose.willDriftInYaw = true;
   }
 
   virtual EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId) {
@@ -177,16 +168,6 @@ public:
 
     m_sRenderModelPath = "{hobovr}/rendermodels/hobovr_controller_mc0";
     m_sBindPath = "{hobovr}/input/hobovr_controller_profile.json";
-
-    m_Pose.poseTimeOffset = 0;
-    m_Pose.poseIsValid = true;
-    m_Pose.deviceIsConnected = true;
-    m_Pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    m_Pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    m_Pose.vecPosition[0] = 0.;
-    m_Pose.vecPosition[1] = 0.;
-    m_Pose.vecPosition[2] = 0.;
-    m_Pose.willDriftInYaw = true;
   }
 
   virtual EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId) {
@@ -316,16 +297,6 @@ public:
 
     m_sRenderModelPath = "{hobovr}/rendermodels/hobovr_tracker_mt0";
     m_sBindPath = "{hobovr}/input/hobovr_tracker_profile.json";
-
-    m_Pose.poseTimeOffset = 0;
-    m_Pose.poseIsValid = true;
-    m_Pose.deviceIsConnected = true;
-    m_Pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    m_Pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    m_Pose.vecPosition[0] = 0.;
-    m_Pose.vecPosition[1] = 0.;
-    m_Pose.vecPosition[2] = 0.;
-    m_Pose.willDriftInYaw = true;
   }
 
   virtual EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId) {
@@ -378,9 +349,9 @@ public:
 enum THobovrDeviceType
 {
   THobovrDevice_Invalid = 0,
-  THobovrDevice_Hmd = 100,
-  THobovrDevice_Controller = 103,
-  THobovrDevice_Tracker = 105,
+  THobovrDevice_Hmd = 100, // HeadsetDriver
+  THobovrDevice_Controller = 103, // ControllerDriver
+  THobovrDevice_Tracker = 105, // TrackerDriver
 };
 
 struct HoboDevice_t
@@ -565,7 +536,7 @@ void CServerDriver_hobovr::RunFrame() {
   }
 }
 
-CServerDriver_hobovr g_serverDriverNull;
+CServerDriver_hobovr g_hobovrServerDriver;
 
 //-----------------------------------------------------------------------------
 // Purpose: driverFactory
@@ -573,11 +544,8 @@ CServerDriver_hobovr g_serverDriverNull;
 HMD_DLL_EXPORT void *HmdDriverFactory(const char *pInterfaceName,
                                       int *pReturnCode) {
   if (0 == strcmp(IServerTrackedDeviceProvider_Version, pInterfaceName)) {
-    return &g_serverDriverNull;
+    return &g_hobovrServerDriver;
   }
-  // if (0 == strcmp(IVRWatchdogProvider_Version, pInterfaceName)) {
-  //   return &g_watchdogDriverNull;
-  // }
 
   if (pReturnCode)
     *pReturnCode = VRInitError_Init_InterfaceNotFound;

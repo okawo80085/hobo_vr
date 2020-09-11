@@ -9,7 +9,7 @@ namespace hobovr {
   enum THobovrCompType
   {
     THobovrComp_Invalid = 0,
-    THobovrComp_ExtendedDisplay = 100, // HobovrExtendedDisplayComponent component
+    THobovrComp_ExtendedDisplay = 100, // HobovrExtendedDisplayComponent component, use only with vr::IVRDisplayComponent_Version
   };
 
   struct HobovrComponent_t
@@ -33,14 +33,28 @@ namespace hobovr {
       m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
 
       m_sModelNumber = deviceBreed + m_sSerialNumber;
+
+      m_fPoseTimeOffset = vr::VRSettings()->GetFloat(k_pch_Hobovr_Section, k_pch_Hobovr_PoseTimeOffset_Float);
+
       DriverLog("device created\n");
       DriverLog("device breed: %s\n", deviceBreed.c_str());
       DriverLog("device serial: %s\n", m_sSerialNumber.c_str());
       DriverLog("device model: %s\n", m_sModelNumber.c_str());
+      DriverLog("device pose time offset: %f\n", m_fPoseTimeOffset);
 
       if (m_pBrodcastSocket == nullptr && UseHaptics)
         DriverLog("communication socket object is not supplied and haptics are enabled, this device will break on back communication requests(e.g. haptics)\n");
 
+      m_Pose.poseTimeOffset = (double)m_fPoseTimeOffset;
+      m_Pose.poseIsValid = true;
+      m_Pose.deviceIsConnected = true;
+      m_Pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
+      m_Pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
+      m_Pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
+      m_Pose.vecPosition[0] = 0.;
+      m_Pose.vecPosition[1] = 0.;
+      m_Pose.vecPosition[2] = 0.;
+      m_Pose.willDriftInYaw = true;
     }
 
     ~HobovrDevice(){
@@ -94,6 +108,7 @@ namespace hobovr {
     /** debug request from a client, TODO: uh... actually implement this? */
     virtual void DebugRequest(const char *pchRequest, char *pchResponseBuffer,
                               uint32_t unResponseBufferSize) {
+      DriverLog("device serial \"%s\", got debug request: \"%s\"", m_sSerialNumber.c_str(), pchRequest);
       if (unResponseBufferSize >= 1)
         pchResponseBuffer[0] = 0;
     }
@@ -101,14 +116,17 @@ namespace hobovr {
     virtual vr::DriverPose_t GetPose() { return m_Pose; }
 
     void *GetComponent(const char *pchComponentNameAndVersion) {
+      DriverLog("device serial \"%s\", got request for \"%s\" component\n", m_sSerialNumber.c_str(), pchComponentNameAndVersion);
       for (auto &i : m_vComponents) {
         if (!_stricmp(pchComponentNameAndVersion, i.componentNameAndVersion)){
+          DriverLog("component found, returning...\n");
           switch(i.compType){
             case THobovrCompType::THobovrComp_ExtendedDisplay:
               return std::get<std::shared_ptr<HobovrExtendedDisplayComponent>>(i.compHandle).get();
           }
         }
       }
+      DriverLog("component not found, request ignored\n");
 
       return NULL;
     }
@@ -142,13 +160,16 @@ namespace hobovr {
 
     std::string m_sSerialNumber;
     std::string m_sModelNumber;
-    std::string m_sRenderModelPath; // should be populated in the constructor of the derived class
 
+    vr::VRInputComponentHandle_t m_compHaptic;
+
+    float m_fPoseTimeOffset;
+
+
+    std::string m_sRenderModelPath; // should be populated in the constructor of the derived class
     std::string m_sBindPath; // path to the device's bindings, should be populated in the constructor of the derived class
 
     vr::DriverPose_t m_Pose; // device's pose, use this at runtime
-
-    vr::VRInputComponentHandle_t m_compHaptic;
 
     std::vector<HobovrComponent_t> m_vComponents; // components that this device has, should be populated in the constructor of the derived class
 
