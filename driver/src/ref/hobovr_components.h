@@ -57,8 +57,8 @@ namespace hobovr {
 
       DriverLog("Extended display component created\n");
       DriverLog("distortion koeffs: k1=%f, k2=%f\n", m_fDistortionK1, m_fDistortionK2);
-      DriverLog("render targer: %dx%d\n", m_nRenderWidth, m_nRenderHeight);
-      DriverLog("window targer: %dx%d\n", m_nWindowWidth, m_nWindowHeight);
+      DriverLog("render target: %dx%d\n", m_nRenderWidth, m_nRenderHeight);
+      DriverLog("window target: %dx%d\n", m_nWindowWidth, m_nWindowHeight);
       DriverLog("eye gap offset: %d", m_iEyeGapOff);
 
     }
