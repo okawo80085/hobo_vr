@@ -64,7 +64,8 @@ static const char *const k_pch_Hobovr_PoseTimeOffset_Float = "PoseTimeOffset";
 static const char *const k_pch_Hmd_Section = "hmd";
 static const char *const k_pch_Hmd_SecondsFromVsyncToPhotons_Float = "secondsFromVsyncToPhotons";
 static const char *const k_pch_Hmd_DisplayFrequency_Float = "displayFrequency";
-static const char *const k_pch_Hmd_IPD_Float = "IPD";
+static const char* const k_pch_Hmd_IPD_Float = "IPD";
+
 // include has to be here, dont ask
 #include "ref/hobovr_device_base.h"
 #include "ref/hobovr_components.h"
@@ -88,6 +89,10 @@ public:
 
     m_flIPD = vr::VRSettings()->GetFloat(k_pch_Hmd_Section,
                                          k_pch_Hmd_IPD_Float);
+
+    // log non boilerplate device specific settings 
+    DriverLog("device hmd settings: vsync time %fs, display freq %f, ipd %fm", m_flSecondsFromVsyncToPhotons,
+                    m_flDisplayFrequency, m_flIPD);
 
     hobovr::HobovrComponent_t extDisplayComp = {hobovr::THobovrCompType::THobovrComp_ExtendedDisplay, vr::IVRDisplayComponent_Version};
     extDisplayComp.compHandle = std::make_shared<hobovr::HobovrExtendedDisplayComponent>();
