@@ -1,21 +1,25 @@
 {
    "driver_hobovr" : {
       "enable" : true,
+      "PoseTimeOffset" : 0.0,
+      "DeviceManifestList" : "h13 c22 c22"
+   },
+   "hmd": {
+      "IPD" : 0.063,
+      "secondsFromVsyncToPhotons" : 0.01,
+      "displayFrequency" : 90.0
+   },
+   "extendedDisplay": {
       "windowX" : 10,
       "windowY" : 10,
-      "IPD" : 0.063,
       "windowWidth" : 3840,
       "windowHeight" : 2160,
       "renderWidth" : 1920,
       "renderHeight" : 1080,
-      "secondsFromVsyncToPhotons" : 0.01,
-      "displayFrequency" : 90.0,
       "DistortionK1" : 0.4,
       "DistortionK2" : 0.5,
       "ZoomWidth" : 1,
       "ZoomHeight" : 1,
-      "EyeGapOffsetPx" : 0,
-      "PoseTimeOffset" : 0.0,
-      "DeviceManifestList" : "h13 c22 c22"
+      "EyeGapOffsetPx" : 0
    }
 }
