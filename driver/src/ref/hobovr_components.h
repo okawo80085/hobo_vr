@@ -18,7 +18,7 @@ namespace hobovr {
   static const char *const k_pch_ExtDisplay_EyeGapOffset_Int = "EyeGapOffsetPx";
 
   static const bool HobovrExtDisplayComp_doLensStuff = true;
-  class HobovrExtendedDisplayComponent: public vr::IVRDisplayComponent{
+  class HobovrExtendedDisplayComponent: public vr::IVRDisplayComponent {
   public:
     HobovrExtendedDisplayComponent(){
 
@@ -156,6 +156,25 @@ namespace hobovr {
     float m_fZoomWidth;
     float m_fZoomHeight;
   };
+
+  // this is a dummy class meant to expand the component handling system, DO NOT USE THIS!
+  class HobovrDriverDirectModeComponent {
+  public:
+    HobovrDriverDirectModeComponent() {}
+  };
+
+  // this is a dummy class meant to expand the component handling system, DO NOT USE THIS!
+  class HobovrCameraComponent {
+  public:
+    HobovrCameraComponent() {}
+  };
+
+  // this is a dummy class meant to expand the component handling system, DO NOT USE THIS!
+  class HobovrVirtualDisplayComponent {
+  public:
+    HobovrVirtualDisplayComponent() {}
+  };
+
 }
 
 #endif // HOBOVR_COMPONENTS_H

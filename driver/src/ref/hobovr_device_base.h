@@ -10,6 +10,9 @@ namespace hobovr {
   {
     THobovrComp_Invalid = 0,
     THobovrComp_ExtendedDisplay = 100, // HobovrExtendedDisplayComponent component, use only with vr::IVRDisplayComponent_Version
+    THobovrComp_DriverDirectMode = 150, // HobovrDriverDirectModeComponent component, use only with vr::IVRDriverDirectModeComponent_Version
+    THobovrComp_Camera = 200, // HobovrCameraComponent component, use only with vr::IVRCameraComponent_Version
+    THobovrComp_VirtualDisplay = 250, // HobovrVirtualDisplayComponent component, use only with vr::IVRVirtualDisplay_Version
   };
 
   struct HobovrComponent_t
@@ -17,8 +20,10 @@ namespace hobovr {
     uint32_t compType; // THobovrCompType enum, component type
     const char* componentNameAndVersion; // for component search
 
-    // must be the end of the struct as its size is variable
-    std::variant<std::shared_ptr<HobovrExtendedDisplayComponent>> compHandle;
+    std::variant<std::shared_ptr<HobovrExtendedDisplayComponent>,
+      std::shared_ptr<HobovrDriverDirectModeComponent>,
+      std::shared_ptr<HobovrVirtualDisplayComponent>,
+      std::shared_ptr<HobovrCameraComponent>> compHandle;
   };
 
   // should be publicly inherited
@@ -123,6 +128,16 @@ namespace hobovr {
           switch(i.compType){
             case THobovrCompType::THobovrComp_ExtendedDisplay:
               return std::get<std::shared_ptr<HobovrExtendedDisplayComponent>>(i.compHandle).get();
+
+            case THobovrCompType::THobovrComp_DriverDirectMode:
+              return std::get<std::shared_ptr<HobovrDriverDirectModeComponent>>(i.compHandle).get();
+
+            case THobovrCompType::THobovrComp_Camera:
+              return std::get<std::shared_ptr<HobovrCameraComponent>>(i.compHandle).get();
+
+            case THobovrCompType::THobovrComp_VirtualDisplay:
+              return std::get<std::shared_ptr<HobovrVirtualDisplayComponent>>(i.compHandle).get();
+
           }
         }
       }
