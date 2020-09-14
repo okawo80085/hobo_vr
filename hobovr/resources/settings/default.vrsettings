@@ -2,6 +2,7 @@
    "driver_hobovr" : {
       "enable" : true,
       "PoseTimeOffset" : 0.0,
+      "ManualUpdateURL" : "https://gist.github.com/okawo80085/dd327eda3b87c8df353cf783b17e1c82",
       "DeviceManifestList" : "h13 c22 c22"
    },
    "hmd": {

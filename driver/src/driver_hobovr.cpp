@@ -58,7 +58,6 @@ inline HmdQuaternion_t HmdQuaternion_Init(double w, double x, double y,
 // driver keys
 static const char *const k_pch_Hobovr_Section = "driver_hobovr";
 static const char *const k_pch_Hobovr_UduDeviceManifestList_String = "DeviceManifestList";
-static const char *const k_pch_Hobovr_PoseTimeOffset_Float = "PoseTimeOffset";
 
 // hmd device keys
 static const char *const k_pch_Hmd_Section = "hmd";
@@ -116,14 +115,6 @@ public:
     // avoid "not fullscreen" warnings from vrmonitor
     vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
                                         Prop_IsOnDesktop_Bool, false);
-
-    // vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
-    //                                     Prop_Firmware_UpdateAvailable_Bool, true);
-    // vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
-    //                                     Prop_Firmware_ManualUpdate_Bool, true);
-
-    // vr::VRProperties()->SetStringProperty(m_ulPropertyContainer,
-    //                           Prop_Firmware_ManualUpdateURL_String, "https://gist.github.com/okawo80085/dd327eda3b87c8df353cf783b17e1c82");
 
     return VRInitError_None;
   }

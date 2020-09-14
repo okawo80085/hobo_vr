@@ -6,6 +6,9 @@
 #include "hobovr_components.h"
 
 namespace hobovr {
+  static const char *const k_pch_Hobovr_PoseTimeOffset_Float = "PoseTimeOffset";
+  static const char *const k_pch_Hobovr_UpdateUrl_String = "ManualUpdateURL";
+
   enum THobovrCompType
   {
     THobovrComp_Invalid = 0,
@@ -18,13 +21,19 @@ namespace hobovr {
   struct HobovrComponent_t
   {
     uint32_t compType; // THobovrCompType enum, component type
-    const char* componentNameAndVersion; // for component search
+    const char* componentNameAndVersion; // for component search, must be a version of one of the components(e.g. vr::IVRDisplayComponent_Version)
 
     std::variant<std::shared_ptr<HobovrExtendedDisplayComponent>,
       std::shared_ptr<HobovrDriverDirectModeComponent>,
       std::shared_ptr<HobovrVirtualDisplayComponent>,
       std::shared_ptr<HobovrCameraComponent>> compHandle;
   };
+
+  // for now this will never signal for updates, this same function will be executed for all derived device classes on Activate
+  // you can implement your own version/update check here
+  bool checkForDeviceUpdates(std::string deviceSerial) {
+    return false; // true steamvr will signal an update, false not
+  }
 
   // should be publicly inherited
   template<bool UseHaptics>
@@ -40,6 +49,9 @@ namespace hobovr {
       m_sModelNumber = deviceBreed + m_sSerialNumber;
 
       m_fPoseTimeOffset = vr::VRSettings()->GetFloat(k_pch_Hobovr_Section, k_pch_Hobovr_PoseTimeOffset_Float);
+      char buff[1024];
+      vr::VRSettings()->GetString(k_pch_Hobovr_Section, k_pch_Hobovr_UpdateUrl_String, buff, sizeof(buff));
+      m_sUpdateUrl = buff;
 
       DriverLog("device created\n");
       DriverLog("device breed: %s\n", deviceBreed.c_str());
@@ -96,6 +108,19 @@ namespace hobovr {
         vr::VRDriverInput()->CreateHapticComponent(m_ulPropertyContainer,
                                                        "/output/haptic", &m_compHaptic);
       }
+      vr::VRProperties()->SetStringProperty(
+        m_ulPropertyContainer, Prop_Firmware_ManualUpdateURL_String,
+        m_sUpdateUrl.c_str());
+
+      bool shouldUpdate = checkForDeviceUpdates(m_sSerialNumber);
+
+      if (shouldUpdate)
+        DriverLog("device update available!\n");
+
+      vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
+                                          Prop_Firmware_UpdateAvailable_Bool, shouldUpdate);
+      vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
+                                          Prop_Firmware_ManualUpdate_Bool, shouldUpdate);
 
 
       return VRInitError_None;
@@ -170,19 +195,12 @@ namespace hobovr {
 
   protected:
     // openvr api stuff
-    vr::TrackedDeviceIndex_t m_unObjectId;
-    vr::PropertyContainerHandle_t m_ulPropertyContainer;
-
-    std::string m_sSerialNumber;
-    std::string m_sModelNumber;
-
-    vr::VRInputComponentHandle_t m_compHaptic;
-
-    float m_fPoseTimeOffset;
+    vr::TrackedDeviceIndex_t m_unObjectId; // DO NOT TOUCH THIS, parent will handle this, use it as read only!
+    vr::PropertyContainerHandle_t m_ulPropertyContainer; // THIS EITHER, use it as read only!
 
 
-    std::string m_sRenderModelPath; // should be populated in the constructor of the derived class
-    std::string m_sBindPath; // path to the device's bindings, should be populated in the constructor of the derived class
+    std::string m_sRenderModelPath; // path to the device's render model, should be populated in the constructor of the derived class
+    std::string m_sBindPath; // path to the device's input bindings, should be populated in the constructor of the derived class
 
     vr::DriverPose_t m_Pose; // device's pose, use this at runtime
 
@@ -190,6 +208,15 @@ namespace hobovr {
 
     // hobovr stuff
     std::shared_ptr<SockReceiver::DriverReceiver> m_pBrodcastSocket;
+
+  private:
+    // openvr api stuff that i don't trust you to touch
+    float m_fPoseTimeOffset; // time offset of the pose, set trough the config
+    vr::VRInputComponentHandle_t m_compHaptic; // haptics, used if UseHaptics is true
+
+    std::string m_sUpdateUrl; // url to which steamvr will redirect if checkForDeviceUpdates returns true on Activate, set trough the config
+    std::string m_sSerialNumber; // steamvr uses this to identify devices, no need for you to touch this after init
+    std::string m_sModelNumber; // steamvr uses this to identify devices, no need for you to touch this after init
   };
 }
 
