@@ -391,6 +391,7 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
     m_pSocketComm->start();
   } catch (...){
     DriverLog("m_pSocketComm broke on create or broke on start, either way you're fucked\n");
+    DriverLog("check if the server is running...\n");
     return VRInitError_Init_WebServerFailed;
   }
 
