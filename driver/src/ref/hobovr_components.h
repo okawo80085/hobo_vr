@@ -4,40 +4,61 @@
 #define HOBOVR_COMPONENTS_H
 
 namespace hobovr {
+  static const char *const k_pch_ExtDisplay_Section = "extendedDisplay";
+  static const char *const k_pch_ExtDisplay_WindowX_Int32 = "windowX";
+  static const char *const k_pch_ExtDisplay_WindowY_Int32 = "windowY";
+  static const char *const k_pch_ExtDisplay_WindowWidth_Int32 = "windowWidth";
+  static const char *const k_pch_ExtDisplay_WindowHeight_Int32 = "windowHeight";
+  static const char *const k_pch_ExtDisplay_RenderWidth_Int32 = "renderWidth";
+  static const char *const k_pch_ExtDisplay_RenderHeight_Int32 = "renderHeight";
+  static const char *const k_pch_ExtDisplay_DistortionK1_Float = "DistortionK1";
+  static const char *const k_pch_ExtDisplay_DistortionK2_Float = "DistortionK2";
+  static const char *const k_pch_ExtDisplay_ZoomWidth_Float = "ZoomWidth";
+  static const char *const k_pch_ExtDisplay_ZoomHeight_Float = "ZoomHeight";
+  static const char *const k_pch_ExtDisplay_EyeGapOffset_Int = "EyeGapOffsetPx";
+
   static const bool HobovrExtDisplayComp_doLensStuff = true;
-  class HobovrExtendedDisplayComponent: public vr::IVRDisplayComponent{
+  class HobovrExtendedDisplayComponent: public vr::IVRDisplayComponent {
   public:
     HobovrExtendedDisplayComponent(){
 
-      m_nWindowX = vr::VRSettings()->GetInt32(k_pch_Hobovr_Section,
-                                              k_pch_Hobovr_WindowX_Int32);
-      m_nWindowY = vr::VRSettings()->GetInt32(k_pch_Hobovr_Section,
-                                              k_pch_Hobovr_WindowY_Int32);
-      m_nWindowWidth = vr::VRSettings()->GetInt32(k_pch_Hobovr_Section,
-                                                  k_pch_Hobovr_WindowWidth_Int32);
+      m_nWindowX = vr::VRSettings()->GetInt32(k_pch_ExtDisplay_Section,
+                                              k_pch_ExtDisplay_WindowX_Int32);
+
+      m_nWindowY = vr::VRSettings()->GetInt32(k_pch_ExtDisplay_Section,
+                                              k_pch_ExtDisplay_WindowY_Int32);
+
+      m_nWindowWidth = vr::VRSettings()->GetInt32(k_pch_ExtDisplay_Section,
+                                                  k_pch_ExtDisplay_WindowWidth_Int32);
+
       m_nWindowHeight = vr::VRSettings()->GetInt32(
-          k_pch_Hobovr_Section, k_pch_Hobovr_WindowHeight_Int32);
-      m_nRenderWidth = vr::VRSettings()->GetInt32(k_pch_Hobovr_Section,
-                                                  k_pch_Hobovr_RenderWidth_Int32);
+          k_pch_ExtDisplay_Section, k_pch_ExtDisplay_WindowHeight_Int32);
+
+      m_nRenderWidth = vr::VRSettings()->GetInt32(k_pch_ExtDisplay_Section,
+                                                  k_pch_ExtDisplay_RenderWidth_Int32);
+
       m_nRenderHeight = vr::VRSettings()->GetInt32(
-          k_pch_Hobovr_Section, k_pch_Hobovr_RenderHeight_Int32);
+          k_pch_ExtDisplay_Section, k_pch_ExtDisplay_RenderHeight_Int32);
 
       m_fDistortionK1 = vr::VRSettings()->GetFloat(
-          k_pch_Hobovr_Section, k_pch_Hobovr_DistortionK1_Float);
-      m_fDistortionK2 = vr::VRSettings()->GetFloat(
-          k_pch_Hobovr_Section, k_pch_Hobovr_DistortionK2_Float);
-      m_fZoomWidth = vr::VRSettings()->GetFloat(k_pch_Hobovr_Section,
-                                                k_pch_Hobovr_ZoomWidth_Float);
-      m_fZoomHeight = vr::VRSettings()->GetFloat(k_pch_Hobovr_Section,
-                                                 k_pch_Hobovr_ZoomHeight_Float);
+          k_pch_ExtDisplay_Section, k_pch_ExtDisplay_DistortionK1_Float);
 
-      m_iEyeGapOff = vr::VRSettings()->GetFloat(k_pch_Hobovr_Section,
-                                                 k_pch_Hobovr_EyeGapOffset_Int);
+      m_fDistortionK2 = vr::VRSettings()->GetFloat(
+          k_pch_ExtDisplay_Section, k_pch_ExtDisplay_DistortionK2_Float);
+
+      m_fZoomWidth = vr::VRSettings()->GetFloat(k_pch_ExtDisplay_Section,
+                                                k_pch_ExtDisplay_ZoomWidth_Float);
+
+      m_fZoomHeight = vr::VRSettings()->GetFloat(k_pch_ExtDisplay_Section,
+                                                 k_pch_ExtDisplay_ZoomHeight_Float);
+
+      m_iEyeGapOff = vr::VRSettings()->GetFloat(k_pch_ExtDisplay_Section,
+                                                 k_pch_ExtDisplay_EyeGapOffset_Int);
 
       DriverLog("Extended display component created\n");
       DriverLog("distortion koeffs: k1=%f, k2=%f\n", m_fDistortionK1, m_fDistortionK2);
-      DriverLog("render targer: %dx%d\n", m_nRenderWidth, m_nRenderHeight);
-      DriverLog("window targer: %dx%d\n", m_nWindowWidth, m_nWindowHeight);
+      DriverLog("render target: %dx%d\n", m_nRenderWidth, m_nRenderHeight);
+      DriverLog("window target: %dx%d\n", m_nWindowWidth, m_nWindowHeight);
       DriverLog("eye gap offset: %d", m_iEyeGapOff);
 
     }
@@ -135,6 +156,25 @@ namespace hobovr {
     float m_fZoomWidth;
     float m_fZoomHeight;
   };
+
+  // this is a dummy class meant to expand the component handling system, DO NOT USE THIS!
+  class HobovrDriverDirectModeComponent {
+  public:
+    HobovrDriverDirectModeComponent() {}
+  };
+
+  // this is a dummy class meant to expand the component handling system, DO NOT USE THIS!
+  class HobovrCameraComponent {
+  public:
+    HobovrCameraComponent() {}
+  };
+
+  // this is a dummy class meant to expand the component handling system, DO NOT USE THIS!
+  class HobovrVirtualDisplayComponent {
+  public:
+    HobovrVirtualDisplayComponent() {}
+  };
+
 }
 
 #endif // HOBOVR_COMPONENTS_H

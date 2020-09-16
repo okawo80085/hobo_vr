@@ -15,6 +15,8 @@ class Server:
         looks like a destructor to me
         """
         self.conz = []
+        self.driver_conz = []
+        self.poser_conz = []
         self.debug = False
 
         self._driver_idz = [
@@ -31,15 +33,35 @@ class Server:
         return f"<{self.__class__.__module__}.{self.__class__.__name__} debug={self.debug} active_conz={len(self.conz)} object at {hex(id(self))}>"
 
     async def send_to_all(self, msg, me):
-        """send a message to all registered connections that are not self and have the corresponding id"""
+        """send a message to all registered connections that are not self"""
         try:
             for i in self.conz:
-                if i != me and (i[2] == me[2] or i[3]):
+                if i != me:
                     i[1].write(msg)
                     await i[1].drain()
 
         except Exception as e:
             print(f"message from {me[0]} lost: {e}")
+
+    async def send_to_all_poser(self, msg, me):
+        """send a message to all registered connections that are not self, for poser messages only"""
+        try:
+            for i in self.driver_conz:
+                i[1].write(msg)
+                await i[1].drain()
+
+        except Exception as e:
+            print(f"message from {me[0]} poser lost: {e}")
+
+    async def send_to_all_driver(self, msg, me):
+        """send a message to all registered connections that are not self, for driver messages only"""
+        try:
+            for i in self.poser_conz:
+                i[1].write(msg)
+                await i[1].drain()
+
+        except Exception as e:
+            print(f"message from {me[0]} driver lost: {e}")
 
     async def __call__(self, reader, writer):
         """this is will run for each incoming connection"""
@@ -57,12 +79,21 @@ class Server:
         me = (
             addr,
             writer,
-            id_msg in self._driver_idz or id_msg in self._poser_idz,
-            id_msg in self._poser_idz,
             f"lol{len(self.conz)}",
         )
-        if me not in self.conz:
-            print(f"new connection from {addr}")
+
+        print(f"new connection from {addr}")
+        whatAmI = 0
+        if id_msg in self._driver_idz and me not in self.driver_conz:
+            whatAmI = 1
+            self.driver_conz.append(me)
+
+        elif id_msg in self._poser_idz and me not in self.poser_conz:
+            whatAmI = 2
+            self.poser_conz.append(me)
+
+        elif me not in self.conz:
+            whatAmI = 3
             self.conz.append(me)
 
         if first_msg:
@@ -76,24 +107,65 @@ class Server:
             print("its a poser")
 
         # main receive/transmit loop
-        while 1:
-            try:
-                data = await reader.read(400)
+        if whatAmI == 1:
+            while 1:
+                try:
+                    data = await reader.read(400)
 
-                if not data or self._close_msg in data:
+                    if not data or self._close_msg in data:
+                        break
+
+                    await self.send_to_all_driver(data, me)
+
+                    if self.debug:
+                        print(f"{repr(data)} from {addr}")
+
+                except Exception as e:
+                    print(f"driver {addr} broke: {e}")
                     break
 
-                await self.send_to_all(data, me)
+        elif whatAmI == 2:
+            while 1:
+                try:
+                    data = await reader.read(400)
 
-                if self.debug:
-                    print(f"{repr(data)} from {addr}")
+                    if not data or self._close_msg in data:
+                        break
 
-            except Exception as e:
-                print(f"{addr} broke: {e}")
-                break
+                    await self.send_to_all_poser(data, me)
+
+                    if self.debug:
+                        print(f"{repr(data)} from {addr}")
+
+                except Exception as e:
+                    print(f"poser {addr} broke: {e}")
+                    break
+
+        elif whatAmI == 3:
+            while 1:
+                try:
+                    data = await reader.read(400)
+
+                    if not data or self._close_msg in data:
+                        break
+
+                    await self.send_to_all(data, me)
+
+                    if self.debug:
+                        print(f"{repr(data)} from {addr}")
+
+                except Exception as e:
+                    print(f"{addr} broke: {e}")
+                    break
 
         if me in self.conz:
             self.conz.remove(me)
+
+        if me in self.driver_conz:
+            self.driver_conz.remove(me)
+
+        if me in self.poser_conz:
+            self.poser_conz.remove(me)
 
         try:
             writer.close()

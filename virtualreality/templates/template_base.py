@@ -80,7 +80,7 @@ class PoserTemplateBase(object):
         }
         self.last_read = b""
         self.id_message = "holla"
-        self._terminator = b"\r\n"
+        self._terminator = b"\n"
 
     async def _socket_init(self):
         """
@@ -110,9 +110,6 @@ class PoserTemplateBase(object):
                 # self.last_read = data
                 data = await self.reader.read(200)
                 backBuffer.extend(data)
-
-                if not data:
-                    break
 
                 while self._terminator in backBuffer:
                     self.last_read, backBuffer = backBuffer.split(

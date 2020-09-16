@@ -55,26 +55,15 @@ inline HmdQuaternion_t HmdQuaternion_Init(double w, double x, double y,
 }
 
 // keys for use with the settings API
+// driver keys
 static const char *const k_pch_Hobovr_Section = "driver_hobovr";
-static const char *const k_pch_Hobovr_WindowX_Int32 = "windowX";
-static const char *const k_pch_Hobovr_WindowY_Int32 = "windowY";
-static const char *const k_pch_Hobovr_WindowWidth_Int32 = "windowWidth";
-static const char *const k_pch_Hobovr_WindowHeight_Int32 = "windowHeight";
-static const char *const k_pch_Hobovr_RenderWidth_Int32 = "renderWidth";
-static const char *const k_pch_Hobovr_RenderHeight_Int32 = "renderHeight";
-static const char *const k_pch_Hobovr_SecondsFromVsyncToPhotons_Float =
-    "secondsFromVsyncToPhotons";
-static const char *const k_pch_Hobovr_DisplayFrequency_Float =
-    "displayFrequency";
-
-static const char *const k_pch_Hobovr_DistortionK1_Float = "DistortionK1";
-static const char *const k_pch_Hobovr_DistortionK2_Float = "DistortionK2";
-static const char *const k_pch_Hobovr_ZoomWidth_Float = "ZoomWidth";
-static const char *const k_pch_Hobovr_ZoomHeight_Float = "ZoomHeight";
 static const char *const k_pch_Hobovr_UduDeviceManifestList_String = "DeviceManifestList";
-static const char *const k_pch_Hobovr_IPD_Float = "IPD";
-static const char *const k_pch_Hobovr_EyeGapOffset_Int = "EyeGapOffsetPx";
-static const char *const k_pch_Hobovr_PoseTimeOffset_Float = "PoseTimeOffset";
+
+// hmd device keys
+static const char *const k_pch_Hmd_Section = "hmd";
+static const char *const k_pch_Hmd_SecondsFromVsyncToPhotons_Float = "secondsFromVsyncToPhotons";
+static const char *const k_pch_Hmd_DisplayFrequency_Float = "displayFrequency";
+static const char* const k_pch_Hmd_IPD_Float = "IPD";
 
 // include has to be here, dont ask
 #include "ref/hobovr_device_base.h"
@@ -92,13 +81,17 @@ public:
     m_sBindPath = "{hobovr}/input/hobovr_hmd_profile.json";
 
     m_flSecondsFromVsyncToPhotons = vr::VRSettings()->GetFloat(
-        k_pch_Hobovr_Section, k_pch_Hobovr_SecondsFromVsyncToPhotons_Float);
+        k_pch_Hmd_Section, k_pch_Hmd_SecondsFromVsyncToPhotons_Float);
 
     m_flDisplayFrequency = vr::VRSettings()->GetFloat(
-        k_pch_Hobovr_Section, k_pch_Hobovr_DisplayFrequency_Float);
+        k_pch_Hmd_Section, k_pch_Hmd_DisplayFrequency_Float);
 
-    m_flIPD = vr::VRSettings()->GetFloat(k_pch_Hobovr_Section,
-                                         k_pch_Hobovr_IPD_Float);
+    m_flIPD = vr::VRSettings()->GetFloat(k_pch_Hmd_Section,
+                                         k_pch_Hmd_IPD_Float);
+
+    // log non boilerplate device specific settings 
+    DriverLog("device hmd settings: vsync time %fs, display freq %f, ipd %fm", m_flSecondsFromVsyncToPhotons,
+                    m_flDisplayFrequency, m_flIPD);
 
     hobovr::HobovrComponent_t extDisplayComp = {hobovr::THobovrCompType::THobovrComp_ExtendedDisplay, vr::IVRDisplayComponent_Version};
     extDisplayComp.compHandle = std::make_shared<hobovr::HobovrExtendedDisplayComponent>();
@@ -398,6 +391,8 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
     m_pSocketComm->start();
   } catch (...){
     DriverLog("m_pSocketComm broke on create or broke on start, either way you're fucked\n");
+    DriverLog("check if the server is running...\n");
+    DriverLog("... 10061 means \"couldn't connect to server\"............\n");
     return VRInitError_Init_WebServerFailed;
   }
 

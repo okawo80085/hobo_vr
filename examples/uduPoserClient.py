@@ -35,4 +35,15 @@ async def example_thread():
         await asyncio.sleep(poser.coro_keep_alive["example_thread"].sleep_delay)
 
 
+@poser.thread_register(1 / 60)
+async def example_receive_haptics_thread():
+    while poser.coro_keep_alive["example_receive_haptics_thread"].is_alive:
+        if poser.last_read:
+            print (poser.last_read)
+            poser.last_read = b""
+
+        await asyncio.sleep(poser.coro_keep_alive["example_receive_haptics_thread"].sleep_delay)
+
+
+
 asyncio.run(poser.main())
