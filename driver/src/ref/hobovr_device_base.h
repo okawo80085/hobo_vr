@@ -184,7 +184,7 @@ namespace hobovr {
           case vr::VREvent_Input_HapticVibration: {
             if (vrEvent.data.hapticVibration.componentHandle == m_compHaptic) {
                 // haptic!
-                m_pBrodcastSocket->send2((m_sSerialNumber +
+                m_pBrodcastSocket->send2((m_sSerialNumber + ',' +
                 std::to_string(vrEvent.data.hapticVibration.fDurationSeconds) + ',' +
                 std::to_string(vrEvent.data.hapticVibration.fFrequency) + ',' +
                 std::to_string(vrEvent.data.hapticVibration.fAmplitude) + "\n").c_str());
