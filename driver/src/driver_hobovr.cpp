@@ -116,6 +116,9 @@ public:
     vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
                                         Prop_IsOnDesktop_Bool, false);
 
+    vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
+                                        Prop_DisplayDebugMode_Bool, false);
+
     return VRInitError_None;
   }
 
