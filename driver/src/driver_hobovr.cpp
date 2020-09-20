@@ -60,7 +60,7 @@ static const char *const k_pch_Hobovr_Section = "driver_hobovr";
 static const char *const k_pch_Hobovr_UduDeviceManifestList_String = "DeviceManifestList";
 
 // hmd device keys
-static const char *const k_pch_Hmd_Section = "hmd";
+static const char *const k_pch_Hmd_Section = "hobovr_device_hmd";
 static const char *const k_pch_Hmd_SecondsFromVsyncToPhotons_Float = "secondsFromVsyncToPhotons";
 static const char *const k_pch_Hmd_DisplayFrequency_Float = "displayFrequency";
 static const char* const k_pch_Hmd_IPD_Float = "IPD";
