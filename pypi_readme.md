@@ -110,3 +110,79 @@ def example_thread2():
 
 asyncio.run(poser.main())
 ```
+
+# udu poser client example
+```
+u - unlimited
+d - devices
+u - upgrade
+```
+buts its more like a mode
+
+here is an example
+```python
+"""
+udu poser client example
+
+more info: help(templates.UduPoserTemplate)
+"""
+
+import asyncio
+import time
+import numpy as np
+import pyrr
+
+from virtualreality import templates
+from virtualreality.server import server
+
+poser = templates.UduPoserClient("h c t")
+#                                 ^^^^^
+#                                 this dictates devices used
+#                                 for this example its:
+#                                 hmd controller tracker
+# poser = templates.UduPoserClient("h c c") btw normal posers use this device configuration
+
+
+@poser.thread_register(1 / 60)
+async def example_thread():
+    # spins all devices in an orbit
+    h = 0
+    while poser.coro_keep_alive["example_thread"].is_alive:
+        x, y, z, w = pyrr.Quaternion.from_y_rotation(h)
+        for i in range(len(poser.poses)):
+            poser.poses[i].x = np.sin(h / (i + 1))
+            poser.poses[i].z = np.cos(h / (i + 1))
+
+            poser.poses[i].r_x = x
+            poser.poses[i].r_y = y
+            poser.poses[i].r_z = z
+            poser.poses[i].r_w = w
+
+        h += 0.01
+
+        await asyncio.sleep(poser.coro_keep_alive["example_thread"].sleep_delay)
+
+# any poser can do this actually
+@poser.thread_register(1 / 60)
+async def example_receive_haptics_thread():
+    while poser.coro_keep_alive["example_receive_haptics_thread"].is_alive:
+        # check for new reads
+        if poser.last_read:
+            print (poser.last_read) # print received
+            poser.last_read = b"" # reset
+
+        await asyncio.sleep(poser.coro_keep_alive["example_receive_haptics_thread"].sleep_delay)
+
+asyncio.run(poser.main())
+```
+
+unlike normal posers, udu posers generate pose structs on start
+
+you then need use those pose structs as the value for `DeviceManifestList` in the driver config
+
+[more info on udu](https://github.com/okawo80085/hobo_vr/wiki/udu)
+
+# more examples
+[hobo_vr's examples](https://github.com/okawo80085/hobo_vr/tree/master/examples)
+
+there is also [`poser_3dof_hmd_only.py`](https://github.com/okawo80085/hobo_vr/blob/master/examples/poser_3dof_hmd_only.py), its an udu poser with actual 3dof tracking(more info in the example itself)

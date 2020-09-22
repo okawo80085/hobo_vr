@@ -115,7 +115,7 @@ class Server:
                     if not data or self._close_msg in data:
                         break
 
-                    await self.send_to_all_driver(data, me)
+                    await self.send_to_all_driver(data, me) # send to all posers
 
                     if self.debug:
                         print(f"{repr(data)} from {addr}")
@@ -132,7 +132,7 @@ class Server:
                     if not data or self._close_msg in data:
                         break
 
-                    await self.send_to_all_poser(data, me)
+                    await self.send_to_all_poser(data, me) # send to all drivers
 
                     if self.debug:
                         print(f"{repr(data)} from {addr}")
@@ -149,7 +149,8 @@ class Server:
                     if not data or self._close_msg in data:
                         break
 
-                    await self.send_to_all(data, me)
+                    await self.send_to_all(data, me) # send to all not identified connections
+                    await self.send_to_all_driver(data, me) # send to posers too
 
                     if self.debug:
                         print(f"{repr(data)} from {addr}")
