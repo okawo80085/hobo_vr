@@ -185,4 +185,4 @@ you then need use those pose structs as the value for `DeviceManifestList` in th
 # more examples
 [hobo_vr's examples](https://github.com/okawo80085/hobo_vr/tree/master/examples)
 
-there is also [`poser_3dof_hmd_only.py`](https://github.com/okawo80085/hobo_vr/blob/master/examples/poser_3dof_hmd_only.py), its an udu poser with actual 3dof tracking(more info in the example itself)
+there is also [`poser_3dof_hmd_only.py`](https://github.com/okawo80085/hobo_vr/blob/master/examples/poser_3dof_hmd_only.py), its an udu poser with actual 3dof hmd only tracking(more info in the example itself)
