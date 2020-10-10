@@ -300,7 +300,7 @@ def manual_calibration(
         if frame is None:
             break
 
-        blurred = cv2.GaussianBlur(frame, (3, 3), 0)
+        blurred = cv2.GaussianBlur(frame, (9, 9), 0)
         hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
         exposure = cv2.getTrackbarPos("exposure", cam_window)
@@ -326,11 +326,11 @@ def manual_calibration(
 
             mask = get_color_mask(hsv, ranges.color_ranges[color])
 
-            res = cv2.bitwise_and(hsv, hsv, mask=mask)
+            # res = cv2.bitwise_and(hsv, hsv, mask=mask)
 
-            cv2.imshow(tracker_window_names[color], res)
+            cv2.imshow(tracker_window_names[color], mask)
 
-        cv2.imshow(cam_window, frame)
+        cv2.imshow(cam_window, blurred)
 
         k = cv2.waitKey(1) & 0xFF
 

@@ -22,20 +22,13 @@ from virtualreality.util import driver
 
 myDriver = driver.UduDummyDriverReceiver("h13 c22 c22")  # receiver is global, too bad!
 
-
-class Device_hmd(moderngl_window.WindowConfig):
-    def __init__(self, ctx, color):
+class Device_base(moderngl_window.WindowConfig):
+    def __init__(self, ctx, color, prog_path):
         self.ctx = ctx
         self.color = color
 
-        self.meshes = [
-            geometry.cube(size=np.array((7, 5, 1)) / 2, center=(0, 0, 0)),
-            geometry.cube(size=np.array((2, 2, 1)) / 2, center=(0, 0, 2)),
-        ]
+        self.basic_light_prog = self.load_program(prog_path)
 
-        self.basic_light_prog = self.load_program(
-            "programs/shadow_mapping/directional_light.glsl"
-        )
         self.basic_light_prog["shadowMap"].value = 0
         self.basic_light_prog["color"].value = self.color
 
@@ -44,7 +37,7 @@ class Device_hmd(moderngl_window.WindowConfig):
             i.render(prog)
 
     def write_bl(self, pose, camera, m_shadow_bias, lightDir):
-        x, y, z, w, rx, ry, rz = pose[:7]
+        x, y, z, w, rx, ry, rz, *_ = pose
         # y = -y
         ry = -ry
         rx = -rx
@@ -59,11 +52,18 @@ class Device_hmd(moderngl_window.WindowConfig):
         self.basic_light_prog["m_shadow_bias"].write(m_shadow_bias)
         self.basic_light_prog["lightDir"].write(lightDir)
 
-
-class Device_cntrlr(moderngl_window.WindowConfig):
+class Device_hmd(Device_base):
     def __init__(self, ctx, color):
-        self.ctx = ctx
-        self.color = color
+        super().__init__(ctx, color, "programs/shadow_mapping/directional_light.glsl")
+
+        self.meshes = [
+            geometry.cube(size=np.array((7, 5, 1)) / 2, center=(0, 0, -1)),
+            geometry.cube(size=np.array((2, 2, 1)) / 2, center=(0, 0, 1)),
+        ]
+
+class Device_cntrlr(Device_base):
+    def __init__(self, ctx, color):
+        super().__init__(ctx, color, "programs/shadow_mapping/directional_light.glsl")
 
         self.meshes = [
             geometry.cube(size=np.array((2, 2, 5)) / 2, center=(0, 0, 0)),
@@ -71,37 +71,9 @@ class Device_cntrlr(moderngl_window.WindowConfig):
             geometry.cube(size=np.array((1, 1, 1)) / 2, center=(0, 0, 4)),
         ]
 
-        self.basic_light_prog = self.load_program(
-            "programs/shadow_mapping/directional_light.glsl"
-        )
-        self.basic_light_prog["shadowMap"].value = 0
-        self.basic_light_prog["color"].value = self.color
-
-    def render(self, prog):
-        for i in self.meshes:
-            i.render(prog)
-
-    def write_bl(self, pose, camera, m_shadow_bias, lightDir):
-        x, y, z, w, rx, ry, rz = pose[:7]
-        # y = -y
-        ry = -ry
-        rx = -rx
-        rz = -rz
-
-        rotz = Matrix44.from_quaternion([rx, ry, rz, w], dtype="f4")
-        mat1 = Matrix44.from_translation([x * 10, y * 10, z * 10], dtype="f4")
-
-        self.basic_light_prog["m_model"].write(mat1 * rotz)
-        self.basic_light_prog["m_proj"].write(camera.projection.matrix)
-        self.basic_light_prog["m_camera"].write(camera.matrix)
-        self.basic_light_prog["m_shadow_bias"].write(m_shadow_bias)
-        self.basic_light_prog["lightDir"].write(lightDir)
-
-
-class Device_trkr(moderngl_window.WindowConfig):
+class Device_trkr(Device_base):
     def __init__(self, ctx, color):
-        self.ctx = ctx
-        self.color = color
+        super().__init__(ctx, color, "programs/shadow_mapping/directional_light.glsl")
 
         self.meshes = [
             geometry.cube(size=np.array((2, 2, 1)) / 2, center=(0, 0, 0)),
@@ -110,22 +82,39 @@ class Device_trkr(moderngl_window.WindowConfig):
             geometry.cube(size=np.array((1, 1, 1)) / 2, center=(0, 0, 3)),
         ]
 
-        self.basic_light_prog = self.load_program(
-            "programs/shadow_mapping/directional_light.glsl"
-        )
-        self.basic_light_prog["shadowMap"].value = 0
-        self.basic_light_prog["color"].value = self.color
+class Velocity_vector(Device_base):
+    def __init__(self, ctx, color, center_offs=(0, 0, 0)):
+        super().__init__(ctx, color, "programs/shadow_mapping/directional_light.glsl")
+        thicc = 0.4
+        self.center_offs = center_offs
+        self.update_vel((1, 1, 1))
 
-    def render(self, prog):
-        for i in self.meshes:
-            i.render(prog)
+    def update_vel(self, vel):
+        vel = np.array(vel)
+        ident = np.eye(3)
+
+        a = (vel >= 0).astype(int)
+        b = -(vel < 0).astype(int)
+
+        c = a+b
+
+        sizes = c*ident*vel + ((1 - ident)/5)
+        centers = ident*(-vel/2) + self.center_offs
+
+        self.meshes = [
+            geometry.cube(size=sizes[0], center=centers[0]),
+            geometry.cube(size=sizes[1], center=centers[1]),
+            geometry.cube(size=sizes[2], center=centers[2]),
+        ]
 
     def write_bl(self, pose, camera, m_shadow_bias, lightDir):
-        x, y, z, w, rx, ry, rz = pose[:7]
+        x, y, z, w, rx, ry, rz, vx, vy, vz, *_ = pose
         # y = -y
         ry = -ry
         rx = -rx
         rz = -rz
+
+        self.update_vel((vx, vy, vz))
 
         rotz = Matrix44.from_quaternion([rx, ry, rz, w], dtype="f4")
         mat1 = Matrix44.from_translation([x * 10, y * 10, z * 10], dtype="f4")
@@ -203,21 +192,20 @@ class ShadowMapping(CameraWindow):
         for i in myDriver.device_order:
             if i == "h":
                 self.device_list.append(
-                    Device_hmd(self.ctx, tuple(np.random.randint(100, size=(4,)) / 100))
+                    (Device_hmd(self.ctx, tuple(np.random.randint(100, size=(4,)) / 100)),
+                    Velocity_vector(self.ctx, (1, 0, 0, 1)))
                 )
 
             elif i == "c":
                 self.device_list.append(
-                    Device_cntrlr(
-                        self.ctx, tuple(np.random.randint(100, size=(4,)) / 100)
-                    )
+                    (Device_cntrlr(self.ctx, tuple(np.random.randint(100, size=(4,)) / 100)),
+                    Velocity_vector(self.ctx, (1, 0, 0, 1), (-0.75, 0, -1.75)))
                 )
 
             elif i == "t":
                 self.device_list.append(
-                    Device_trkr(
-                        self.ctx, tuple(np.random.randint(100, size=(4,)) / 100)
-                    )
+                    (Device_trkr(self.ctx, tuple(np.random.randint(100, size=(4,)) / 100)),
+                    Velocity_vector(self.ctx, (1, 0, 0, 1)))
                 )
 
     def render(self, time, frametime):
@@ -239,7 +227,8 @@ class ShadowMapping(CameraWindow):
         self.shadowmap_program["mvp"].write(depth_mvp)
 
         for i in range(len(myDriver.device_order)):
-            self.device_list[i].render(self.shadowmap_program)
+            self.device_list[i][0].render(self.shadowmap_program)
+            self.device_list[i][1].render(self.shadowmap_program)
 
         self.floor.render(self.shadowmap_program)
 
@@ -263,7 +252,13 @@ class ShadowMapping(CameraWindow):
         self.offscreen_depth.use(location=0)
 
         for i in range(len(myDriver.device_order)):
-            self.device_list[i].write_bl(
+            self.device_list[i][0].write_bl(
+                all_poses[i],
+                self.camera,
+                matrix44.multiply(depth_mvp, bias_matrix),
+                self.lightpos,
+            )
+            self.device_list[i][1].write_bl(
                 all_poses[i],
                 self.camera,
                 matrix44.multiply(depth_mvp, bias_matrix),
@@ -271,7 +266,8 @@ class ShadowMapping(CameraWindow):
             )
 
         for i in range(len(myDriver.device_order)):
-            self.device_list[i].render(self.device_list[i].basic_light_prog)
+            self.device_list[i][0].render(self.device_list[i][0].basic_light_prog)
+            self.device_list[i][1].render(self.device_list[i][1].basic_light_prog)
 
         # floor
         self.basic_lightFloor["m_model"].write(
