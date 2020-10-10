@@ -474,7 +474,7 @@ class BlobTracker(threading.Thread):
                     color_high = [hc + hr, sc + sr, vc + vr]
                     color_low = [hc - hr, sc - sr, vc - vr]
 
-                    blurred = cv2.GaussianBlur(frame, (3, 3), 0)
+                    blurred = cv2.GaussianBlur(frame, (9, 9), 0)
 
                     hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 

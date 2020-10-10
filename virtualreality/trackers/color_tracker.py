@@ -66,8 +66,8 @@ class Poser(templates.PoserTemplate):
         self.temp_pose = ControllerState()
 
         self.serialPaths = {
-            "cont_r": "/dev/ttyUSB2",
-            "cont_l": "/dev/ttyUSB1",
+            "cont_r": "/dev/ttyUSB1",
+            "cont_l": "/dev/ttyUSB2",
             "hmd": "/dev/ttyUSB0",
         }
 
@@ -169,6 +169,13 @@ class Poser(templates.PoserTemplate):
             self.coro_keep_alive["get_location"].is_alive = False
             return
 
+        axisScale = np.array([0.8, 1/2, 0.8]) * [-1, 1, 1]
+
+        l_oof = np.array([0, 0, 0.035])
+        r_oof = np.array([0, 0, 0.025])
+
+        hmd_oof = np.array([-0.01, -0.045, 0.04])
+
         with t1:
             while self.coro_keep_alive["get_location"].is_alive:
                 try:
@@ -176,18 +183,34 @@ class Poser(templates.PoserTemplate):
 
                     u.rotate(poses, offsets)
 
+                    poses *= axisScale
+
                     if self.usePos:
-                        self.pose_controller_l.x = round(-poses[1][0], 6)
-                        self.pose_controller_l.y = round(poses[1][1], 6)
-                        self.pose_controller_l.z = round(poses[1][2], 6)
 
-                        self.pose_controller_r.x = round(-poses[2][0], 6)
-                        self.pose_controller_r.y = round(poses[2][1], 6)
-                        self.pose_controller_r.z = round(poses[2][2], 6)
+                        # origin point correction math
+                        m33_r = pyrr.matrix33.create_from_quaternion([self.pose_controller_r.r_x, self.pose_controller_r.r_y, self.pose_controller_r.r_z, self.pose_controller_r.r_w])
+                        m33_l = pyrr.matrix33.create_from_quaternion([self.pose_controller_l.r_x, self.pose_controller_l.r_y, self.pose_controller_l.r_z, self.pose_controller_l.r_w])
+                        m33_hmd = pyrr.matrix33.create_from_quaternion([self.pose.r_x, self.pose.r_y, self.pose.r_z, self.pose.r_w])
 
-                        self.pose.x = round(-poses[0][0] - 0.01, 6)
-                        self.pose.y = round(poses[0][1] - 0.07, 6)
-                        self.pose.z = round(poses[0][2], 6)
+                        r_oof2 = m33_r.dot(r_oof)
+                        l_oof2 = m33_l.dot(l_oof)
+                        hmd_oof2 = m33_hmd.dot(hmd_oof)
+
+                        poses[1] += l_oof2
+                        poses[2] += r_oof2
+                        poses[0] += hmd_oof2
+
+                        self.pose.x = poses[0][0]
+                        self.pose.y = poses[0][1]
+                        self.pose.z = poses[0][2]
+
+                        self.pose_controller_l.x = poses[1][0]
+                        self.pose_controller_l.y = poses[1][1]
+                        self.pose_controller_l.z = poses[1][2] - 0.13
+
+                        self.pose_controller_r.x = poses[2][0]
+                        self.pose_controller_r.y = poses[2][1]
+                        self.pose_controller_r.z = poses[2][2]
 
                     await asyncio.sleep(
                         self.coro_keep_alive["get_location"].sleep_delay
