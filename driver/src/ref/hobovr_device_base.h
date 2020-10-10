@@ -35,9 +35,18 @@ namespace hobovr {
     return false; // true steamvr will signal an update, false not
   }
 
+
+  class HobovrDeviceElement {
+  public:
+    virtual void ProcessEvent(const vr::VREvent_t &vrEvent) {};
+    virtual std::string GetSerialNumber() const {return "";};
+
+    virtual void RunFrame(std::vector<double> &trackingPacket) {} // override this
+  };
+
   // should be publicly inherited
   template<bool UseHaptics>
-  class HobovrDevice: public vr::ITrackedDeviceServerDriver {
+  class HobovrDevice: public vr::ITrackedDeviceServerDriver, public HobovrDeviceElement{
   public:
     HobovrDevice(std::string myserial, std::string deviceBreed,
     const std::shared_ptr<SockReceiver::DriverReceiver> commSocket=nullptr): m_pBrodcastSocket(commSocket),
@@ -62,9 +71,8 @@ namespace hobovr {
       if (m_pBrodcastSocket == nullptr && UseHaptics)
         DriverLog("communication socket object is not supplied and haptics are enabled, this device will break on back communication requests(e.g. haptics)\n");
 
+      m_Pose.result = TrackingResult_Running_OK;
       m_Pose.poseTimeOffset = (double)m_fPoseTimeOffset;
-      m_Pose.poseIsValid = true;
-      m_Pose.deviceIsConnected = true;
       m_Pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
       m_Pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
       m_Pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
@@ -72,6 +80,9 @@ namespace hobovr {
       m_Pose.vecPosition[1] = 0.;
       m_Pose.vecPosition[2] = 0.;
       m_Pose.willDriftInYaw = true;
+      m_Pose.deviceIsConnected = true;
+      m_Pose.poseIsValid = true;
+      m_Pose.shouldApplyHeadModel = false;
     }
 
     ~HobovrDevice(){
@@ -194,9 +205,6 @@ namespace hobovr {
       }
     }
 
-    template<typename Number>
-    void RunFrame(std::vector<Number> &trackingPacket) {} // override this
-
   protected:
     // openvr api stuff
     vr::TrackedDeviceIndex_t m_unObjectId; // DO NOT TOUCH THIS, parent will handle this, use it as read only!
@@ -210,12 +218,13 @@ namespace hobovr {
 
     std::vector<HobovrComponent_t> m_vComponents; // components that this device has, should be populated in the constructor of the derived class
 
+    float m_fPoseTimeOffset; // time offset of the pose, set trough the config
+
     // hobovr stuff
     std::shared_ptr<SockReceiver::DriverReceiver> m_pBrodcastSocket;
 
   private:
     // openvr api stuff that i don't trust you to touch
-    float m_fPoseTimeOffset; // time offset of the pose, set trough the config
     vr::VRInputComponentHandle_t m_compHaptic; // haptics, used if UseHaptics is true
 
     std::string m_sUpdateUrl; // url to which steamvr will redirect if checkForDeviceUpdates returns true on Activate, set trough the config
