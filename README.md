@@ -15,7 +15,7 @@ Debug view:
 
 [![debugger vod](https://img.youtube.com/vi/5WzN1XDXqbw/0.jpg)](https://www.youtube.com/watch?v=5WzN1XDXqbw)
 
-Some Beat Saber gameplay:
+Some Beat Saber gameplay(done using color_tracker):
 
 [![debugger vod](https://img.youtube.com/vi/PL2MQ9oeV2c/0.jpg)](https://www.youtube.com/watch?v=PL2MQ9oeV2c)
 
