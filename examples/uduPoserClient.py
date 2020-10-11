@@ -21,13 +21,20 @@ async def example_thread():
     h = 0
     while poser.coro_keep_alive["example_thread"].is_alive:
         x, y, z, w = pyrr.Quaternion.from_y_rotation(h)
-        for i in range(len(poser.poses)):
+        poser.poses[0].x = np.sin(h)
+        poser.poses[0].z = np.cos(h)
+
+        poser.poses[0].r_x = x
+        poser.poses[0].r_y = y
+        poser.poses[0].r_z = z
+        poser.poses[0].r_w = w
+        for i in range(1, len(poser.poses)):
             poser.poses[i].x = np.sin(h / (i + 1))
             poser.poses[i].z = np.cos(h / (i + 1))
 
-            poser.poses[i].r_x = x
-            poser.poses[i].r_y = y
-            poser.poses[i].r_z = z
+            poser.poses[i].r_x = -x
+            poser.poses[i].r_y = -y
+            poser.poses[i].r_z = -z
             poser.poses[i].r_w = w
 
         h += 0.01

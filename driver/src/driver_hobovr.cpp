@@ -73,7 +73,7 @@ static const char* const k_pch_Hmd_IPD_Float = "IPD";
 // Purpose: hmd device implementation
 //-----------------------------------------------------------------------------
 
-class HeadsetDriver : public hobovr::HobovrDevice<false> {
+class HeadsetDriver : public hobovr::HobovrDevice<false, false> {
 public:
   HeadsetDriver(std::string myserial):HobovrDevice(myserial, "hobovr_hmd_m") {
 
@@ -157,7 +157,7 @@ private:
 //-----------------------------------------------------------------------------
 // Purpose:controller device implementation
 //-----------------------------------------------------------------------------
-class ControllerDriver : public hobovr::HobovrDevice<true> {
+class ControllerDriver : public hobovr::HobovrDevice<true, true> {
 public:
   ControllerDriver(bool side, std::string myserial, const std::shared_ptr<SockReceiver::DriverReceiver> ReceiverObj):
   HobovrDevice(myserial, "hobovr_controller_m", ReceiverObj), m_bHandSide(side) {
@@ -286,7 +286,7 @@ private:
 //-----------------------------------------------------------------------------
 // Purpose: tracker device implementation
 //-----------------------------------------------------------------------------
-class TrackerDriver : public hobovr::HobovrDevice<true> {
+class TrackerDriver : public hobovr::HobovrDevice<true, false> {
 public:
   TrackerDriver(std::string myserial, const std::shared_ptr<SockReceiver::DriverReceiver> ReceiverObj):
   HobovrDevice(myserial, "hobovr_tracker_m", ReceiverObj) {
@@ -485,6 +485,9 @@ void CServerDriver_hobovr::RunFrame() {
 
     }
   }
+
+  for (auto &i : m_vDevices)
+    i->UpdateDeviceBatteryCharge();
 }
 
 CServerDriver_hobovr g_hobovrServerDriver;

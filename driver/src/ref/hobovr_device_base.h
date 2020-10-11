@@ -31,21 +31,39 @@ namespace hobovr {
 
   // for now this will never signal for updates, this same function will be executed for all derived device classes on Activate
   // you can implement your own version/update check here
-  bool checkForDeviceUpdates(std::string deviceSerial) {
-    return false; // true steamvr will signal an update, false not
+  bool checkForDeviceUpdates(const std::string deviceSerial) {
+    return false; // true steamvr will signal an update, false not, will always return false for now
   }
 
 
+  // implement device charge update functionality here
+  // this is called on each device charge update event
+  // should return values within [0, 1] range, 1 is full, 0 is empty
+  // this will receive the serial of the device on charge update event
+  float GetDeviceCharge(const std::string deviceSerial) {
+    return 1.0; // return permanent full charge for now
+  }
+
+  // implement device charging indication management functionality here
+  // this will be called on each device charge update event
+  // this function should manage the indication of weather the device is charging or not, using Prop_DeviceIsCharging_Bool in the VRProperties api
+  // this will receive the serial of the device on charge update event
+  void ManageDeviceCharging(const std::string deviceSerial, const vr::PropertyContainerHandle_t devicePropertyContainer) {
+    // does nothing for now
+  }
+
+  // done for simple device management in vectors
   class HobovrDeviceElement {
   public:
     virtual void ProcessEvent(const vr::VREvent_t &vrEvent) {};
     virtual std::string GetSerialNumber() const {return "";};
+    virtual void UpdateDeviceBatteryCharge() {};
 
     virtual void RunFrame(std::vector<double> &trackingPacket) {} // override this
   };
 
   // should be publicly inherited
-  template<bool UseHaptics>
+  template<bool UseHaptics, bool HasBattery>
   class HobovrDevice: public vr::ITrackedDeviceServerDriver, public HobovrDeviceElement{
   public:
     HobovrDevice(std::string myserial, std::string deviceBreed,
@@ -120,6 +138,19 @@ namespace hobovr {
                                                        "/output/haptic", &m_compHaptic);
       }
 
+
+      vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
+                                         Prop_DeviceProvidesBatteryStatus_Bool, HasBattery);
+      if constexpr(HasBattery) {
+        m_fDeviceCharge = GetDeviceCharge(m_sSerialNumber);
+        vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
+                                         Prop_DeviceIsCharging_Bool, false);
+        vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer,
+                                         Prop_DeviceBatteryPercentage_Float,
+                                         m_fDeviceCharge);
+        DriverLog("device has battery, current charge: %.3f", m_fDeviceCharge*100);
+      }
+
       vr::VRProperties()->SetBoolProperty(
           m_ulPropertyContainer, vr::Prop_Identifiable_Bool, UseHaptics);
 
@@ -142,8 +173,8 @@ namespace hobovr {
     }
 
     virtual void Deactivate() {
-      m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
       DriverLog("device with serial %s deactivated\n", m_sSerialNumber.c_str());
+      m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
     }
 
     virtual void EnterStandby() {}
@@ -164,7 +195,7 @@ namespace hobovr {
       DriverLog("device serial \"%s\", got request for \"%s\" component\n", m_sSerialNumber.c_str(), pchComponentNameAndVersion);
       for (auto &i : m_vComponents) {
         if (!_stricmp(pchComponentNameAndVersion, i.componentNameAndVersion)){
-          DriverLog("component found, returning...\n");
+          DriverLog("component found, responding...\n");
           switch(i.compType){
             case THobovrCompType::THobovrComp_ExtendedDisplay:
               return std::get<std::shared_ptr<HobovrExtendedDisplayComponent>>(i.compHandle).get();
@@ -201,7 +232,24 @@ namespace hobovr {
                 std::to_string(vrEvent.data.hapticVibration.fAmplitude) + "\n").c_str());
             }
           } break;
+
         }
+      }
+    }
+
+    void UpdateDeviceBatteryCharge() {
+      if constexpr(HasBattery) {
+        float fNewCharge = GetDeviceCharge(m_sSerialNumber);
+
+        if (fNewCharge != m_fDeviceCharge){
+          m_fDeviceCharge = fNewCharge;
+          vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer,
+                                         Prop_DeviceBatteryPercentage_Float,
+                                         m_fDeviceCharge);
+          DriverLog("device serial \"%s\", battery charge updated: %f", m_sSerialNumber, m_fDeviceCharge);
+        }
+
+        ManageDeviceCharging(m_sSerialNumber, m_ulPropertyContainer);
       }
     }
 
@@ -219,6 +267,7 @@ namespace hobovr {
     std::vector<HobovrComponent_t> m_vComponents; // components that this device has, should be populated in the constructor of the derived class
 
     float m_fPoseTimeOffset; // time offset of the pose, set trough the config
+    float m_fDeviceCharge; // device charge, 0-none, 1-full, only used if HasBattery is true
 
     // hobovr stuff
     std::shared_ptr<SockReceiver::DriverReceiver> m_pBrodcastSocket;
