@@ -45,9 +45,10 @@ using namespace vr;
 #endif
 
 namespace hobovr {
+  // le version
   static const uint32_t k_nHobovrVersionMajor = 0;
   static const uint32_t k_nHobovrVersionMinor = 5;
-  static const uint32_t k_nHobovrVersionBuild = 3;
+  static const uint32_t k_nHobovrVersionBuild = 4;
   static const std::string k_sHobovrVersionGG = "phantom pain";
 
 } // namespace hobovr
@@ -366,10 +367,18 @@ public:
   void OnPacket(std::string);
 
 private:
+  void SlowUpdateThread();
+  static void SlowUpdateThreadEnter(CServerDriver_hobovr *ptr) {
+    ptr->SlowUpdateThread();
+  }
+
   std::vector<hobovr::HobovrDeviceElement*> m_vDevices;
 
   std::shared_ptr<SockReceiver::DriverReceiver> m_pSocketComm;
 
+  // slower thread stuff
+  bool m_bSlowUpdateThreadIsAlive;
+  std::thread* m_ptSlowUpdateThread;
 };
 
 EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
@@ -444,11 +453,20 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
 
   m_pSocketComm->setCallback(this);
 
+  m_bSlowUpdateThreadIsAlive = true;
+  m_ptSlowUpdateThread = new std::thread(this->SlowUpdateThreadEnter, this);
+  if (!m_bSlowUpdateThreadIsAlive) {
+    DriverLog("slow update thread broke on start\n");
+    return VRInitError_Driver_RuntimeOutOfDate;
+  }
+
   return VRInitError_None;
 }
 
 void CServerDriver_hobovr::Cleanup() {
   m_pSocketComm->stop();
+  m_bSlowUpdateThreadIsAlive = false;
+  m_ptSlowUpdateThread->join();
 
   for (auto& i : m_vDevices)
     delete i; 
@@ -498,9 +516,19 @@ void CServerDriver_hobovr::RunFrame() {
 
     }
   }
+}
 
-  for (auto &i : m_vDevices)
-    i->UpdateDeviceBatteryCharge();
+void CServerDriver_hobovr::SlowUpdateThread() {
+  DriverLog("slow update thread started\n");
+  while (m_bSlowUpdateThreadIsAlive){
+    for (auto &i : m_vDevices)
+      i->UpdateDeviceBatteryCharge();
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(800));
+  }
+  DriverLog("slow update thread closed\n");
+  m_bSlowUpdateThreadIsAlive = false;
+
 }
 
 CServerDriver_hobovr g_hobovrServerDriver;

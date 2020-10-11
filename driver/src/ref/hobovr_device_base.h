@@ -36,7 +36,7 @@ namespace hobovr {
   }
 
 
-  // BIG NOTE: this function needs to be fast af and thread safe, bc rn its in the process events thread, this will be fixed soon
+
   // implement device charge update functionality here
   // this is called on each device charge update event
   // should return values within [0, 1] range, 1 is full, 0 is empty
@@ -44,8 +44,9 @@ namespace hobovr {
   float GetDeviceCharge(const std::string deviceSerial) {
     return 1.0; // return permanent full charge for now
   }
+  // NOTE: this function needs to be thread safe, it will be be ran about 0.8s intervals
 
-  // BIG NOTE: this function needs to be fast af and thread safe, bc rn its in the process events thread, this will be fixed soon
+
   // implement device charging indication management functionality here
   // this will be called on each device charge update event
   // this function should manage the indication of weather the device is charging or not, using Prop_DeviceIsCharging_Bool in the VRProperties api
@@ -53,6 +54,7 @@ namespace hobovr {
   void ManageDeviceCharging(const std::string deviceSerial, const vr::PropertyContainerHandle_t devicePropertyContainer) {
     // does nothing for now
   }
+  // NOTE: this function needs to be thread safe, it will be be ran about 0.8s intervals
 
   // done for simple device management in vectors
   class HobovrDeviceElement {
