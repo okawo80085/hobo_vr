@@ -36,6 +36,7 @@ namespace hobovr {
   }
 
 
+  // BIG NOTE: this function needs to be fast af and thread safe, bc rn its in the process events thread, this will be fixed soon
   // implement device charge update functionality here
   // this is called on each device charge update event
   // should return values within [0, 1] range, 1 is full, 0 is empty
@@ -44,6 +45,7 @@ namespace hobovr {
     return 1.0; // return permanent full charge for now
   }
 
+  // BIG NOTE: this function needs to be fast af and thread safe, bc rn its in the process events thread, this will be fixed soon
   // implement device charging indication management functionality here
   // this will be called on each device charge update event
   // this function should manage the indication of weather the device is charging or not, using Prop_DeviceIsCharging_Bool in the VRProperties api
@@ -267,7 +269,6 @@ namespace hobovr {
     std::vector<HobovrComponent_t> m_vComponents; // components that this device has, should be populated in the constructor of the derived class
 
     float m_fPoseTimeOffset; // time offset of the pose, set trough the config
-    float m_fDeviceCharge; // device charge, 0-none, 1-full, only used if HasBattery is true
 
     // hobovr stuff
     std::shared_ptr<SockReceiver::DriverReceiver> m_pBrodcastSocket;
@@ -275,6 +276,8 @@ namespace hobovr {
   private:
     // openvr api stuff that i don't trust you to touch
     vr::VRInputComponentHandle_t m_compHaptic; // haptics, used if UseHaptics is true
+
+    float m_fDeviceCharge; // device charge, 0-none, 1-full, only used if HasBattery is true
 
     std::string m_sUpdateUrl; // url to which steamvr will redirect if checkForDeviceUpdates returns true on Activate, set trough the config
     std::string m_sSerialNumber; // steamvr uses this to identify devices, no need for you to touch this after init

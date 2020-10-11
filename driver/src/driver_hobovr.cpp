@@ -44,6 +44,14 @@ using namespace vr;
 #error "Unsupported Platform."
 #endif
 
+namespace hobovr {
+  static const uint32_t k_nHobovrVersionMajor = 0;
+  static const uint32_t k_nHobovrVersionMinor = 5;
+  static const uint32_t k_nHobovrVersionBuild = 3;
+  static const std::string k_sHobovrVersionGG = "phantom pain";
+
+} // namespace hobovr
+
 inline HmdQuaternion_t HmdQuaternion_Init(double w, double x, double y,
                                           double z) {
   HmdQuaternion_t quat;
@@ -157,7 +165,7 @@ private:
 //-----------------------------------------------------------------------------
 // Purpose:controller device implementation
 //-----------------------------------------------------------------------------
-class ControllerDriver : public hobovr::HobovrDevice<true, true> {
+class ControllerDriver : public hobovr::HobovrDevice<true, false> {
 public:
   ControllerDriver(bool side, std::string myserial, const std::shared_ptr<SockReceiver::DriverReceiver> ReceiverObj):
   HobovrDevice(myserial, "hobovr_controller_m", ReceiverObj), m_bHandSide(side) {
@@ -368,6 +376,11 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
   VR_INIT_SERVER_DRIVER_CONTEXT(pDriverContext);
   InitDriverLog(vr::VRDriverLog());
 
+  DriverLog("driver version: %d.%d.%d %s \n", hobovr::k_nHobovrVersionMajor,
+                            hobovr::k_nHobovrVersionMinor,
+                            hobovr::k_nHobovrVersionBuild,
+                            hobovr::k_sHobovrVersionGG);
+
   std::string uduThing;
   char buf[1024];
   vr::VRSettings()->GetString(k_pch_Hobovr_Section,
@@ -382,7 +395,7 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
   } catch (...){
     DriverLog("m_pSocketComm broke on create or broke on start, either way you're fucked\n");
     DriverLog("check if the server is running...\n");
-    DriverLog("... 10061 means \"couldn't connect to server\"...(￣□￣;)..\n");
+    DriverLog("... 10061 means \"couldn't connect to server\"...(^_^;)..\n");
     return VRInitError_Init_WebServerFailed;
   }
 
