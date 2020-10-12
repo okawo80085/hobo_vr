@@ -524,7 +524,7 @@ void CServerDriver_hobovr::SlowUpdateThread() {
     for (auto &i : m_vDevices)
       i->UpdateDeviceBatteryCharge();
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(800));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
   }
   DriverLog("slow update thread closed\n");
   m_bSlowUpdateThreadIsAlive = false;
