@@ -346,12 +346,11 @@ class BlobTracker(threading.Thread):
         Create a blob tracker.
 
         example usage:
-        >>> tracker = BlobTracker(color_masks={
-        ...         'tracker1':{
-        ...             'h':(98, 10),
-        ...             's':(200, 55),
-        ...             'v':(250, 32)
-        ...         },
+        >>> tracker = BlobTracker(color_masks=[
+                ColorRange(98, 10, 200, 55, 250, 32),
+                ColorRange(68, 15, 135, 53, 255, 50),
+                ColorRange(68, 15, 135, 53, 255, 50),
+                                ],
         ... })
 
         >>> with tracker:
