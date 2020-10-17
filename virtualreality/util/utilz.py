@@ -466,16 +466,11 @@ class BlobTracker(threading.Thread):
 
             for key in range(self.markerMasks.shape[0]):
                 if self.can_track:
-                    hc, hr, sc, sr, vc, vr = self.markerMasks[key]
-
-                    color_high = [hc + hr, sc + sr, vc + vr]
-                    color_low = [hc - hr, sc - sr, vc - vr]
-
                     blurred = cv2.GaussianBlur(frame, (9, 9), 0)
 
                     hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
-                    mask = cv2.inRange(hsv, np.array(color_low), np.array(color_high))
+                    mask = cv2.inRange(hsv, self.markerMasks[key][::2] - self.markerMasks[key][1::2], self.markerMasks[key][::2] + self.markerMasks[key][1::2])
 
                     temp = cv2.findContours(
                         mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
