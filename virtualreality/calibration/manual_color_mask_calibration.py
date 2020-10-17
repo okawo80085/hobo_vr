@@ -86,7 +86,7 @@ class CalibrationData(object):
         try:
             with open(load_file, "rb") as file:
                 ranges = pickle.load(file)
-            return ranges.color_ranges
+            return ranges
         except FileNotFoundError as fe:
             logging.warning(f"Could not load calibration file '{load_file}'.")
 

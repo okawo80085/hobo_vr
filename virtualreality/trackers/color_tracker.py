@@ -45,8 +45,11 @@ def check_serial_dict(ser_dict, key):
     return False
 
 
-class Poser(templates.PoserTemplate):
+class Poser(templates.UduPoserTemplate):
     """A pose estimator."""
+    # poses[0] - hmd
+    # poses[1] - right controller
+    # poses[2] - left controller
 
     def __init__(
         self,
@@ -55,7 +58,6 @@ class Poser(templates.PoserTemplate):
         width=-1,
         height=-1,
         calibration_file=None,
-        calibration_map_file=None,
         **kwargs,
     ):
         """Create a pose estimator."""
@@ -78,7 +80,7 @@ class Poser(templates.PoserTemplate):
         self.height = height
 
         if calibration_file is not None:
-            self.calibration = CalibrationData.load_from_file(calibration_file)
+            self.calibration = CalibrationData.load_from_file(calibration_file).color_ranges
 
         else:
             self.calibration = [
@@ -99,40 +101,40 @@ class Poser(templates.PoserTemplate):
         while self.coro_keep_alive["mode_switcher"].is_alive:
             try:
                 if self.mode == 1:
-                    self.pose_controller_l.trackpad_touch = 0
-                    self.pose_controller_l.trackpad_x = 0
-                    self.pose_controller_l.trackpad_y = 0
-                    self.pose_controller_r.trackpad_touch = (
+                    self.poses[2].trackpad_touch = 0
+                    self.poses[2].trackpad_x = 0
+                    self.poses[2].trackpad_y = 0
+                    self.poses[1].trackpad_touch = (
                         self.temp_pose.trackpad_touch
                     )
-                    self.pose_controller_r.trackpad_click = (
+                    self.poses[1].trackpad_click = (
                         self.temp_pose.trackpad_click
                     )
-                    self.pose_controller_r.trackpad_x = self.temp_pose.trackpad_x
-                    self.pose_controller_r.trackpad_y = self.temp_pose.trackpad_y
-                    self.pose_controller_r.trigger_value = self.temp_pose.trigger_value
-                    self.pose_controller_r.trigger_click = self.temp_pose.trigger_click
-                    self.pose_controller_r.system = self.temp_pose.system
-                    self.pose_controller_r.grip = self.temp_pose.grip
-                    self.pose_controller_r.menu = self.temp_pose.menu
+                    self.poses[1].trackpad_x = self.temp_pose.trackpad_x
+                    self.poses[1].trackpad_y = self.temp_pose.trackpad_y
+                    self.poses[1].trigger_value = self.temp_pose.trigger_value
+                    self.poses[1].trigger_click = self.temp_pose.trigger_click
+                    self.poses[1].system = self.temp_pose.system
+                    self.poses[1].grip = self.temp_pose.grip
+                    self.poses[1].menu = self.temp_pose.menu
 
                 else:
-                    self.pose_controller_r.trackpad_touch = 0
-                    self.pose_controller_r.trackpad_x = 0
-                    self.pose_controller_r.trackpad_y = 0
-                    self.pose_controller_l.trackpad_touch = (
+                    self.poses[1].trackpad_touch = 0
+                    self.poses[1].trackpad_x = 0
+                    self.poses[1].trackpad_y = 0
+                    self.poses[2].trackpad_touch = (
                         self.temp_pose.trackpad_touch
                     )
-                    self.pose_controller_l.trackpad_click = (
+                    self.poses[2].trackpad_click = (
                         self.temp_pose.trackpad_click
                     )
-                    self.pose_controller_l.trackpad_x = self.temp_pose.trackpad_x
-                    self.pose_controller_l.trackpad_y = self.temp_pose.trackpad_y
-                    self.pose_controller_l.trigger_value = self.temp_pose.trigger_value
-                    self.pose_controller_l.trigger_click = self.temp_pose.trigger_click
-                    self.pose_controller_l.system = self.temp_pose.system
-                    self.pose_controller_l.grip = self.temp_pose.grip
-                    self.pose_controller_l.menu = self.temp_pose.menu
+                    self.poses[2].trackpad_x = self.temp_pose.trackpad_x
+                    self.poses[2].trackpad_y = self.temp_pose.trackpad_y
+                    self.poses[2].trigger_value = self.temp_pose.trigger_value
+                    self.poses[2].trigger_click = self.temp_pose.trigger_click
+                    self.poses[2].system = self.temp_pose.system
+                    self.poses[2].grip = self.temp_pose.grip
+                    self.poses[2].menu = self.temp_pose.menu
 
                 await asyncio.sleep(self.coro_keep_alive["mode_switcher"].sleep_delay)
 
@@ -174,9 +176,9 @@ class Poser(templates.PoserTemplate):
                     if self.usePos:
 
                         # origin point correction math
-                        m33_r = pyrr.matrix33.create_from_quaternion([self.pose_controller_r.r_x, self.pose_controller_r.r_y, self.pose_controller_r.r_z, self.pose_controller_r.r_w])
-                        m33_l = pyrr.matrix33.create_from_quaternion([self.pose_controller_l.r_x, self.pose_controller_l.r_y, self.pose_controller_l.r_z, self.pose_controller_l.r_w])
-                        m33_hmd = pyrr.matrix33.create_from_quaternion([self.pose.r_x, self.pose.r_y, self.pose.r_z, self.pose.r_w])
+                        m33_r = pyrr.matrix33.create_from_quaternion([self.poses[1].r_x, self.poses[1].r_y, self.poses[1].r_z, self.poses[1].r_w])
+                        m33_l = pyrr.matrix33.create_from_quaternion([self.poses[2].r_x, self.poses[2].r_y, self.poses[2].r_z, self.poses[2].r_w])
+                        m33_hmd = pyrr.matrix33.create_from_quaternion([self.poses[0].r_x, self.poses[0].r_y, self.poses[0].r_z, self.poses[0].r_w])
 
                         r_oof2 = m33_r.dot(r_oof)
                         l_oof2 = m33_l.dot(l_oof)
@@ -186,17 +188,17 @@ class Poser(templates.PoserTemplate):
                         poses[2] += r_oof2
                         poses[0] += hmd_oof2
 
-                        self.pose.x = poses[0][0]
-                        self.pose.y = poses[0][1]
-                        self.pose.z = poses[0][2]
+                        self.poses[0].x = poses[0][0]
+                        self.poses[0].y = poses[0][1]
+                        self.poses[0].z = poses[0][2]
 
-                        self.pose_controller_l.x = poses[1][0]
-                        self.pose_controller_l.y = poses[1][1]
-                        self.pose_controller_l.z = poses[1][2] - 0.13
+                        self.poses[2].x = poses[1][0]
+                        self.poses[2].y = poses[1][1]
+                        self.poses[2].z = poses[1][2] - 0.13
 
-                        self.pose_controller_r.x = poses[2][0]
-                        self.pose_controller_r.y = poses[2][1]
-                        self.pose_controller_r.z = poses[2][2]
+                        self.poses[1].x = poses[2][0]
+                        self.poses[1].y = poses[2][1]
+                        self.poses[1].z = poses[2][2]
 
                     await asyncio.sleep(
                         self.coro_keep_alive["get_location"].sleep_delay
@@ -250,10 +252,10 @@ class Poser(templates.PoserTemplate):
                             my_q = Quaternion([-y, z, -x, w])
 
                             my_q = Quaternion(my_off * my_q * irl_rot_off).normalised
-                            self.pose_controller_l.r_w = round(my_q[3], 5)
-                            self.pose_controller_l.r_x = round(my_q[0], 5)
-                            self.pose_controller_l.r_y = round(my_q[1], 5)
-                            self.pose_controller_l.r_z = round(my_q[2], 5)
+                            self.poses[2].r_w = round(my_q[3], 5)
+                            self.poses[2].r_x = round(my_q[0], 5)
+                            self.poses[2].r_y = round(my_q[1], 5)
+                            self.poses[2].r_z = round(my_q[2], 5)
 
                             self.temp_pose.trigger_value = trgr
                             self.temp_pose.grip = grp
@@ -340,10 +342,10 @@ class Poser(templates.PoserTemplate):
                                 my_off = Quaternion([0, z, 0, w]).inverse.normalised
 
                             my_q = Quaternion(my_off * my_q * irl_rot_off).normalised
-                            self.pose_controller_r.r_w = round(my_q[3], 5)
-                            self.pose_controller_r.r_x = round(my_q[0], 5)
-                            self.pose_controller_r.r_y = round(my_q[1], 5)
-                            self.pose_controller_r.r_z = round(my_q[2], 5)
+                            self.poses[1].r_w = round(my_q[3], 5)
+                            self.poses[1].r_x = round(my_q[0], 5)
+                            self.poses[1].r_y = round(my_q[1], 5)
+                            self.poses[1].r_z = round(my_q[2], 5)
 
                         await asyncio.sleep(
                             self.coro_keep_alive["serial_listener3"].sleep_delay
@@ -381,10 +383,10 @@ class Poser(templates.PoserTemplate):
                                 my_off = Quaternion([0, z, 0, w]).inverse.normalised
 
                             my_q = Quaternion(my_off * my_q).normalised
-                            self.pose.r_w = round(my_q[3], 5)
-                            self.pose.r_x = round(my_q[0], 5)
-                            self.pose.r_y = round(my_q[1], 5)
-                            self.pose.r_z = round(my_q[2], 5)
+                            self.poses[0].r_w = round(my_q[3], 5)
+                            self.poses[0].r_x = round(my_q[0], 5)
+                            self.poses[0].r_y = round(my_q[1], 5)
+                            self.poses[0].r_z = round(my_q[2], 5)
 
                         await asyncio.sleep(
                             self.coro_keep_alive["serial_listener"].sleep_delay
@@ -396,18 +398,18 @@ class Poser(templates.PoserTemplate):
         self.coro_keep_alive["serial_listener"].is_alive = False
 
 
-def run_poser_only(addr="127.0.0.1", cam=4, colordata=None, mapdata=None):
+def run_poser_only(addr="127.0.0.1", cam=4, colordata=None):
     """Run the poser only. The server must be started in another program."""
-    t = Poser(
-        addr=addr, camera=cam, calibration_file=colordata, calibration_map_file=mapdata
+    t = Poser('h c c',
+        addr=addr, camera=cam, calibration_file=colordata
     )
     asyncio.run(t.main())
 
 
-def run_poser_and_server(addr="127.0.0.1", cam=4, colordata=None, mapdata=None):
+def run_poser_and_server(addr="127.0.0.1", cam=4, colordata=None):
     """Run the poser and server in one program."""
-    t = Poser(
-        addr=addr, camera=cam, calibration_file=colordata, calibration_map_file=mapdata
+    t = Poser('h c c',
+        addr=addr, camera=cam, calibration_file=colordata
     )
     server.run_til_dead(t)
 
@@ -435,12 +437,10 @@ def main():
             args["--ip_address"],
             cam,
             args["--load_calibration"],
-            args["--load_calibration_map"],
         )
     else:
         run_poser_only(
             args["--ip_address"],
             cam,
             args["--load_calibration"],
-            args["--load_calibration_map"],
         )
