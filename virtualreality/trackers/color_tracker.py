@@ -9,7 +9,6 @@ Options:
    -c, --camera <camera>                    Source of the camera to use for calibration [default: 0]
    -r, --resolution <res>                   (in progress) Input resolution in width and height [default: -1x-1]
    -l, --load_calibration <file>            (optional) Load color mask calibration settings
-   -m, --load_calibration_map <map_file>    (optional) Load color mask calibration map settings
    -i, --ip_address <ip_address>            IP Address of the server to connect to [default: 127.0.0.1]
    -s, --standalone                         Run the server alongside the tracker.
 """
@@ -32,9 +31,8 @@ import glob
 from ..util import utilz as u
 from .. import __version__
 from .. import templates
-from ..calibration.manual_color_mask_calibration import CalibrationData
-from ..calibration.manual_color_mask_calibration import colordata_to_blob
-from ..calibration.manual_color_mask_calibration import load_mapdata_from_file
+from ..calibration.manual_color_mask_calibration import CalibrationData, ColorRange
+
 from ..server import server
 from ..templates import ControllerState
 
@@ -80,30 +78,18 @@ class Poser(templates.PoserTemplate):
         self.height = height
 
         if calibration_file is not None:
-            try:
-                if calibration_map_file is not None:
-                    self.calibration = colordata_to_blob(
-                        CalibrationData.load_from_file(calibration_file),
-                        load_mapdata_from_file(calibration_map_file),
-                    )
-
-                else:
-                    raise Exception("no map file provided")
-
-            except Exception as e:
-                print(
-                    f"calibration file provided, but {repr(e)}, ignoring calibration file.."
-                )
-                self.calibration = {
-                    "blue": {"h": (98, 10), "s": (200, 55), "v": (250, 32)},
-                    "green": {"h": (68, 15), "s": (135, 53), "v": (255, 50)},
-                }
+            self.calibration = CalibrationData.load_from_file(calibration_file)
 
         else:
-            self.calibration = {
-                "blue": {"h": (98, 10), "s": (200, 55), "v": (250, 32)},
-                "green": {"h": (68, 15), "s": (135, 53), "v": (255, 50)},
-            }
+            self.calibration = [
+                ColorRange(98, 10, 200, 55, 250, 32),
+                ColorRange(68, 15, 135, 53, 255, 50),
+                ColorRange(68, 15, 135, 53, 255, 50),
+                                ]
+            # self.calibration = {
+            #     "blue": {"h": (98, 10), "s": (200, 55), "v": (250, 32)},
+            #     "green": {"h": (68, 15), "s": (135, 53), "v": (255, 50)},
+            # }
 
         print(f"current color masks {self.calibration}")
 
@@ -160,7 +146,7 @@ class Poser(templates.PoserTemplate):
         """Get locations from blob trackers."""
         try:
             offsets = [0.6981317007977318, 0, 0]
-            t1 = u.BlobTracker(
+            BlobT = u.BlobTracker(
                 self.camera, color_masks=self.calibration, focal_length_px=554.2563
             )
 
@@ -176,10 +162,10 @@ class Poser(templates.PoserTemplate):
 
         hmd_oof = np.array([-0.01, -0.045, 0.04])
 
-        with t1:
+        with BlobT:
             while self.coro_keep_alive["get_location"].is_alive:
                 try:
-                    poses = t1.get_poses()
+                    poses = BlobT.get_poses()
 
                     u.rotate(poses, offsets)
 

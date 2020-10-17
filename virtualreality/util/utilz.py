@@ -340,7 +340,7 @@ class BlobTracker(threading.Thread):
         *,
         focal_length_px=490,
         ball_radius_cm=2,
-        color_masks={},
+        color_masks=[],
     ):
         """
         Create a blob tracker.
@@ -393,15 +393,15 @@ class BlobTracker(threading.Thread):
             raise RuntimeError("invalid video source")
 
         self.frame_height, self.frame_width, _ = frame.shape
-        self.markerMasks = color_masks
+        self.markerMasks = np.array([[i.hue_center, i.hue_range, i.sat_center, i.sat_range, i.val_center, i.val_range] for i in color_masks], dtype=np.float32)
 
-        self.poses = np.zeros((len(self.markerMasks), 3))
+        self.poses = np.zeros((self.markerMasks.shape[0], 3))
         self.blobs = []
 
         self.kalmanFilterz = []
         self.kalmanFilterz2 = []
 
-        for i in range(len(self.markerMasks)):
+        for i in range(self.markerMasks.shape[0]):
             self.blobs.append(None)
             self.kalmanFilterz.append([False, None])
             self.kalmanFilterz2.append([False, None])
@@ -464,13 +464,10 @@ class BlobTracker(threading.Thread):
         if self.alive:
             frame, self.can_track = self._try_get_frame()
 
-            for key, mask_range in enumerate(self.markerMasks.items()):
+            for key in range(self.markerMasks.shape[0]):
                 if self.can_track:
-                    hc, hr = mask_range[1]["h"]
+                    hc, hr, sc, sr, vc, vr = self.markerMasks[key]
 
-                    sc, sr = mask_range[1]["s"]
-
-                    vc, vr = mask_range[1]["v"]
                     color_high = [hc + hr, sc + sr, vc + vr]
                     color_low = [hc - hr, sc - sr, vc - vr]
 
@@ -478,7 +475,7 @@ class BlobTracker(threading.Thread):
 
                     hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
-                    mask = cv2.inRange(hsv, tuple(color_low), tuple(color_high))
+                    mask = cv2.inRange(hsv, np.array(color_low), np.array(color_high))
 
                     temp = cv2.findContours(
                         mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE

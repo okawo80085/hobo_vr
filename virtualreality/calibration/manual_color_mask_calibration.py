@@ -46,6 +46,11 @@ class ColorRange(object):
         self.val_range = val_range
 
 
+    def __repr__(self):
+        return f'ColorRange({self.color_num}, {self.hue_center}, {self.hue_range}, {self.sat_center}, {self.sat_range}, {self.val_center}, {self.val_range})'
+
+
+
 class CalibrationData(object):
     def __init__(
         self,
@@ -69,6 +74,10 @@ class CalibrationData(object):
                 ColorRange(color, *[color * color_dist, color_dist] * 3)
             )
 
+    def __repr__(self):
+        return f'<{self.__class__.__module__}.{self.__class__.__name__} color_ranges={self.color_ranges} at {hex(id(self))}>'
+
+
     @classmethod
     def load_from_file(
         cls, load_file: str = str(Path(__file__).parent) + "ranges.pickle"
@@ -77,7 +86,7 @@ class CalibrationData(object):
         try:
             with open(load_file, "rb") as file:
                 ranges = pickle.load(file)
-            return ranges
+            return ranges.color_ranges
         except FileNotFoundError as fe:
             logging.warning(f"Could not load calibration file '{load_file}'.")
 
@@ -86,43 +95,6 @@ class CalibrationData(object):
     ) -> None:
         with open(save_file, "wb") as file:
             pickle.dump(self, file)
-
-
-def colordata_to_blob(colordata, mapdata):
-    """
-    translates CalibrationData object to BlobTracker format masks
-
-    :colordata: CalibrationData object
-    :mapdata: a map dict with key representing the mask name and value representing the mask number
-
-    """
-    out = {}
-
-    for key, clr_range_index in mapdata.items():
-        temp = colordata.color_ranges[clr_range_index]
-        out[key] = {
-            "h": (temp.hue_center, temp.hue_range),
-            "s": (temp.sat_center, temp.sat_range),
-            "v": (temp.val_center, temp.val_range),
-        }
-
-    return out
-
-
-def load_mapdata_from_file(path):
-    """
-    loads mapdata from file, for use in colordata_to_blob
-    """
-    with open(path, "rb") as file:
-        return pickle.load(file)
-
-
-def save_mapdata_to_file(path, mapdata):
-    """
-    save mapdata to file, for use in colordata_to_blob
-    """
-    with open(path, "wb") as file:
-        pickle.dump(mapdata, file)
 
 
 def list_supported_capture_properties(cap: cv2.VideoCapture):
