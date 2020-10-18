@@ -7,6 +7,8 @@ from ..util import utilz as u
 from .template_base import *
 from .poses import *
 import re
+import struct
+
 
 
 class UduPoserTemplate(PoserTemplateBase):
@@ -66,11 +68,11 @@ class UduPoserTemplate(PoserTemplateBase):
         for i in self.device_types:
             if i == "h" or i == "t":
                 self.poses.append(Pose())
-                new_struct.append(f"{i}{len(self.poses[-1])}")
 
             elif i == "c":
                 self.poses.append(ControllerState())
-                new_struct.append(f"{i}{len(self.poses[-1])}")
+            
+            new_struct.append(f"{i}{len(self.poses[-1])}")
 
         new_struct = " ".join(new_struct)
 
@@ -83,18 +85,9 @@ class UduPoserTemplate(PoserTemplateBase):
 
     async def send(self):
         """Send all poses thread."""
-        poses_index = range(len(self.device_types))
         while self.coro_keep_alive["send"].is_alive:
             try:
-                msg = u.format_str_for_write(
-                    " ".join(
-                        [
-                            str(j)
-                            for i in poses_index
-                            for j in get_slot_values(self.poses[i])
-                        ]
-                    )
-                )
+                msg = b"".join([struct.pack('f'*len(i), *i.get_vals()) for i in self.poses]) + self._terminator
 
                 self.writer.write(msg)
                 await self.writer.drain()

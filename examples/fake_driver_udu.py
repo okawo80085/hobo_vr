@@ -87,7 +87,11 @@ class Velocity_vector(Device_base):
         super().__init__(ctx, color, "programs/shadow_mapping/directional_light.glsl")
         thicc = 0.4
         self.center_offs = center_offs
-        self.update_vel((1, 1, 1))
+        self.meshes = [
+            geometry.cube(size=(0, 0, 1), center=(0, 0, 0)),
+            geometry.cube(size=(0, 0, 1), center=(0, 0, 0)),
+            geometry.cube(size=(0, 0, 1), center=(0, 0, 0)),
+        ]
 
     def update_vel(self, vel):
         vel = np.array(vel)
@@ -101,11 +105,16 @@ class Velocity_vector(Device_base):
         sizes = c*ident*vel + ((1 - ident)/5)
         centers = ident*(-vel/2) + self.center_offs
 
-        self.meshes = [
+        temp = [
             geometry.cube(size=sizes[0], center=centers[0]),
             geometry.cube(size=sizes[1], center=centers[1]),
             geometry.cube(size=sizes[2], center=centers[2]),
         ]
+        for i in range(len(self.meshes)):
+            self.meshes[i].release()
+
+        self.meshes = temp
+
 
     def write_bl(self, pose, camera, m_shadow_bias, lightDir):
         x, y, z, w, rx, ry, rz, vx, vy, vz, *_ = pose
@@ -298,6 +307,5 @@ class ShadowMapping(CameraWindow):
 
 if __name__ == "__main__":
     with myDriver:
-        myDriver.send("hello")
         moderngl_window.run_window_config(ShadowMapping)
     print("lol")

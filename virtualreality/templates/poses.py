@@ -140,6 +140,24 @@ class Pose(object):
         self.ang_vel_y: float = velocity[4]
         self.ang_vel_z: float = velocity[5]
 
+    def get_vals(self):  # its faster this way
+        return [self.x,
+                self.y,
+                self.z,
+
+                self.r_w,
+                self.r_x,
+                self.r_y,
+                self.r_z,
+
+                self.vel_x,
+                self.vel_y,
+                self.vel_z,
+                self.ang_vel_x,
+                self.ang_vel_y,
+                self.ang_vel_z,
+                ]
+
     def __getitem__(self, key):
         if key in self.__slots__:
             return getattr(self, key)
@@ -164,7 +182,7 @@ class Pose(object):
         )
 
     def __len__(self):
-        return len(self.__slots__)
+        return 13
 
 
 class ControllerState(Pose):
@@ -236,6 +254,38 @@ class ControllerState(Pose):
         self.trackpad_y: float = trackpad_y  # from -1 to 1
         self.trackpad_touch: int = trackpad_touch  # 0 or 1
         self.trigger_click: int = trigger_click  # 0 or 1
+
+
+    def get_vals(self):  # its faster this way
+        return [self.x,
+                self.y,
+                self.z,
+
+                self.r_w,
+                self.r_x,
+                self.r_y,
+                self.r_z,
+
+                self.vel_x,
+                self.vel_y,
+                self.vel_z,
+                self.ang_vel_x,
+                self.ang_vel_y,
+                self.ang_vel_z,
+
+                self.grip,
+                self.system,
+                self.menu,
+                self.trackpad_click,
+                self.trigger_value,
+                self.trackpad_x,
+                self.trackpad_y,
+                self.trackpad_touch,
+                self.trigger_click,
+                ]
+
+    def __len__(self):
+        return 22
 
 
 def get_slot_values(slotted_instance):

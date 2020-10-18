@@ -80,7 +80,7 @@ class PoserTemplateBase(object):
         }
         self.last_read = b""
         self.id_message = "holla"
-        self._terminator = b"\n"
+        self._terminator = b"\t\r\n"
 
     async def _socket_init(self):
         """

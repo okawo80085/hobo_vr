@@ -6,6 +6,7 @@ import warnings
 from ..util import utilz as u
 from .template_base import *
 from .poses import *
+import struct
 
 
 class PoserTemplate(PoserTemplateBase):
@@ -61,13 +62,11 @@ class PoserTemplate(PoserTemplateBase):
         """Send all poses thread."""
         while self.coro_keep_alive["send"].is_alive:
             try:
-                msg = u.format_str_for_write(
-                    " ".join(
-                        [str(i) for i in get_slot_values(self.pose)]
-                        + [str(i) for i in get_slot_values(self.pose_controller_r)]
-                        + [str(i) for i in get_slot_values(self.pose_controller_l)]
-                    )
-                )
+                msg = b"".join(
+                        [struct.pack('f'*len(self.pose), *self.pose.get_vals()),
+                        struct.pack('f'*len(self.pose_controller_r), *self.pose_controller_r.get_vals()),
+                        struct.pack('f'*len(self.pose_controller_l), *self.pose_controller_l.get_vals())]
+                    ) + self._terminator
 
                 self.writer.write(msg)
                 await self.writer.drain()
