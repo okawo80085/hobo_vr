@@ -135,7 +135,7 @@ namespace SockReceiver {
 
   class Callback {
   public:
-    virtual void OnPacket(std::string packet) {};
+    virtual void OnPacket(char* buff, int len) {};
   };
 }
 

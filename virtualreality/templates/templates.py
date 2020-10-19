@@ -71,7 +71,7 @@ class PoserTemplate(PoserTemplateBase):
                 self.writer.write(msg)
                 await self.writer.drain()
 
-                await asyncio.sleep(self.coro_keep_alive["send"].sleep_delay)
+                await asyncio.sleep(self.coro_keep_alive["send"].sleep_delay-0.0001)
             except Exception as e:
                 print(f"send failed: {e}")
                 break

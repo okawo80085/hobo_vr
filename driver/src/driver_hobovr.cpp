@@ -132,7 +132,7 @@ public:
   }
 
 
-  void RunFrame(std::vector<double> &trackingPacket) {
+  void RunFrame(std::vector<float> &trackingPacket) {
     m_Pose.result = TrackingResult_Running_OK;
     m_Pose.vecPosition[0] = trackingPacket[0];
     m_Pose.vecPosition[1] = trackingPacket[1];
@@ -221,7 +221,7 @@ public:
   }
 
 
-  void RunFrame(std::vector<double> &lastRead) {
+  void RunFrame(std::vector<float> &lastRead) {
     // update all the things
 
     m_Pose.result = TrackingResult_Running_OK;
@@ -315,7 +315,7 @@ public:
   }
 
 
-  void RunFrame(std::vector<double> &lastRead) {
+  void RunFrame(std::vector<float> &lastRead) {
     // update all the things
 
     m_Pose.result = TrackingResult_Running_OK;
@@ -364,7 +364,7 @@ public:
   virtual void EnterStandby() {}
   virtual void LeaveStandby() {}
   virtual void RunFrame();
-  void OnPacket(std::string);
+  void OnPacket(char* buff, int len);
 
 private:
   void SlowUpdateThread();
@@ -375,6 +375,8 @@ private:
   std::vector<hobovr::HobovrDeviceElement*> m_vDevices;
 
   std::shared_ptr<SockReceiver::DriverReceiver> m_pSocketComm;
+
+  int m_iCallBack_packet_size;
 
   // slower thread stuff
   bool m_bSlowUpdateThreadIsAlive;
@@ -400,6 +402,7 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
 
   try{
     m_pSocketComm = std::make_shared<SockReceiver::DriverReceiver>(uduThing);
+    m_iCallBack_packet_size = m_pSocketComm->m_iBuffSize;
     m_pSocketComm->start();
   } catch (...){
     DriverLog("m_pSocketComm broke on create or broke on start, either way you're fucked\n");
@@ -477,32 +480,34 @@ void CServerDriver_hobovr::Cleanup() {
   VR_CLEANUP_SERVER_DRIVER_CONTEXT();
 }
 
-void CServerDriver_hobovr::OnPacket(std::string packet) {
-  auto tempPose = SockReceiver::split_pk(SockReceiver::split_to_number<double>(SockReceiver::split_string(packet)), m_pSocketComm->eps);
+void CServerDriver_hobovr::OnPacket(char* buff, int len) {
+  float* temp= (float*)buff;
+  std::vector<float> v(temp, temp+m_iCallBack_packet_size);
+  auto tempPose = SockReceiver::split_pk(v, m_pSocketComm->eps);
 
-  if (SockReceiver::get_poses_shape(tempPose) == m_pSocketComm->eps)
-  {
-    for (int i=0; i<m_vDevices.size(); i++){
+  // if (len == (m_iCallBack_packet_size*4+3))
+  // {
+  for (int i=0; i<m_vDevices.size(); i++){
 
-      m_vDevices[i]->RunFrame(tempPose[i]);
+    m_vDevices[i]->RunFrame(tempPose[i]);
 
-    }
-
-  } else {
-    std::string ss = "received packet shape miss match, expected: (";
-    for (auto i : m_pSocketComm->eps)
-      ss += std::to_string(i) + ", ";
-
-    ss += "); got: (";
-
-    for (auto i : SockReceiver::get_poses_shape(tempPose))
-      ss += std::to_string(i) + ", ";
-
-    ss += ");\n";
-
-    DriverLog(ss.c_str());
-    DriverLog("double check your udu settings\n");
   }
+
+  // } else {
+  //   std::string ss = "received packet shape miss match, expected: (";
+  //   for (auto i : m_pSocketComm->eps)
+  //     ss += std::to_string(i) + ", ";
+
+  //   ss += "); got: (";
+
+  //   for (auto i : SockReceiver::get_poses_shape(tempPose))
+  //     ss += std::to_string(i) + ", ";
+
+  //   ss += "); total packet size: " + std::to_string(len) + '\n';
+
+  //   DriverLog(ss.c_str());
+  //   DriverLog("double check your udu settings\n");
+  // }
 
 
 }

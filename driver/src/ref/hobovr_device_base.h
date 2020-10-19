@@ -63,7 +63,7 @@ namespace hobovr {
     virtual std::string GetSerialNumber() const {return "";};
     virtual void UpdateDeviceBatteryCharge() {};
 
-    virtual void RunFrame(std::vector<double> &trackingPacket) {} // override this
+    virtual void RunFrame(std::vector<float> &trackingPacket) {} // override this
   };
 
   // should be publicly inherited
