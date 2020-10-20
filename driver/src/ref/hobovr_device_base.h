@@ -31,8 +31,10 @@ namespace hobovr {
 
   // for now this will never signal for updates, this same function will be executed for all derived device classes on Activate
   // you can implement your own version/update check here
+  // this needs to be thread safe, it will be run in a slow thread, about every 5 seconds
   bool checkForDeviceUpdates(const std::string deviceSerial) {
-    return false; // true steamvr will signal an update, false not, will always return false for now
+    // return false; // true steamvr will signal an update, false not, will always return false for now
+
   }
 
 
@@ -44,17 +46,18 @@ namespace hobovr {
   float GetDeviceCharge(const std::string deviceSerial) {
     return 1.0; // return permanent full charge for now
   }
-  // NOTE: this function needs to be thread safe, it will be be ran about 0.8s intervals
+  // NOTE: this function needs to be thread safe, it will be ran every 5 seconds
 
 
   // implement device charging indication management functionality here
   // this will be called on each device charge update event
-  // this function should manage the indication of weather the device is charging or not, using Prop_DeviceIsCharging_Bool in the VRProperties api
+  // this function should manage the indication of weather the device is charging or not
   // this will receive the serial of the device on charge update event
-  void ManageDeviceCharging(const std::string deviceSerial, const vr::PropertyContainerHandle_t devicePropertyContainer) {
-    // does nothing for now
+  bool ManageDeviceCharging(const std::string deviceSerial) {
+    // true steamvr will signal device is charging, false not
+    return false; // will always be false for now
   }
-  // NOTE: this function needs to be thread safe, it will be be ran about 0.8s intervals
+  // NOTE: this function needs to be thread safe, it will be ran every 5 seconds
 
   // done for simple device management in vectors
   class HobovrDeviceElement {
@@ -248,12 +251,17 @@ namespace hobovr {
         if (fNewCharge != m_fDeviceCharge){
           m_fDeviceCharge = fNewCharge;
           vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer,
-                                         Prop_DeviceBatteryPercentage_Float,
-                                         m_fDeviceCharge);
+                                         Prop_DeviceBatteryPercentage_Float, m_fDeviceCharge);
           DriverLog("device serial \"%s\", battery charge updated: %f", m_sSerialNumber, m_fDeviceCharge);
         }
 
-        ManageDeviceCharging(m_sSerialNumber, m_ulPropertyContainer);
+
+        bool bNewIsCharging = ManageDeviceCharging(m_sSerialNumber);
+        if (bNewIsCharging != m_bDeviceIsCharging) {
+          m_bDeviceIsCharging = bNewIsCharging;
+          vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
+                                         Prop_DeviceIsCharging_Bool, m_bDeviceIsCharging);
+        }
       }
     }
 
@@ -280,6 +288,7 @@ namespace hobovr {
     vr::VRInputComponentHandle_t m_compHaptic; // haptics, used if UseHaptics is true
 
     float m_fDeviceCharge; // device charge, 0-none, 1-full, only used if HasBattery is true
+    bool m_bDeviceIsCharging; // is device charing, 0-no, 1-yes, only used if HasBattery is true
 
     std::string m_sUpdateUrl; // url to which steamvr will redirect if checkForDeviceUpdates returns true on Activate, set trough the config
     std::string m_sSerialNumber; // steamvr uses this to identify devices, no need for you to touch this after init

@@ -248,27 +248,27 @@ public:
         lastRead[12];
 
     vr::VRDriverInput()->UpdateBooleanComponent(
-        m_compGrip, lastRead[13] > 0.4, (double)m_fPoseTimeOffset);
+        m_compGrip, (bool)lastRead[13], (double)m_fPoseTimeOffset);
     vr::VRDriverInput()->UpdateBooleanComponent(
-        m_compSystem, lastRead[14] > 0.4, (double)m_fPoseTimeOffset);
+        m_compSystem, (bool)lastRead[14], (double)m_fPoseTimeOffset);
     vr::VRDriverInput()->UpdateBooleanComponent(
-        m_compAppMenu, lastRead[15] > 0.4, (double)m_fPoseTimeOffset);
+        m_compAppMenu, (bool)lastRead[15], (double)m_fPoseTimeOffset);
     vr::VRDriverInput()->UpdateBooleanComponent(
-        m_compTrackpadClick, lastRead[16] > 0.4,
+        m_compTrackpadClick, (bool)lastRead[16],
         (double)m_fPoseTimeOffset);
 
     vr::VRDriverInput()->UpdateScalarComponent(
-        m_compTrigger, float(lastRead[17]), (double)m_fPoseTimeOffset);
+        m_compTrigger, lastRead[17], (double)m_fPoseTimeOffset);
     vr::VRDriverInput()->UpdateScalarComponent(
-        m_compTrackpadX, float(lastRead[18]), (double)m_fPoseTimeOffset);
+        m_compTrackpadX, lastRead[18], (double)m_fPoseTimeOffset);
     vr::VRDriverInput()->UpdateScalarComponent(
-        m_compTrackpadY, float(lastRead[19]), (double)m_fPoseTimeOffset);
+        m_compTrackpadY, lastRead[19], (double)m_fPoseTimeOffset);
 
     vr::VRDriverInput()->UpdateBooleanComponent(
-        m_compTrackpadTouch, lastRead[20] > 0.4,
+        m_compTrackpadTouch, (bool)lastRead[20],
         (double)m_fPoseTimeOffset);
     vr::VRDriverInput()->UpdateBooleanComponent(
-        m_compTriggerClick, lastRead[21] > 0.4,
+        m_compTriggerClick, (bool)lastRead[21],
         (double)m_fPoseTimeOffset);
 
     if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
@@ -485,29 +485,17 @@ void CServerDriver_hobovr::OnPacket(char* buff, int len) {
   std::vector<float> v(temp, temp+m_iCallBack_packet_size);
   auto tempPose = SockReceiver::split_pk(v, m_pSocketComm->eps);
 
-  // if (len == (m_iCallBack_packet_size*4+3))
-  // {
-  for (int i=0; i<m_vDevices.size(); i++){
+  if (len == (m_iCallBack_packet_size*4+3))
+  {
+    for (int i=0; i<m_vDevices.size(); i++){
 
-    m_vDevices[i]->RunFrame(tempPose[i]);
+      m_vDevices[i]->RunFrame(tempPose[i]);
 
+    }
+
+  } else {
+    DriverLog("bad packet, expected %d, got %d, double check your udu settings\n", (m_iCallBack_packet_size*4+3), len);
   }
-
-  // } else {
-  //   std::string ss = "received packet shape miss match, expected: (";
-  //   for (auto i : m_pSocketComm->eps)
-  //     ss += std::to_string(i) + ", ";
-
-  //   ss += "); got: (";
-
-  //   for (auto i : SockReceiver::get_poses_shape(tempPose))
-  //     ss += std::to_string(i) + ", ";
-
-  //   ss += "); total packet size: " + std::to_string(len) + '\n';
-
-  //   DriverLog(ss.c_str());
-  //   DriverLog("double check your udu settings\n");
-  // }
 
 
 }
