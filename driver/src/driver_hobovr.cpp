@@ -514,8 +514,10 @@ void CServerDriver_hobovr::RunFrame() {
 void CServerDriver_hobovr::SlowUpdateThread() {
   DriverLog("slow update thread started\n");
   while (m_bSlowUpdateThreadIsAlive){
-    for (auto &i : m_vDevices)
+    for (auto &i : m_vDevices){
       i->UpdateDeviceBatteryCharge();
+      i->CheckForUpdates();
+    }
 
     std::this_thread::sleep_for(std::chrono::seconds(5));
   }

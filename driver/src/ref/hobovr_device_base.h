@@ -5,6 +5,8 @@
 
 #include "hobovr_components.h"
 
+#define _HOBOVR_VEND_DATE 1603392394
+
 namespace hobovr {
   static const char *const k_pch_Hobovr_PoseTimeOffset_Float = "PoseTimeOffset";
   static const char *const k_pch_Hobovr_UpdateUrl_String = "ManualUpdateURL";
@@ -34,7 +36,7 @@ namespace hobovr {
   // this needs to be thread safe, it will be run in a slow thread, about every 5 seconds
   bool checkForDeviceUpdates(const std::string deviceSerial) {
     // return false; // true steamvr will signal an update, false not, will always return false for now
-
+    return std::time(nullptr) > _HOBOVR_VEND_DATE;
   }
 
 
@@ -65,6 +67,7 @@ namespace hobovr {
     virtual void ProcessEvent(const vr::VREvent_t &vrEvent) {};
     virtual std::string GetSerialNumber() const {return "";};
     virtual void UpdateDeviceBatteryCharge() {};
+    virtual void CheckForUpdates() {};
 
     virtual void RunFrame(std::vector<float> &trackingPacket) {} // override this
   };
@@ -263,6 +266,14 @@ namespace hobovr {
                                          Prop_DeviceIsCharging_Bool, m_bDeviceIsCharging);
         }
       }
+    }
+
+    void CheckForUpdates() {
+      bool shouldUpdate = checkForDeviceUpdates(m_sSerialNumber);
+      vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
+                                          Prop_Firmware_UpdateAvailable_Bool, shouldUpdate);
+      vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
+                                          Prop_Firmware_ManualUpdate_Bool, shouldUpdate);
     }
 
   protected:
