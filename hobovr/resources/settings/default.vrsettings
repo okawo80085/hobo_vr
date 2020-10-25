@@ -13,8 +13,8 @@
    "hobovr_comp_extendedDisplay": {
       "windowX" : 10,
       "windowY" : 10,
-      "windowWidth" : 3840,
-      "windowHeight" : 2160,
+      "windowWidth" : 1920,
+      "windowHeight" : 1080,
       "renderWidth" : 1920,
       "renderHeight" : 1080,
       "DistortionK1" : 0.4,
