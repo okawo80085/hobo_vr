@@ -5,6 +5,8 @@
 
 #include "hobovr_components.h"
 
+#define _HOBOVR_VEND_DATE 1603392394
+
 namespace hobovr {
   static const char *const k_pch_Hobovr_PoseTimeOffset_Float = "PoseTimeOffset";
   static const char *const k_pch_Hobovr_UpdateUrl_String = "ManualUpdateURL";
@@ -33,7 +35,8 @@ namespace hobovr {
   // you can implement your own version/update check here
   // this needs to be thread safe, it will be run in a slow thread, about every 5 seconds
   bool checkForDeviceUpdates(const std::string deviceSerial) {
-    return false; // true steamvr will signal an update, false not, will always return false for now
+    // return false; // true steamvr will signal an update, false not, will always return false for now
+    return std::time(nullptr) > _HOBOVR_VEND_DATE;
   }
 
 
