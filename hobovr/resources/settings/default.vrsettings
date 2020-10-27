@@ -11,18 +11,18 @@
       "displayFrequency" : 90.0
    },
    "hobovr_comp_extendedDisplay": {
-      "windowX" : 10,
-      "windowY" : 10,
-      "windowWidth" : 1920,
-      "windowHeight" : 1080,
-      "renderWidth" : 1920,
-      "renderHeight" : 1080,
+      "windowX" : 1920,
+      "windowY" : 0,
+      "windowWidth" : 1520,
+      "windowHeight" : 720,
+      "renderWidth" : 3040,
+      "renderHeight" : 1440,
       "DistortionK1" : 0.4,
       "DistortionK2" : 0.5,
-      "ZoomWidth" : 1,
-      "ZoomHeight" : 1,
-      "EyeGapOffsetPx" : 0,
-      "IsDisplayRealDisplay" : false,
-      "IsDisplayOnDesktop" : false
+      "ZoomWidth" : 1.1,
+      "ZoomHeight" : 1.1,
+      "EyeGapOffsetPx" : -100,
+      "IsDisplayRealDisplay" : true,
+      "IsDisplayOnDesktop" : true
    }
 }
