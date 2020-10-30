@@ -27,28 +27,8 @@
 #include <stdio.h>
 
 namespace SockReceiver {
-  int receive_till_zero( SOCKET sock, char* buf, int& numbytes, int max_packet_size )
-  {
-    // receives a message until an end token is reached
-    // thanks to https://stackoverflow.com/a/13528453/10190971
-    int i = 0;
-    do {
-      // Check if we have a complete message
-      for( ; i < numbytes-2; i++ ) {
-        if((buf[i] == '\t' && buf[i+1] == '\r' && buf[i+2] == '\n')) {
-          // \0 indicate end of message! so we are done
-          return i + 3; // return length of message
-        }
-      }
-      int n = recv( sock, buf + numbytes, max_packet_size - numbytes, 0 );
-      if( n == -1 ) {
-        return -1; // operation failed!
-      }
-      numbytes += n;
-    } while( true );
-  }
 
-  class DriverReceiver{
+  class DriverReceiver {
   public:
     std::vector<std::string> device_list;
     std::vector<int> eps;

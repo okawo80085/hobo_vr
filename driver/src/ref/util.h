@@ -10,6 +10,43 @@
 #include <sstream>
 
 namespace SockReceiver {
+  //can receive packets ending with \t\r\n using either winsock2 or unix sockets
+  template <typename T>
+  int receive_till_zero( T sock, char* buf, int& numbytes, int max_packet_size )
+  {
+    // receives a message until an end token is reached
+    // thanks to https://stackoverflow.com/a/13528453/10190971
+    int i = 0;
+    int n=-1;
+    do {
+      // Check if we have a complete message
+      for( ; i < numbytes-2; i++ ) {
+        if((buf[i] == '\t' && buf[i+1] == '\r' && buf[i+2] == '\n')) {
+          // \0 indicate end of message! so we are done
+          return i + 3; // return length of message
+        }
+      }
+      if constexpr(std::is_same<T, SOCKET>::value)
+      {
+        n = recv( sock, buf + numbytes, max_packet_size - numbytes, 0 );
+      }
+      else if constexpr(std::is_same<T, int>::value)
+      {
+        n = read( sock, buf + numbytes, max_packet_size - numbytes);
+      } else {
+        #ifdef DRIVERLOG_H
+        DriverLog("that is not a socket you retard");
+        #endif
+        throw std::runtime_error("bruh, thats not a raw socket");
+      }
+
+      if( n == -1 ) {
+        return -1; // operation failed!
+      }
+      numbytes += n;
+    } while( true );
+  }
+
   // reshapes packet vector into shape inxs
   template <typename T>
   std::vector<std::vector<T>> split_pk(std::vector<T> arr, std::vector<int> inxs) {

@@ -175,6 +175,9 @@
     <ClInclude Include="driverlog.h" />
     <ClInclude Include="ref\hobovr_components.h" />
     <ClInclude Include="ref\hobovr_device_base.h" />
+    <ClInclude Include="ref\receiver_linux.h" />
+    <ClInclude Include="ref\receiver_win.h" />
+    <ClInclude Include="ref\util.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
