@@ -8,7 +8,8 @@
    "hobovr_device_hmd": {
       "IPD" : 0.063,
       "secondsFromVsyncToPhotons" : 0.01,
-      "displayFrequency" : 90.0
+      "displayFrequency" : 90.0,
+      "UserHeadToEyeDepthMeters" : 0.0
    },
    "hobovr_comp_extendedDisplay": {
       "windowX" : 1920,
