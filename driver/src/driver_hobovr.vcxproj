@@ -173,6 +173,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="driverlog.h" />
+    <ClInclude Include="ref\hobovr_components.h" />
+    <ClInclude Include="ref\hobovr_device_base.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
