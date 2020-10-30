@@ -48,7 +48,7 @@ namespace hobovr {
   // le version
   static const uint32_t k_nHobovrVersionMajor = 0;
   static const uint32_t k_nHobovrVersionMinor = 5;
-  static const uint32_t k_nHobovrVersionBuild = 5;
+  static const uint32_t k_nHobovrVersionBuild = 6;
   static const std::string k_sHobovrVersionGG = "phantom pain";
 
 } // namespace hobovr
@@ -103,10 +103,10 @@ public:
                                          k_pch_Hmd_UserHead2EyeDepthMeters_Float);
 
     // log non boilerplate device specific settings 
-    DriverLog("device hmd settings: vsync time %fs, display freq %f, ipd %fm, head2eye depth %f", m_flSecondsFromVsyncToPhotons,
+    DriverLog("device hmd settings: vsync time %fs, display freq %f, ipd %fm, head2eye depth %fm", m_flSecondsFromVsyncToPhotons,
                     m_flDisplayFrequency, m_flIPD, m_fUserHead2EyeDepthMeters);
 
-    hobovr::HobovrComponent_t extDisplayComp = {hobovr::THobovrCompType::THobovrComp_ExtendedDisplay, vr::IVRDisplayComponent_Version};
+    hobovr::HobovrComponent_t extDisplayComp = {hobovr::EHobovrCompType::EHobovrComp_ExtendedDisplay, vr::IVRDisplayComponent_Version};
     extDisplayComp.compHandle = std::make_shared<hobovr::HobovrExtendedDisplayComponent>();
     m_vComponents.push_back(extDisplayComp);
   }
@@ -391,11 +391,12 @@ private:
   std::thread* m_ptSlowUpdateThread;
 };
 
+// yes
 EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
   VR_INIT_SERVER_DRIVER_CONTEXT(pDriverContext);
   InitDriverLog(vr::VRDriverLog());
 
-  DriverLog("driver version: %d.%d.%d %s \n", hobovr::k_nHobovrVersionMajor,
+  DriverLog("driver: version: %d.%d.%d %s \n", hobovr::k_nHobovrVersionMajor,
                             hobovr::k_nHobovrVersionMinor,
                             hobovr::k_nHobovrVersionBuild,
                             hobovr::k_sHobovrVersionGG);
@@ -406,7 +407,7 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
                               k_pch_Hobovr_UduDeviceManifestList_String, buf,
                               sizeof(buf));
   uduThing = buf;
-  DriverLog("device manifest list: '%s'\n", uduThing.c_str());
+  DriverLog("driver: device manifest list: '%s'\n", uduThing.c_str());
 
   try{
     m_pSocketComm = std::make_shared<SockReceiver::DriverReceiver>(uduThing);
@@ -457,7 +458,7 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
       counter_trkr++;
 
     } else {
-      DriverLog("unsupported device type: %s", i);
+      DriverLog("driver: unsupported device type: %s", i);
       return VRInitError_VendorSpecific_HmdFound_ConfigFailedSanityCheck;
     }
   }
@@ -467,8 +468,8 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
   m_bSlowUpdateThreadIsAlive = true;
   m_ptSlowUpdateThread = new std::thread(this->SlowUpdateThreadEnter, this);
   if (!m_bSlowUpdateThreadIsAlive) {
-    DriverLog("slow update thread broke on start\n");
-    return VRInitError_Driver_RuntimeOutOfDate;
+    DriverLog("driver: slow update thread broke on start\n");
+    return VRInitError_IPC_Failed;
   }
 
   return VRInitError_None;
@@ -489,12 +490,12 @@ void CServerDriver_hobovr::Cleanup() {
 }
 
 void CServerDriver_hobovr::OnPacket(char* buff, int len) {
-  float* temp= (float*)buff;
-  std::vector<float> v(temp, temp+m_iCallBack_packet_size);
-  auto tempPose = SockReceiver::split_pk(v, m_pSocketComm->eps);
-
   if (len == (m_iCallBack_packet_size*4+3))
   {
+    float* temp= (float*)buff;
+    std::vector<float> v(temp, temp+m_iCallBack_packet_size);
+    auto tempPose = SockReceiver::split_pk(v, m_pSocketComm->eps);
+
     for (int i=0; i<m_vDevices.size(); i++){
 
       m_vDevices[i]->RunFrame(tempPose[i]);
@@ -502,7 +503,7 @@ void CServerDriver_hobovr::OnPacket(char* buff, int len) {
     }
 
   } else {
-    DriverLog("bad packet, expected %d, got %d, double check your udu settings\n", (m_iCallBack_packet_size*4+3), len);
+    DriverLog("driver: bad packet, expected %d, got %d. double check your udu settings\n", (m_iCallBack_packet_size*4+3), len);
   }
 
 
@@ -512,7 +513,6 @@ void CServerDriver_hobovr::RunFrame() {
   vr::VREvent_t vrEvent;
   while (vr::VRServerDriverHost()->PollNextEvent(&vrEvent, sizeof(vrEvent))) {
     for (auto &i : m_vDevices){
-
       i->ProcessEvent(vrEvent);
 
     }
@@ -520,7 +520,7 @@ void CServerDriver_hobovr::RunFrame() {
 }
 
 void CServerDriver_hobovr::SlowUpdateThread() {
-  DriverLog("slow update thread started\n");
+  DriverLog("driver: slow update thread started\n");
   while (m_bSlowUpdateThreadIsAlive){
     for (auto &i : m_vDevices){
       i->UpdateDeviceBatteryCharge();
@@ -529,7 +529,7 @@ void CServerDriver_hobovr::SlowUpdateThread() {
 
     std::this_thread::sleep_for(std::chrono::seconds(5));
   }
-  DriverLog("slow update thread closed\n");
+  DriverLog("driver: slow update thread closed\n");
   m_bSlowUpdateThreadIsAlive = false;
 
 }

@@ -9,13 +9,13 @@ namespace hobovr {
   static const char *const k_pch_Hobovr_PoseTimeOffset_Float = "PoseTimeOffset";
   static const char *const k_pch_Hobovr_UpdateUrl_String = "ManualUpdateURL";
 
-  enum THobovrCompType
+  enum EHobovrCompType
   {
-    THobovrComp_Invalid = 0,
-    THobovrComp_ExtendedDisplay = 100, // HobovrExtendedDisplayComponent component, use only with vr::IVRDisplayComponent_Version
-    THobovrComp_DriverDirectMode = 150, // HobovrDriverDirectModeComponent component, use only with vr::IVRDriverDirectModeComponent_Version
-    THobovrComp_Camera = 200, // HobovrCameraComponent component, use only with vr::IVRCameraComponent_Version
-    THobovrComp_VirtualDisplay = 250, // HobovrVirtualDisplayComponent component, use only with vr::IVRVirtualDisplay_Version
+    EHobovrComp_Invalid = 0,
+    EHobovrComp_ExtendedDisplay = 100, // HobovrExtendedDisplayComponent component, use only with vr::IVRDisplayComponent_Version
+    EHobovrComp_DriverDirectMode = 150, // HobovrDriverDirectModeComponent component, use only with vr::IVRDriverDirectModeComponent_Version
+    EHobovrComp_Camera = 200, // HobovrCameraComponent component, use only with vr::IVRCameraComponent_Version
+    EHobovrComp_VirtualDisplay = 250, // HobovrVirtualDisplayComponent component, use only with vr::IVRVirtualDisplay_Version
   };
 
   struct HobovrComponent_t
@@ -87,11 +87,11 @@ namespace hobovr {
       vr::VRSettings()->GetString(k_pch_Hobovr_Section, k_pch_Hobovr_UpdateUrl_String, buff, sizeof(buff));
       m_sUpdateUrl = buff;
 
-      DriverLog("device created\n");
-      DriverLog("device breed: %s\n", deviceBreed.c_str());
-      DriverLog("device serial: %s\n", m_sSerialNumber.c_str());
-      DriverLog("device model: %s\n", m_sModelNumber.c_str());
-      DriverLog("device pose time offset: %f\n", m_fPoseTimeOffset);
+      DriverLog("device: created\n");
+      DriverLog("device: breed: %s\n", deviceBreed.c_str());
+      DriverLog("device: serial: %s\n", m_sSerialNumber.c_str());
+      DriverLog("device: model: %s\n", m_sModelNumber.c_str());
+      DriverLog("device: pose time offset: %f\n", m_fPoseTimeOffset);
 
       if (m_pBrodcastSocket == nullptr && UseHaptics)
         DriverLog("communication socket object is not supplied and haptics are enabled, this device will break on back communication requests(e.g. haptics)\n");
@@ -112,7 +112,7 @@ namespace hobovr {
 
     ~HobovrDevice(){
       m_vComponents.clear();
-      DriverLog("device with serial %s yeeted out of existence\n", m_sSerialNumber.c_str());
+      DriverLog("device: with serial %s yeeted out of existence\n", m_sSerialNumber.c_str());
 
     }
 
@@ -134,13 +134,13 @@ namespace hobovr {
           m_ulPropertyContainer, Prop_InputProfilePath_String,
           m_sBindPath.c_str());
 
-      DriverLog("device activated\n");
-      DriverLog("device serial: %s\n", m_sSerialNumber.c_str());
-      DriverLog("device render model: \"%s\"\n", m_sRenderModelPath.c_str());
-      DriverLog("device input binding: \"%s\"\n", m_sBindPath.c_str());
+      DriverLog("device: activated\n");
+      DriverLog("device: serial: %s\n", m_sSerialNumber.c_str());
+      DriverLog("device: render model: \"%s\"\n", m_sRenderModelPath.c_str());
+      DriverLog("device: input binding: \"%s\"\n", m_sBindPath.c_str());
 
       if constexpr(UseHaptics) {
-        DriverLog("device haptics added\n");
+        DriverLog("device: haptics added\n");
         vr::VRDriverInput()->CreateHapticComponent(m_ulPropertyContainer,
                                                        "/output/haptic", &m_compHaptic);
       }
@@ -155,7 +155,7 @@ namespace hobovr {
         vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer,
                                          Prop_DeviceBatteryPercentage_Float,
                                          m_fDeviceCharge);
-        DriverLog("device has battery, current charge: %.3f", m_fDeviceCharge*100);
+        DriverLog("device: has battery, current charge: %.3f", m_fDeviceCharge*100);
       }
 
       vr::VRProperties()->SetBoolProperty(
@@ -168,7 +168,7 @@ namespace hobovr {
       bool shouldUpdate = checkForDeviceUpdates(m_sSerialNumber);
 
       if (shouldUpdate)
-        DriverLog("device update available!\n");
+        DriverLog("device: update available!\n");
 
       vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
                                           Prop_Firmware_UpdateAvailable_Bool, shouldUpdate);
@@ -180,7 +180,7 @@ namespace hobovr {
     }
 
     virtual void Deactivate() {
-      DriverLog("device with serial %s deactivated\n", m_sSerialNumber.c_str());
+      DriverLog("device: \"%s\" deactivated\n", m_sSerialNumber.c_str());
       m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
     }
 
@@ -191,7 +191,7 @@ namespace hobovr {
     /** debug request from a client, TODO: uh... actually implement this? */
     virtual void DebugRequest(const char *pchRequest, char *pchResponseBuffer,
                               uint32_t unResponseBufferSize) {
-      DriverLog("device serial \"%s\", got debug request: \"%s\"", m_sSerialNumber.c_str(), pchRequest);
+      DriverLog("device: \"%s\" got a debug request: \"%s\"", m_sSerialNumber.c_str(), pchRequest);
       if (unResponseBufferSize >= 1)
         pchResponseBuffer[0] = 0;
     }
@@ -199,21 +199,21 @@ namespace hobovr {
     virtual vr::DriverPose_t GetPose() { return m_Pose; }
 
     void *GetComponent(const char *pchComponentNameAndVersion) {
-      DriverLog("device serial \"%s\", got request for \"%s\" component\n", m_sSerialNumber.c_str(), pchComponentNameAndVersion);
+      DriverLog("device: \"%s\" got a request for \"%s\" component\n", m_sSerialNumber.c_str(), pchComponentNameAndVersion);
       for (auto &i : m_vComponents) {
         if (!_stricmp(pchComponentNameAndVersion, i.componentNameAndVersion)){
           DriverLog("component found, responding...\n");
           switch(i.compType){
-            case THobovrCompType::THobovrComp_ExtendedDisplay:
+            case EHobovrCompType::EHobovrComp_ExtendedDisplay:
               return std::get<std::shared_ptr<HobovrExtendedDisplayComponent>>(i.compHandle).get();
 
-            case THobovrCompType::THobovrComp_DriverDirectMode:
+            case EHobovrCompType::EHobovrComp_DriverDirectMode:
               return std::get<std::shared_ptr<HobovrDriverDirectModeComponent>>(i.compHandle).get();
 
-            case THobovrCompType::THobovrComp_Camera:
+            case EHobovrCompType::EHobovrComp_Camera:
               return std::get<std::shared_ptr<HobovrCameraComponent>>(i.compHandle).get();
 
-            case THobovrCompType::THobovrComp_VirtualDisplay:
+            case EHobovrCompType::EHobovrComp_VirtualDisplay:
               return std::get<std::shared_ptr<HobovrVirtualDisplayComponent>>(i.compHandle).get();
 
           }
@@ -252,7 +252,7 @@ namespace hobovr {
           m_fDeviceCharge = fNewCharge;
           vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer,
                                          Prop_DeviceBatteryPercentage_Float, m_fDeviceCharge);
-          DriverLog("device serial \"%s\", battery charge updated: %f", m_sSerialNumber, m_fDeviceCharge);
+          DriverLog("device: \"%s\" battery charge updated: %f", m_sSerialNumber, m_fDeviceCharge);
         }
 
 
@@ -261,6 +261,7 @@ namespace hobovr {
           m_bDeviceIsCharging = bNewIsCharging;
           vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
                                          Prop_DeviceIsCharging_Bool, m_bDeviceIsCharging);
+          DriverLog("device: \"%s\" is charging: %d", m_bDeviceIsCharging);
         }
       }
     }
