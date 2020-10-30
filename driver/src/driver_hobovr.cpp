@@ -48,7 +48,7 @@ namespace hobovr {
   // le version
   static const uint32_t k_nHobovrVersionMajor = 0;
   static const uint32_t k_nHobovrVersionMinor = 5;
-  static const uint32_t k_nHobovrVersionBuild = 4;
+  static const uint32_t k_nHobovrVersionBuild = 5;
   static const std::string k_sHobovrVersionGG = "phantom pain";
 
 } // namespace hobovr
@@ -73,6 +73,7 @@ static const char *const k_pch_Hmd_Section = "hobovr_device_hmd";
 static const char *const k_pch_Hmd_SecondsFromVsyncToPhotons_Float = "secondsFromVsyncToPhotons";
 static const char *const k_pch_Hmd_DisplayFrequency_Float = "displayFrequency";
 static const char* const k_pch_Hmd_IPD_Float = "IPD";
+static const char* const k_pch_Hmd_UserHead2EyeDepthMeters_Float = "UserHeadToEyeDepthMeters";
 
 // include has to be here, dont ask
 #include "ref/hobovr_device_base.h"
@@ -98,9 +99,12 @@ public:
     m_flIPD = vr::VRSettings()->GetFloat(k_pch_Hmd_Section,
                                          k_pch_Hmd_IPD_Float);
 
+    m_fUserHead2EyeDepthMeters = vr::VRSettings()->GetFloat(k_pch_Hmd_Section,
+                                         k_pch_Hmd_UserHead2EyeDepthMeters_Float);
+
     // log non boilerplate device specific settings 
-    DriverLog("device hmd settings: vsync time %fs, display freq %f, ipd %fm", m_flSecondsFromVsyncToPhotons,
-                    m_flDisplayFrequency, m_flIPD);
+    DriverLog("device hmd settings: vsync time %fs, display freq %f, ipd %fm, head2eye depth %f", m_flSecondsFromVsyncToPhotons,
+                    m_flDisplayFrequency, m_flIPD, m_fUserHead2EyeDepthMeters);
 
     hobovr::HobovrComponent_t extDisplayComp = {hobovr::THobovrCompType::THobovrComp_ExtendedDisplay, vr::IVRDisplayComponent_Version};
     extDisplayComp.compHandle = std::make_shared<hobovr::HobovrExtendedDisplayComponent>();
@@ -127,6 +131,9 @@ public:
 
     vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
                                         Prop_DisplayDebugMode_Bool, false);
+
+    vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
+                                        Prop_UserHeadToEyeDepthMeters_Float, m_fUserHead2EyeDepthMeters);
 
     return VRInitError_None;
   }
@@ -161,6 +168,7 @@ private:
   float m_flSecondsFromVsyncToPhotons;
   float m_flDisplayFrequency;
   float m_flIPD;
+  float m_fUserHead2EyeDepthMeters;
 };
 
 //-----------------------------------------------------------------------------
