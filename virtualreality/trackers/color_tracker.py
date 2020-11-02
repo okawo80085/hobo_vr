@@ -157,12 +157,12 @@ class Poser(templates.UduPoserTemplate):
             self.coro_keep_alive["get_location"].is_alive = False
             return
 
-        axisScale = np.array([0.8, 1/2, 0.8]) * [-1, 1, 1]
+        axisScale = np.array([0.8, 1/1.8, 0.8]) * [-1, 1, 1]
 
-        l_oof = np.array([0, 0, 0.035])
-        r_oof = np.array([0, 0, 0.025])
+        l_oof = np.array([0, 0, 0.037])
+        r_oof = np.array([0, 0, 0.004])
 
-        hmd_oof = np.array([-0.01, -0.045, 0.04])
+        hmd_oof = np.array([-0.035, -0.1, 0.15])
 
         with BlobT:
             while self.coro_keep_alive["get_location"].is_alive:
@@ -194,7 +194,7 @@ class Poser(templates.UduPoserTemplate):
 
                         self.poses[2].x = poses[1][0]
                         self.poses[2].y = poses[1][1]
-                        self.poses[2].z = poses[1][2] - 0.13
+                        self.poses[2].z = poses[1][2]
 
                         self.poses[1].x = poses[2][0]
                         self.poses[1].y = poses[2][1]

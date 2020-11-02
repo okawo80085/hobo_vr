@@ -9,6 +9,7 @@
 #include <string>
 #include <sstream>
 #include <algorithm>
+#include <numeric>
 #include <iterator>
 
 #include <thread>
@@ -24,6 +25,8 @@
 #include <sys/socket.h>
 // #include <netinet/in.h>
 #include <netdb.h> 
+
+#define SOCKET char //needed for a type check to be possible
 
 #include "util.h"
 
