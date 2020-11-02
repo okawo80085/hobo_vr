@@ -9,7 +9,7 @@
       "IPD" : 0.063,
       "secondsFromVsyncToPhotons" : 0.01,
       "displayFrequency" : 90.0,
-      "UserHeadToEyeDepthMeters" : 0.0
+      "UserHeadToEyeDepthMeters" : 0.16
    },
    "hobovr_comp_extendedDisplay": {
       "windowX" : 1920,
@@ -18,8 +18,8 @@
       "windowHeight" : 720,
       "renderWidth" : 3040,
       "renderHeight" : 1440,
-      "DistortionK1" : 0.7,
-      "DistortionK2" : 0.73,
+      "DistortionK1" : 0.74,
+      "DistortionK2" : 0.77,
       "ZoomWidth" : 0.88,
       "ZoomHeight" : 0.85,
       "EyeGapOffsetPx" : -80,
