@@ -6,12 +6,12 @@ import time
 from asyncio.streams import StreamReader
 from typing import Sequence, Dict
 
-import cv2
 import numpy as np
 import serial.threaded
 from pykalman import KalmanFilter
 
 try:
+    import cv2
     from displayarray import read_updates
 
     HAVE_VOD = True

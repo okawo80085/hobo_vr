@@ -1,8 +1,6 @@
 """Server loop that communicates between the driver and posers."""
 import asyncio
 
-from ..templates import PoserTemplate
-from ..util import utilz as u
 from .__init__ import __version__
 
 DOMAIN = (None, 6969)
@@ -178,7 +176,7 @@ class Server:
         print(f"connection to {addr} closed")
 
 
-def run_til_dead(poser: PoserTemplate = None, conn_handle=Server()):
+def run_til_dead(poser = None, conn_handle=Server()):
     """Run the server until it dies."""
     loop = asyncio.get_event_loop()
     coro = asyncio.start_server(conn_handle, *DOMAIN, loop=loop)
