@@ -28,14 +28,14 @@ from virtualreality import __version__
 
 class ColorRange(object):
     def __init__(
-        self,
-        color_num,
-        hue_center=0,
-        hue_range=180,
-        sat_center=0,
-        sat_range=180,
-        val_center=0,
-        val_range=180,
+            self,
+            color_num,
+            hue_center=0,
+            hue_range=180,
+            sat_center=0,
+            sat_range=180,
+            val_center=0,
+            val_range=180,
     ):
         self.color_num = color_num
         self.hue_center = hue_center
@@ -53,13 +53,13 @@ class ColorRange(object):
 
 class CalibrationData(object):
     def __init__(
-        self,
-        width=1,
-        height=1,
-        auto_exposure=0.25,
-        exposure=0,
-        saturation=50,
-        num_colors=4,
+            self,
+            width=1,
+            height=1,
+            auto_exposure=0.25,
+            exposure=0,
+            saturation=50,
+            num_colors=4,
     ):
         self.width = width
         self.height = height
@@ -80,7 +80,7 @@ class CalibrationData(object):
 
     @classmethod
     def load_from_file(
-        cls, load_file: str = str(Path(__file__).parent) + "ranges.pickle"
+            cls, load_file: str = str(Path(__file__).parent) + "ranges.pickle"
     ) -> Optional["CalibrationData"]:
         """Load the calibration data from a file."""
         try:
@@ -91,7 +91,7 @@ class CalibrationData(object):
             logging.warning(f"Could not load calibration file '{load_file}'.")
 
     def save_to_file(
-        self, save_file: str = str(Path(__file__).parent) + "ranges.pickle"
+            self, save_file: str = str(Path(__file__).parent) + "ranges.pickle"
     ) -> None:
         with open(save_file, "wb") as file:
             pickle.dump(self, file)
@@ -175,12 +175,12 @@ def _set_default_camera_properties(vs, cam, vs_supported, frame_width, frame_hei
 
 
 def manual_calibration(
-    cam=0,
-    num_colors_to_track=4,
-    frame_width=-1,
-    frame_height=-1,
-    load_file="",
-    save_file="ranges.pickle",
+        cam=0,
+        num_colors_to_track=4,
+        frame_width=-1,
+        frame_height=-1,
+        load_file="",
+        save_file="ranges.pickle",
 ):
     """Manually calibrate the hsv ranges and camera settings used for blob tracking."""
     vs = cv2.VideoCapture(cam)
@@ -191,13 +191,21 @@ def manual_calibration(
 
     cam_window = f"camera {cam} input"
     cv2.namedWindow(cam_window)
+    if "CAP_PROP_AUTO_EXPOSURE" in vs_supported:
+        cv2.createTrackbar(
+            "auto_exposure",
+            cam_window,
+            25,
+            100,
+            lambda x: vs.set(cv2.CAP_PROP_EXPOSURE, x / 100.0),
+        )
     if "CAP_PROP_EXPOSURE" in vs_supported:
         cv2.createTrackbar(
             "exposure",
             cam_window,
-            0,
-            16,
-            lambda x: vs.set(cv2.CAP_PROP_EXPOSURE, x - 8),
+            50,
+            10000,
+            lambda x: vs.set(cv2.CAP_PROP_EXPOSURE, x),
         )
     if "CAP_PROP_SATURATION" in vs_supported:
         cv2.createTrackbar(

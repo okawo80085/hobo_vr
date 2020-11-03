@@ -79,7 +79,6 @@ class DummyDriverReceiver(threading.Thread):
         if self.alive and len(lastPacket) == self.readSize:
             self.newPose = struct.unpack_from('f'*self.eps, lastPacket)
             return True
-
         return False
 
     def run(self):
@@ -96,6 +95,7 @@ class DummyDriverReceiver(threading.Thread):
                     lastPacket, backBuffer = backBuffer.split(
                         self._terminator, 1
                     )
+
                     if not self._handlePacket(lastPacket):
                         print(len(lastPacket), repr(backBuffer))
 

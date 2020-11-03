@@ -290,6 +290,8 @@ class SerialReaderFactory(serial.threaded.LineReader):
             protocol.lastRead # contains the last incoming message from serial
             protocol.write_line(single_line_text) # used to write a single line to serial
     """
+    TERMINATOR = b'\n'
+
 
     def __init__(self):
         """Create the SerialReaderFactory."""
@@ -526,12 +528,12 @@ class BlobTracker(threading.Thread):
 
                 fl = f_px / l_px
 
-                z_cm = d_cm * fl / np.sqrt(1 + fl ** 2)
+                z_cm = abs(d_cm * fl / np.sqrt(1 + fl ** 2))
 
                 l_cm = z_cm * k
 
-                x_cm = l_cm * x_px / l_px
-                y_cm = l_cm * y_px / l_px
+                x_cm = abs(l_cm * x_px / l_px)
+                y_cm = abs(l_cm * y_px / l_px)
 
                 self.poses[key] = np.array((x_cm / 100, y_cm / 100, z_cm / 100))
 

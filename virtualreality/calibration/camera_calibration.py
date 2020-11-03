@@ -9,6 +9,8 @@ usage:
 
 Options:
    -c, --camera <camera>                    Source of the camera to use for calibration [default: 0]
+   -fov, --field-of-view <degrees>          Field of view. (In degrees.) [default: 78]
+   -s, --spacing <mm>                       Spacing between checkerboard corners. (In mm.) [default: 31.35]
 
 """
 import logging
@@ -25,10 +27,10 @@ from virtualreality import __version__
 images_location = os.path.join(os.path.dirname(__file__), "calibration_images")
 print(images_location)
 
-CHECKERBOARD = (6, 9)
+CHECKERBOARD = (7, 7)
 
 
-def save_images_to_process(cam=0):
+def save_images_to_process(cam=0, fov=78):
     """save images from specified camera to calibration_images directory for processing
 
     Keyword Arguments:
@@ -44,13 +46,21 @@ def save_images_to_process(cam=0):
             logging.error("failed to receive image from camera")
             break
 
-        valid_img, corners = cv2.findChessboardCorners(
-            gray,
-            CHECKERBOARD,
-            cv2.CALIB_CB_ADAPTIVE_THRESH
-            + cv2.CALIB_CB_FAST_CHECK
-            + cv2.CALIB_CB_NORMALIZE_IMAGE,
-        )
+        if fov > 180:
+            valid_img, corners = cv2.findChessboardCorners(
+                gray,
+                CHECKERBOARD,
+                cv2.CALIB_CB_ADAPTIVE_THRESH
+                + cv2.CALIB_CB_NORMALIZE_IMAGE,
+            )
+        else:
+            valid_img, corners = cv2.findChessboardCorners(
+                gray,
+                CHECKERBOARD,
+                cv2.CALIB_CB_ADAPTIVE_THRESH
+                + cv2.CALIB_CB_FAST_CHECK
+                + cv2.CALIB_CB_NORMALIZE_IMAGE,
+            )
 
         if valid_img:
             corners2 = cv2.cornerSubPix(
@@ -65,27 +75,23 @@ def save_images_to_process(cam=0):
         cv2.imshow("drawn_corners", frame)
 
         key = cv2.waitKey(1)
-        if key & 0xFF == ord("q") or img_counter >= 20:
+        if key & 0xFF == ord("q") or img_counter >= 100:
             # press q to stop
             cap.release()
             cv2.destroyAllWindows()
             if img_counter == 1:
                 exit
             break
-        elif key & 0xFF == ord("s"):
-            # press s to save image
-
-            if valid_img:
-                print(f"saving image {img_counter}")
-                cv2.imwrite(
-                    os.path.join(images_location, f"image{img_counter}.jpg"), gray
-                )
-                img_counter += 1
-            else:
-                print("no checkerboard found. Not Saving.")
+        # automatically save the image (because getting valid images is tricky, especially with fisheye)
+        if valid_img:
+            print(f"saving image {img_counter}")
+            cv2.imwrite(
+                os.path.join(images_location, f"image{img_counter}.jpg"), gray
+            )
+            img_counter += 1
 
 
-def calibrate_camera(cam=0):
+def calibrate_camera(cam=0, fov=78.0, spacing=31.35):
     """calculate camera matrix from precollected images
 
     Keyword Arguments:
@@ -98,15 +104,16 @@ def calibrate_camera(cam=0):
     image_points = []
 
     obj_p = np.zeros((1, CHECKERBOARD[0] * CHECKERBOARD[1], 3), np.float32)
-    obj_p[0, :, :2] = np.mgrid[0 : CHECKERBOARD[0], 0 : CHECKERBOARD[1]].T.reshape(
+    obj_p[0, :, :2] = np.mgrid[0: CHECKERBOARD[0], 0: CHECKERBOARD[1]].T.reshape(
         -1, 2
     )
+    obj_p *= spacing
 
     if not os.path.exists(images_location):
         os.makedirs(images_location)
-        save_images_to_process(0)
+        save_images_to_process(cam)
     elif len(os.listdir(images_location)) == 0:
-        save_images_to_process(0)
+        save_images_to_process(cam)
 
     for image_path in os.listdir(images_location):
 
@@ -114,13 +121,21 @@ def calibrate_camera(cam=0):
         frame = cv2.imread(input_path)
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        valid_img, corners = cv2.findChessboardCorners(
-            gray,
-            CHECKERBOARD,
-            cv2.CALIB_CB_ADAPTIVE_THRESH
-            + cv2.CALIB_CB_FAST_CHECK
-            + cv2.CALIB_CB_NORMALIZE_IMAGE,
-        )
+        if fov > 180:
+            valid_img, corners = cv2.findChessboardCorners(
+                gray,
+                CHECKERBOARD,
+                cv2.CALIB_CB_ADAPTIVE_THRESH
+                + cv2.CALIB_CB_NORMALIZE_IMAGE,
+            )
+        else:
+            valid_img, corners = cv2.findChessboardCorners(
+                gray,
+                CHECKERBOARD,
+                cv2.CALIB_CB_ADAPTIVE_THRESH
+                + cv2.CALIB_CB_FAST_CHECK
+                + cv2.CALIB_CB_NORMALIZE_IMAGE,
+            )
 
         if valid_img:
             object_points.append(obj_p)
@@ -148,6 +163,11 @@ def calibrate_camera(cam=0):
     )
     pickle.dump(mtx, camera_calibration_file)
     camera_calibration_file.close()
+    print(f"Your focal length is {mtx[1, 1]}mm.")
+    image_width_in_pixels = 640
+    focal_len_px = (image_width_in_pixels * 0.5) / np.tan(fov * 0.5 * np.pi / 180)
+    print(f"Your focal length is {focal_len_px} pixels.")
+
 
 
 def main():
@@ -159,9 +179,12 @@ def main():
     args = docopt(__doc__, version=f"pyvr version {__version__}", argv=argv)
 
     cam = int(args["--camera"]) if args["--camera"].isdigit() else args["--camera"]
+    spacing = None
+    try:
+        spacing = float(args["--spacing"])
+    except ValueError:
+        print("Checkerboard pattern spacing must be specified as a decimal.")
 
-    calibrate_camera(0)
+    fov = float(args["--field-of-view"])
 
-
-if __name__ == "__main__":
-    main()
+    calibrate_camera(cam, spacing=spacing, fov=fov)

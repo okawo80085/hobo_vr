@@ -27,6 +27,7 @@ import pyrr
 from pyrr import Quaternion
 from docopt import docopt
 import glob
+import time
 
 from ..util import utilz as u
 from .. import __version__
@@ -35,6 +36,8 @@ from ..calibration.manual_color_mask_calibration import CalibrationData, ColorRa
 
 from ..server import server
 from ..templates import ControllerState
+import serial.tools.list_ports
+from typing import Optional
 
 
 def check_serial_dict(ser_dict, key):
@@ -52,24 +55,21 @@ class Poser(templates.UduPoserTemplate):
     # poses[2] - left controller
 
     def __init__(
-        self,
-        *args,
-        camera=4,
-        width=-1,
-        height=-1,
-        calibration_file=None,
-        **kwargs,
+            self,
+            *args,
+            camera=4,
+            width=-1,
+            height=-1,
+            calibration_file=None,
+            calibration_map_file=None,
+            **kwargs,
     ):
         """Create a pose estimator."""
         super().__init__(*args, **kwargs)
 
         self.temp_pose = ControllerState()
 
-        self.serialPaths = {
-            "cont_r": "/dev/ttyUSB1",
-            "cont_l": "/dev/ttyUSB2",
-            "hmd": "/dev/ttyUSB0",
-        }
+        self.serialPaths = {}
 
         self.mode = 0
         self._serialResetYaw = False
@@ -174,11 +174,15 @@ class Poser(templates.UduPoserTemplate):
                     poses *= axisScale
 
                     if self.usePos:
-
                         # origin point correction math
-                        m33_r = pyrr.matrix33.create_from_quaternion([self.poses[1].r_x, self.poses[1].r_y, self.poses[1].r_z, self.poses[1].r_w])
-                        m33_l = pyrr.matrix33.create_from_quaternion([self.poses[2].r_x, self.poses[2].r_y, self.poses[2].r_z, self.poses[2].r_w])
-                        m33_hmd = pyrr.matrix33.create_from_quaternion([self.poses[0].r_x, self.poses[0].r_y, self.poses[0].r_z, self.poses[0].r_w])
+                        m33_r = pyrr.matrix33.create_from_quaternion(
+                            [self.pose_controller_r.r_x, self.pose_controller_r.r_y, self.pose_controller_r.r_z,
+                             self.pose_controller_r.r_w])
+                        m33_l = pyrr.matrix33.create_from_quaternion(
+                            [self.pose_controller_l.r_x, self.pose_controller_l.r_y, self.pose_controller_l.r_z,
+                             self.pose_controller_l.r_w])
+                        m33_hmd = pyrr.matrix33.create_from_quaternion(
+                            [self.pose.r_x, self.pose.r_y, self.pose.r_z, self.pose.r_w])
 
                         r_oof2 = m33_r.dot(r_oof)
                         l_oof2 = m33_l.dot(l_oof)
@@ -210,6 +214,28 @@ class Poser(templates.UduPoserTemplate):
 
         self.coro_keep_alive["get_location"].is_alive = False
 
+    def _get_serial_for_device(self, device_name: str, timeout:int=10) -> Optional[str]:
+        available_ports = set([comport.device for comport in serial.tools.list_ports.comports()])
+        used_ports = set(iter(self.serialPaths.keys()))
+        ports_to_check = list(available_ports - used_ports)
+        attempts = 10
+        t0 = time.time()
+        while (time.time()-t0)<timeout:
+            for p in ports_to_check:
+                with serial.Serial(p, 115200, timeout=10) as ser:
+                    time.sleep(0)
+                    l = ser.readline()
+                    l = str(l)
+                    if device_name in l:
+                        return p
+                    else:
+                        attempts -= 1
+                        ser.write('q'.encode('ASCII'))
+                    if attempts == 0:
+                        continue
+            time.sleep(0)
+        return None
+
     @templates.PoserTemplate.register_member_thread(1 / 100)
     async def serial_listener2(self):
         """Get controller data from serial."""
@@ -219,19 +245,24 @@ class Poser(templates.UduPoserTemplate):
 
         my_off = Quaternion()
 
-        if not check_serial_dict(self.serialPaths, "cont_l"):
-            print("failed to init serial_listener2: bad serial dict for key 'cont_l'")
+        port = self._get_serial_for_device('left_controller')
+        self.serialPaths[port] = 'left_controller'
+
+        if port is None:
+            print("failed to init serial_listener2: No serial ports return 'left_controller' when queried.")
             self.coro_keep_alive["serial_listener2"].is_alive = False
             return
 
-        with serial.Serial(self.serialPaths["cont_l"], 115200, timeout=1 / 4) as ser:
+        with serial.Serial(port, 115200, timeout=10) as ser:
             with serial.threaded.ReaderThread(ser, u.SerialReaderFactory) as protocol:
                 protocol.write_line("nut")
                 await asyncio.sleep(5)
 
                 while self.coro_keep_alive["serial_listener2"].is_alive:
                     try:
+                        # print(ser.is_open)
                         gg = u.get_numbers_from_text(protocol.last_read, ",")
+                        # print(f"cont_l: {gg}")
 
                         if len(gg) > 0:
                             (
@@ -241,9 +272,6 @@ class Poser(templates.UduPoserTemplate):
                                 z,
                                 trgr,
                                 grp,
-                                util,
-                                sys,
-                                menu,
                                 padClk,
                                 padY,
                                 padX,
@@ -259,8 +287,8 @@ class Poser(templates.UduPoserTemplate):
 
                             self.temp_pose.trigger_value = trgr
                             self.temp_pose.grip = grp
-                            self.temp_pose.menu = menu
-                            self.temp_pose.system = sys
+                            # self.temp_pose.menu = menu
+                            # self.temp_pose.system = sys
                             self.temp_pose.trackpad_click = padClk
 
                             self.temp_pose.trackpad_x = round((padX - 428) / 460, 3) * (
@@ -271,7 +299,7 @@ class Poser(templates.UduPoserTemplate):
                             )
 
                             self._serialResetYaw = False
-                            if self.temp_pose.trackpad_x > 0.6 and util:
+                            '''if self.temp_pose.trackpad_x > 0.6 and util:
                                 self.mode = 1
 
                             elif self.temp_pose.trackpad_x < -0.6 and util:
@@ -285,11 +313,11 @@ class Poser(templates.UduPoserTemplate):
 
                             elif util:
                                 my_off = Quaternion([0, z, 0, w]).inverse.normalised
-                                self._serialResetYaw = True
+                                self._serialResetYaw = True'''
 
                         if (
-                            abs(self.temp_pose.trackpad_x) > 0.09
-                            or abs(self.temp_pose.trackpad_y) > 0.09
+                                abs(self.temp_pose.trackpad_x) > 0.09
+                                or abs(self.temp_pose.trackpad_y) > 0.09
                         ):
                             self.temp_pose.trackpad_touch = 1
 
@@ -320,32 +348,61 @@ class Poser(templates.UduPoserTemplate):
 
         my_off = Quaternion()
 
-        if not check_serial_dict(self.serialPaths, "cont_r"):
-            print("failed to init serial_listener3: bad serial dict for key 'cont_r'")
-            self.coro_keep_alive["serial_listener3"].is_alive = False
+        port = self._get_serial_for_device('right_controller')
+        self.serialPaths[port] = 'right_controller'
+
+        if port is None:
+            print("failed to init serial_listener3: No serial ports return 'right_controller' when queried.")
+            self.coro_keep_alive["serial_listener2"].is_alive = False
             return
 
-        with serial.Serial(self.serialPaths["cont_r"], 115200, timeout=1 / 5) as ser2:
+        with serial.Serial(port, 115200, timeout=10) as ser2:
             with serial.threaded.ReaderThread(ser2, u.SerialReaderFactory) as protocol:
                 protocol.write_line("nut")
                 await asyncio.sleep(5)
 
                 while self.coro_keep_alive["serial_listener3"].is_alive:
                     try:
-                        gg = u.get_numbers_from_text(protocol.last_read, ",")
+                        p = protocol.last_read
+                        gg = u.get_numbers_from_text(p, ",")
+                        # print(f"cont_r: {gg}")
 
                         if len(gg) > 0:
-                            w, x, y, z = gg
-                            my_q = Quaternion([-y, z, -x, w])
+                            (
+                                w,
+                                x,
+                                y,
+                                z,
+                                trgr,
+                                grp,
+                                padClk,
+                                padY,
+                                padX,
+                            ) = gg
 
-                            if self._serialResetYaw:
-                                my_off = Quaternion([0, z, 0, w]).inverse.normalised
+                            my_q = Quaternion([-y, z, -x, w])
 
                             my_q = Quaternion(my_off * my_q * irl_rot_off).normalised
                             self.poses[1].r_w = round(my_q[3], 5)
                             self.poses[1].r_x = round(my_q[0], 5)
                             self.poses[1].r_y = round(my_q[1], 5)
                             self.poses[1].r_z = round(my_q[2], 5)
+
+                            self.temp_pose.trigger_value = trgr
+                            self.temp_pose.grip = grp
+                            # self.temp_pose.menu = menu
+                            # self.temp_pose.system = sys
+                            self.temp_pose.trackpad_click = padClk
+
+                            self.temp_pose.trackpad_x = round((padX - 428) / 460, 3) * (
+                                -1
+                            )
+                            self.temp_pose.trackpad_y = round((padY - 530) / 540, 3) * (
+                                -1
+                            )
+
+                            if self._serialResetYaw:
+                                my_off = Quaternion([0, z, 0, w]).inverse.normalised
 
                         await asyncio.sleep(
                             self.coro_keep_alive["serial_listener3"].sleep_delay
@@ -361,12 +418,15 @@ class Poser(templates.UduPoserTemplate):
         """Get orientation data from serial."""
         my_off = Quaternion()
 
-        if not check_serial_dict(self.serialPaths, "hmd"):
-            print("failed to init serial_listener: bad serial dict for key 'hmd'")
-            self.coro_keep_alive["serial_listener"].is_alive = False
+        port = self._get_serial_for_device('headset')
+        self.serialPaths[port] = 'headset'
+
+        if port is None:
+            print("failed to init serial_listener: No serial ports return 'headset' when queried.")
+            self.coro_keep_alive["serial_listener2"].is_alive = False
             return
 
-        with serial.Serial(self.serialPaths["hmd"], 115200, timeout=1 / 5) as ser2:
+        with serial.Serial(port, 115200, timeout=10) as ser2:
             with serial.threaded.ReaderThread(ser2, u.SerialReaderFactory) as protocol:
                 protocol.write_line("nut")
                 await asyncio.sleep(5)
@@ -374,6 +434,7 @@ class Poser(templates.UduPoserTemplate):
                 while self.coro_keep_alive["serial_listener"].is_alive:
                     try:
                         gg = u.get_numbers_from_text(protocol.last_read, ",")
+                        # print(f"hmd: {gg}")
 
                         if len(gg) > 0:
                             w, x, y, z = gg
@@ -444,3 +505,6 @@ def main():
             cam,
             args["--load_calibration"],
         )
+
+if __name__ == "__main__":
+    main()
