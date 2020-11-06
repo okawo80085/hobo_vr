@@ -1,5 +1,6 @@
 import logging
 import os
+import stat
 import enum
 
 
@@ -30,6 +31,13 @@ def setup_custom_logger(
     logger_formatter = logging.Formatter(
         "[%(asctime)s] %(name)s %(levelname)s - %(message)s"
     )
+
+    # if i don't to this bullshit creates root owned log files in some cases
+    os.chmod(dir_p, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+    if not os.path.exists(log_path):
+        with open(log_path, 'wt') as f:
+            f.write('fuck you')
+    os.chmod(log_path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
 
     logger_handler = logging.FileHandler(log_path)
     logger_handler.setLevel(level)
