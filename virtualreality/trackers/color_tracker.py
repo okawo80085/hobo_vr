@@ -11,6 +11,7 @@ Options:
    -l, --load_calibration <file>            (optional) Load color mask calibration settings
    -i, --ip_address <ip_address>            IP Address of the server to connect to [default: 127.0.0.1]
    -s, --standalone                         Run the server alongside the tracker.
+   -b, --bash_pre_start <path>              (optional) bash script to be ran before the poser starts
 """
 
 # undocumented reference
@@ -27,7 +28,9 @@ import pyrr
 from pyrr import Quaternion
 from docopt import docopt
 import glob
+
 import time
+import subprocess as sub
 
 from ..util import utilz as u
 from .. import __version__
@@ -115,7 +118,6 @@ class Poser(templates.UduPoserTemplate):
                     self.poses[1].trigger_value = self.temp_pose.trigger_value
                     self.poses[1].trigger_click = self.temp_pose.trigger_click
                     self.poses[1].system = self.temp_pose.system
-                    self.poses[1].grip = self.temp_pose.grip
                     self.poses[1].menu = self.temp_pose.menu
 
                 else:
@@ -133,8 +135,9 @@ class Poser(templates.UduPoserTemplate):
                     self.poses[2].trigger_value = self.temp_pose.trigger_value
                     self.poses[2].trigger_click = self.temp_pose.trigger_click
                     self.poses[2].system = self.temp_pose.system
-                    self.poses[2].grip = self.temp_pose.grip
                     self.poses[2].menu = self.temp_pose.menu
+                self.poses[1].grip = self.temp_pose.grip
+                self.poses[2].grip = self.temp_pose.grip
 
                 await asyncio.sleep(self.coro_keep_alive["mode_switcher"].sleep_delay)
 
@@ -162,7 +165,7 @@ class Poser(templates.UduPoserTemplate):
         l_oof = np.array([0, 0, 0.037])
         r_oof = np.array([0, 0, 0.004])
 
-        hmd_oof = np.array([-0.035, -0.1, 0.15])
+        hmd_oof = np.array([-0.035, -0.15, 0.15])
 
         with BlobT:
             while self.coro_keep_alive["get_location"].is_alive:
@@ -487,6 +490,9 @@ def main():
     width, height = args["--resolution"].split("x")
 
     print(args)
+
+    if args['--bash_pre_start']:
+        sub.run(args['--bash_pre_start'], shell=True)
 
     if args["--camera"].isdigit():
         cam = int(args["--camera"])
