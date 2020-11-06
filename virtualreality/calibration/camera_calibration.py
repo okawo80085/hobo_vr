@@ -11,7 +11,7 @@ Options:
    -c, --camera <camera>                    Source of the camera to use for calibration [default: 0]
    -fov, --field-of-view <degrees>          Field of view. (In degrees.) [default: 78]
    -s, --spacing <mm>                       Spacing between checkerboard corners. (In mm.) [default: 31.35]
-
+   -l, --load <file>                        Load previous settings from a file.
 """
 import logging
 import os
@@ -91,7 +91,7 @@ def save_images_to_process(cam=0, fov=78):
             img_counter += 1
 
 
-def calibrate_camera(cam=0, fov=78.0, spacing=31.35):
+def calibrate_camera(cam=0, fov=78.0, spacing=31.35, file=""):
     """calculate camera matrix from precollected images
 
     Keyword Arguments:
@@ -180,6 +180,7 @@ def main():
 
     cam = int(args["--camera"]) if args["--camera"].isdigit() else args["--camera"]
     spacing = None
+    f = args["--file"]
     try:
         spacing = float(args["--spacing"])
     except ValueError:
@@ -187,4 +188,4 @@ def main():
 
     fov = float(args["--field-of-view"])
 
-    calibrate_camera(cam, spacing=spacing, fov=fov)
+    calibrate_camera(cam, spacing=spacing, fov=fov, file=f)

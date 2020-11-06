@@ -149,7 +149,7 @@ class Poser(templates.UduPoserTemplate):
         try:
             offsets = [0.6981317007977318, 0, 0]
             BlobT = u.BlobTracker(
-                self.camera, color_masks=self.calibration, focal_length_px=554.2563
+                self.camera, color_masks=self.calibration, focal_length_px=-100.0
             )
 
         except Exception as e:
@@ -176,13 +176,13 @@ class Poser(templates.UduPoserTemplate):
                     if self.usePos:
                         # origin point correction math
                         m33_r = pyrr.matrix33.create_from_quaternion(
-                            [self.pose_controller_r.r_x, self.pose_controller_r.r_y, self.pose_controller_r.r_z,
-                             self.pose_controller_r.r_w])
+                            [self.poses[2].r_x, self.poses[2].r_y, self.poses[2].r_z,
+                             self.poses[2].r_w])
                         m33_l = pyrr.matrix33.create_from_quaternion(
-                            [self.pose_controller_l.r_x, self.pose_controller_l.r_y, self.pose_controller_l.r_z,
-                             self.pose_controller_l.r_w])
+                            [self.poses[1].r_x, self.poses[1].r_y, self.poses[1].r_z,
+                             self.poses[1].r_w])
                         m33_hmd = pyrr.matrix33.create_from_quaternion(
-                            [self.pose.r_x, self.pose.r_y, self.pose.r_z, self.pose.r_w])
+                            [self.poses[0].r_x, self.poses[0].r_y, self.poses[0].r_z, self.poses[0].r_w])
 
                         r_oof2 = m33_r.dot(r_oof)
                         l_oof2 = m33_l.dot(l_oof)
