@@ -32,7 +32,7 @@ def setup_custom_logger(
         "[%(asctime)s] %(name)s %(levelname)s - %(message)s"
     )
 
-    # if i don't to this bullshit creates root owned log files in some cases
+    # if i don't this bullshit, it creates root owned log files in some cases
     os.chmod(dir_p, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
     if not os.path.exists(log_path):
         with open(log_path, 'wt') as f:
