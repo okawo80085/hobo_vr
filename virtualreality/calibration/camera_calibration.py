@@ -70,7 +70,7 @@ def save_images_to_process(cam=0, fov=78):
                 (-1, -1),
                 (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001),
             )
-            cv2.drawChessboardCorners(frame, CHECKERBOARD, corners2, True)
+            frame = cv2.drawChessboardCorners(frame, CHECKERBOARD, corners2, True)
 
         cv2.imshow("drawn_corners", frame)
 
@@ -79,8 +79,7 @@ def save_images_to_process(cam=0, fov=78):
             # press q to stop
             cap.release()
             cv2.destroyAllWindows()
-            if img_counter == 1:
-                exit
+            # if img_counter == 1:
             break
         # automatically save the image (because getting valid images is tricky, especially with fisheye)
         if valid_img:
@@ -142,7 +141,7 @@ def calibrate_camera(cam=0, fov=78.0, spacing=31.35, file=""):
             corners2 = cv2.cornerSubPix(
                 gray,
                 corners,
-                (11, 13),
+                (11, 11),
                 (-1, -1),
                 (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001),
             )
@@ -158,16 +157,12 @@ def calibrate_camera(cam=0, fov=78.0, spacing=31.35, file=""):
     logging.info("camera matrix: ")
     logging.info(mtx)
 
-    camera_calibration_file = open(
-        os.path.join(os.path.dirname(__file__), "camera_matrix.pickle"), "wb"
-    )
-    pickle.dump(mtx, camera_calibration_file)
-    camera_calibration_file.close()
+    with open("calib_data.p", "wb") as camera_calibration_file:
+        pickle.dump((ret, mtx, dist, rvecs, tvecs), camera_calibration_file)
     print(f"Your focal length is {mtx[1, 1]}mm.")
     image_width_in_pixels = 640
     focal_len_px = (image_width_in_pixels * 0.5) / np.tan(fov * 0.5 * np.pi / 180)
     print(f"Your focal length is {focal_len_px} pixels.")
-
 
 
 def main():
