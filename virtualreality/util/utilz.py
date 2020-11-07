@@ -5,6 +5,7 @@ import threading
 import time
 from asyncio.streams import StreamReader
 from typing import Sequence, Dict
+import struct
 
 import numpy as np
 import serial.threaded
@@ -313,6 +314,47 @@ class SerialReaderFactory(serial.threaded.LineReader):
         print(
             f"SerialReaderFactory: port {repr(self.transport.serial.port)} closed {repr(exc)}"
         )
+
+class SerialReaderBinary(serial.threaded.Packetizer):
+    """
+    Read binary packets from serial port. Packets are expected to be terminated
+    with a TERMINATOR byte (null byte by default).
+
+    The class also keeps track of the transport.
+    """
+
+    TERMINATOR = b'\t\r\n'
+    ENCODING = 'utf-8'
+    UNICODE_HANDLING = 'replace'
+
+    def __init__(self, struct_desc='f'*12):
+        super().__init__()
+        self._last_packet = None
+        self._struct_form = struct_desc
+
+    @property
+    def last_read(self):
+        """Get the readonly last read."""
+        return self._last_packet
+
+    def connection_lost(self, exc):
+        """Notify the user that the connection was lost."""
+        print(
+            f"SerialReaderFactory: port {repr(self.transport.serial.port)} closed {repr(exc)}"
+        )
+
+    def handle_packet(self, packet):
+        """Process packets - to be overridden by subclassing"""
+        # print (repr(packet))
+        self._last_packet = struct.unpack_from(self._struct_form, packet)
+
+    def write_line(self, text):
+        """
+        Write text to the transport. ``text`` is a Unicode string and the encoding
+        is applied before sending ans also the newline is append.
+        """
+        # + is not the best choice but bytes does not support % or .format in py3 and we want a single write call
+        self.transport.write(text.encode(self.ENCODING, self.UNICODE_HANDLING) + self.TERMINATOR)
 
 
 def cnt_2_x_y_w(cnt):
