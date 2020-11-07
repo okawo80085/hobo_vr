@@ -18,7 +18,7 @@ try:
     HAVE_VOD = True
 
 except Exception as e:
-    print(f"failed to import displayarray, reason: {e}")
+    print(f"failed to import displayarray and/or opencv, reason: {e}")
     print("camera based tracking methods will not be available")
     HAVE_VOD = False
 
@@ -327,7 +327,7 @@ class SerialReaderBinary(serial.threaded.Packetizer):
     ENCODING = 'utf-8'
     UNICODE_HANDLING = 'replace'
 
-    def __init__(self, struct_desc='f'*12):
+    def __init__(self, struct_desc='f'*13):
         super().__init__()
         self._last_packet = None
         self._struct_form = struct_desc
@@ -340,7 +340,7 @@ class SerialReaderBinary(serial.threaded.Packetizer):
     def connection_lost(self, exc):
         """Notify the user that the connection was lost."""
         print(
-            f"SerialReaderFactory: port {repr(self.transport.serial.port)} closed {repr(exc)}"
+            f"SerialReaderBinary: port {repr(self.transport.serial.port)} closed {repr(exc)}"
         )
 
     def handle_packet(self, packet):

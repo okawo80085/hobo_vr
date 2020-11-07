@@ -50,7 +50,6 @@ def check_serial_dict(ser_dict, key):
 
     return False
 
-
 class Poser(templates.UduPoserTemplate):
     """A pose estimator."""
     # poses[0] - hmd
@@ -73,6 +72,14 @@ class Poser(templates.UduPoserTemplate):
         self.temp_pose = ControllerState()
 
         self.serialPaths = {}
+
+
+        self.serialPaths['headset'] = self._get_serial_for_device('headset', 5)
+
+        self.serialPaths['right_controller'] = self._get_serial_for_device('right_controller', 5)
+
+        self.serialPaths['left_controller'] = self._get_serial_for_device('left_controller', 5)
+
 
         self.mode = 0
         self._serialResetYaw = False
@@ -97,6 +104,32 @@ class Poser(templates.UduPoserTemplate):
             # }
 
         print(f"current color masks {self.calibration}")
+
+    # im lazy, so its here now
+    def _get_serial_for_device(self, device_name: str, timeout:int=10) -> Optional[str]:
+        available_ports = set([comport.device for comport in serial.tools.list_ports.comports()])
+        used_ports = set(iter(self.serialPaths.values()))
+        ports_to_check = list(available_ports - used_ports)
+        attempts = 10
+        t0 = time.time()
+        while (time.time()-t0)<timeout:
+            for p in ports_to_check:
+                try:
+                    with serial.Serial(p, 115200, timeout=3) as ser:
+                        l = ser.readline()
+                        l = str(l)
+                        if device_name in l:
+                            return p
+                        else:
+                            attempts -= 1
+                            ser.write('q'.encode('ASCII'))
+                        if attempts == 0:
+                            continue
+                except:
+                    print (f'_get_serial_for_device: {p} failed, skipping')
+            time.sleep(1/100)
+
+        return None
 
     @templates.PoserTemplate.register_member_thread(1 / 90)
     async def mode_switcher(self):
@@ -217,28 +250,6 @@ class Poser(templates.UduPoserTemplate):
 
         self.coro_keep_alive["get_location"].is_alive = False
 
-    def _get_serial_for_device(self, device_name: str, timeout:int=10) -> Optional[str]:
-        available_ports = set([comport.device for comport in serial.tools.list_ports.comports()])
-        used_ports = set(iter(self.serialPaths.keys()))
-        ports_to_check = list(available_ports - used_ports)
-        attempts = 10
-        t0 = time.time()
-        while (time.time()-t0)<timeout:
-            for p in ports_to_check:
-                with serial.Serial(p, 115200, timeout=10) as ser:
-                    time.sleep(0)
-                    l = ser.readline()
-                    l = str(l)
-                    if device_name in l:
-                        return p
-                    else:
-                        attempts -= 1
-                        ser.write('q'.encode('ASCII'))
-                    if attempts == 0:
-                        continue
-            time.sleep(0)
-        return None
-
     @templates.PoserTemplate.register_member_thread(1 / 100)
     async def serial_listener2(self):
         """Get controller data from serial."""
@@ -248,8 +259,7 @@ class Poser(templates.UduPoserTemplate):
 
         my_off = Quaternion()
 
-        port = self._get_serial_for_device('left_controller')
-        self.serialPaths[port] = 'left_controller'
+        port = self.serialPaths['left_controller']
 
         if port is None:
             print("failed to init serial_listener2: No serial ports return 'left_controller' when queried.")
@@ -257,28 +267,18 @@ class Poser(templates.UduPoserTemplate):
             return
 
         with serial.Serial(port, 115200, timeout=10) as ser:
-            with serial.threaded.ReaderThread(ser, u.SerialReaderFactory) as protocol:
+            with serial.threaded.ReaderThread(ser, u.SerialReaderBinary) as protocol:
                 protocol.write_line("nut")
-                await asyncio.sleep(5)
+                await asyncio.sleep(1)
 
                 while self.coro_keep_alive["serial_listener2"].is_alive:
                     try:
                         # print(ser.is_open)
-                        gg = u.get_numbers_from_text(protocol.last_read, ",")
+                        gg = protocol.last_read
                         # print(f"cont_l: {gg}")
 
-                        if len(gg) > 0:
-                            (
-                                w,
-                                x,
-                                y,
-                                z,
-                                trgr,
-                                grp,
-                                padClk,
-                                padY,
-                                padX,
-                            ) = gg
+                        if gg is not None and len(gg) >= 4:
+                            w, x, y, z, trgr, padX, padY, padClk, trgr_clk, sys, menu, util, grp = gg
 
                             my_q = Quaternion([-y, z, -x, w])
 
@@ -345,43 +345,31 @@ class Poser(templates.UduPoserTemplate):
     @templates.PoserTemplate.register_member_thread(1 / 100)
     async def serial_listener3(self):
         """Get orientation data from serial."""
-        irl_rot_off = Quaternion.from_x_rotation(
-            np.pi / 2
+        irl_rot_off = Quaternion.from_y_rotation(
+            np.pi
         )  # imu on this controller is rotated 90 degrees irl for me
 
         my_off = Quaternion()
 
-        port = self._get_serial_for_device('right_controller')
-        self.serialPaths[port] = 'right_controller'
+        port = self.serialPaths['right_controller']
 
         if port is None:
             print("failed to init serial_listener3: No serial ports return 'right_controller' when queried.")
-            self.coro_keep_alive["serial_listener2"].is_alive = False
+            self.coro_keep_alive["serial_listener3"].is_alive = False
             return
 
         with serial.Serial(port, 115200, timeout=10) as ser2:
-            with serial.threaded.ReaderThread(ser2, u.SerialReaderFactory) as protocol:
+            with serial.threaded.ReaderThread(ser2, u.SerialReaderBinary) as protocol:
                 protocol.write_line("nut")
-                await asyncio.sleep(5)
+                await asyncio.sleep(1)
 
                 while self.coro_keep_alive["serial_listener3"].is_alive:
                     try:
-                        p = protocol.last_read
-                        gg = u.get_numbers_from_text(p, ",")
+                        gg = protocol.last_read
                         # print(f"cont_r: {gg}")
 
-                        if len(gg) > 0:
-                            (
-                                w,
-                                x,
-                                y,
-                                z,
-                                trgr,
-                                grp,
-                                padClk,
-                                padY,
-                                padX,
-                            ) = gg
+                        if gg is not None and len(gg) >= 4:
+                            w, x, y, z, trgr, grp, padClk, padY, padX, *_ = gg
 
                             my_q = Quaternion([-y, z, -x, w])
 
@@ -421,26 +409,25 @@ class Poser(templates.UduPoserTemplate):
         """Get orientation data from serial."""
         my_off = Quaternion()
 
-        port = self._get_serial_for_device('headset')
-        self.serialPaths[port] = 'headset'
+        port = self.serialPaths['headset']
 
         if port is None:
             print("failed to init serial_listener: No serial ports return 'headset' when queried.")
-            self.coro_keep_alive["serial_listener2"].is_alive = False
+            self.coro_keep_alive["serial_listener"].is_alive = False
             return
 
         with serial.Serial(port, 115200, timeout=10) as ser2:
-            with serial.threaded.ReaderThread(ser2, u.SerialReaderFactory) as protocol:
+            with serial.threaded.ReaderThread(ser2, u.SerialReaderBinary) as protocol:
                 protocol.write_line("nut")
-                await asyncio.sleep(5)
+                await asyncio.sleep(1)
 
                 while self.coro_keep_alive["serial_listener"].is_alive:
                     try:
-                        gg = u.get_numbers_from_text(protocol.last_read, ",")
+                        gg = protocol.last_read
                         # print(f"hmd: {gg}")
 
-                        if len(gg) > 0:
-                            w, x, y, z = gg
+                        if gg is not None and len(gg) >= 4:
+                            w, x, y, z, *_ = gg
                             my_q = Quaternion([-y, z, -x, w])
 
                             if self._serialResetYaw:
