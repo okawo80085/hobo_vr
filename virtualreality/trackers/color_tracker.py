@@ -278,7 +278,7 @@ class Poser(templates.UduPoserTemplate):
                         # print(f"cont_l: {gg}")
 
                         if gg is not None and len(gg) >= 4:
-                            w, x, y, z, trgr, padX, padY, padClk, trgr_clk, sys, menu, util, grp = gg
+                            w, x, y, z, trgr, padX, padY, padClk, trgr_clk, sys, menu, grp, util = gg
 
                             my_q = Quaternion([-y, z, -x, w])
 
