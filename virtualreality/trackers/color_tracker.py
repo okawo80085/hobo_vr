@@ -290,8 +290,8 @@ class Poser(templates.UduPoserTemplate):
 
                             self.temp_pose.trigger_value = trgr
                             self.temp_pose.grip = grp
-                            # self.temp_pose.menu = menu
-                            # self.temp_pose.system = sys
+                            self.temp_pose.menu = menu
+                            self.temp_pose.system = sys
                             self.temp_pose.trackpad_click = padClk
 
                             self.temp_pose.trackpad_x = round((padX - 428) / 460, 3) * (
@@ -302,7 +302,7 @@ class Poser(templates.UduPoserTemplate):
                             )
 
                             self._serialResetYaw = False
-                            '''if self.temp_pose.trackpad_x > 0.6 and util:
+                            if self.temp_pose.trackpad_x > 0.6 and util:
                                 self.mode = 1
 
                             elif self.temp_pose.trackpad_x < -0.6 and util:
@@ -316,11 +316,11 @@ class Poser(templates.UduPoserTemplate):
 
                             elif util:
                                 my_off = Quaternion([0, z, 0, w]).inverse.normalised
-                                self._serialResetYaw = True'''
+                                self._serialResetYaw = True
 
                         if (
-                                abs(self.temp_pose.trackpad_x) > 0.09
-                                or abs(self.temp_pose.trackpad_y) > 0.09
+                                abs(self.temp_pose.trackpad_x) > 0.1
+                                or abs(self.temp_pose.trackpad_y) > 0.1
                         ):
                             self.temp_pose.trackpad_touch = 1
 
