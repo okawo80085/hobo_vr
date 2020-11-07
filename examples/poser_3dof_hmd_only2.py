@@ -1,6 +1,8 @@
 """
 this is a hobo_vr poser, enough said ┐(￣ヘ￣)┌
 
+only works with new hobovr arduino code, ask okawo for details
+
 this poser expects hobovr driver to have this udu setting:
 h13
 
@@ -17,7 +19,7 @@ import serial.threaded
 from virtualreality import templates
 from virtualreality.util import utilz as u
 
-SERIAL_PORT = "/dev/ttyUSB0" # serial port
+SERIAL_PORT = "/dev/ttyUSB0" # serial port, this can be replaced with a device search function now
 
 SERIAL_BAUD = 115200 # baud rate of the serial port
 
