@@ -399,7 +399,7 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
   DriverLog("driver: version: %d.%d.%d %s \n", hobovr::k_nHobovrVersionMajor,
                             hobovr::k_nHobovrVersionMinor,
                             hobovr::k_nHobovrVersionBuild,
-                            hobovr::k_sHobovrVersionGG);
+                            hobovr::k_sHobovrVersionGG.c_str());
 
   std::string uduThing;
   char buf[1024];
@@ -458,7 +458,7 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
       counter_trkr++;
 
     } else {
-      DriverLog("driver: unsupported device type: %s", i);
+      DriverLog("driver: unsupported device type: %s", i.c_str());
       return VRInitError_VendorSpecific_HmdFound_ConfigFailedSanityCheck;
     }
   }

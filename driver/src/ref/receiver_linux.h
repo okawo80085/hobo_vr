@@ -27,8 +27,8 @@
 #include <netdb.h> 
 
 #define SOCKET char //needed for a type check to be possible
-
 #include "util.h"
+#undef SOCKET
 
 namespace SockReceiver {
 
