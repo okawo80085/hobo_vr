@@ -59,7 +59,7 @@ namespace hobovr {
   // NOTE: this function needs to be thread safe, it will be ran every 5 seconds
 
   // done for simple device management in vectors
-  class HobovrDeviceElement {
+  class HobovrDeviceElement: public vr::ITrackedDeviceServerDriver {
   public:
     virtual void ProcessEvent(const vr::VREvent_t &vrEvent) {};
     virtual std::string GetSerialNumber() const {return "";};
@@ -71,7 +71,7 @@ namespace hobovr {
 
   // should be publicly inherited
   template<bool UseHaptics, bool HasBattery>
-  class HobovrDevice: public vr::ITrackedDeviceServerDriver, public HobovrDeviceElement{
+  class HobovrDevice: public HobovrDeviceElement{
   public:
     HobovrDevice(std::string myserial, std::string deviceBreed,
     const std::shared_ptr<SockReceiver::DriverReceiver> commSocket=nullptr): m_pBrodcastSocket(commSocket),

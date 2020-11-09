@@ -1,4 +1,5 @@
 // linux only dummy test driver
+// compile instructions are the same as for the real driver
 
 #include "openvr_driver.h"
 #include "driverlog.h"
@@ -7,12 +8,23 @@
 #include <thread>
 #include <vector>
 
+#define _stricmp strcasecmp
+
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <variant>
+
+
 #if defined(__GNUC__) || defined(COMPILER_GCC) || defined(__APPLE__)
 #define HMD_DLL_EXPORT extern "C" __attribute__((visibility("default")))
 #define HMD_DLL_IMPORT extern "C"
 #else
 #error "Unsupported Platform."
 #endif
+
+using namespace vr;
 
 
 namespace hobovr {
@@ -45,6 +57,13 @@ static const char *const k_pch_Hmd_SecondsFromVsyncToPhotons_Float = "secondsFro
 static const char *const k_pch_Hmd_DisplayFrequency_Float = "displayFrequency";
 static const char* const k_pch_Hmd_IPD_Float = "IPD";
 static const char* const k_pch_Hmd_UserHead2EyeDepthMeters_Float = "UserHeadToEyeDepthMeters";
+
+// just a plug
+
+namespace SockReceiver {
+    class DriverReceiver{public: int send2(const char* message){};};
+};
+
 
 // include has to be here, dont ask
 #include "ref/hobovr_device_base.h"
@@ -386,19 +405,20 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
   DriverLog("driver: device manifest list: '%s'\n", uduThing.c_str());
 
 
-  m_pHmdDevice = new ControllerDriver(1, "h0");
+  m_pHmdDevice = (hobovr::HobovrDeviceElement*)new HeadsetDriver("h0");
   vr::VRServerDriverHost()->TrackedDeviceAdded(
-                    m_pHmdDevice->GetSerialNumber().c_str(), vr::TrackedDeviceClass_Controller,
+                    m_pHmdDevice->GetSerialNumber().c_str(), vr::TrackedDeviceClass_HMD,
                     m_pHmdDevice);
 
 
-  m_pControllerDevice = new ControllerDriver("c0");
+  std::shared_ptr<SockReceiver::DriverReceiver> ReceiverObj = std::make_shared<SockReceiver::DriverReceiver>();
+  m_pControllerDevice = (hobovr::HobovrDeviceElement*)new ControllerDriver(1, "c0", ReceiverObj);
   vr::VRServerDriverHost()->TrackedDeviceAdded(
-                    m_pControllerDevice->GetSerialNumber().c_str(), vr::TrackedDeviceClass_HMD,
+                    m_pControllerDevice->GetSerialNumber().c_str(), vr::TrackedDeviceClass_Controller,
                     m_pControllerDevice);
 
 
-  m_pTrackerDevice = new TrackerDriver("t0");
+  m_pTrackerDevice = (hobovr::HobovrDeviceElement*)new TrackerDriver("t0", ReceiverObj);
   vr::VRServerDriverHost()->TrackedDeviceAdded(
                     m_pTrackerDevice->GetSerialNumber().c_str(), vr::TrackedDeviceClass_GenericTracker,
                     m_pTrackerDevice);
