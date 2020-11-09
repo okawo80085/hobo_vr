@@ -19,9 +19,9 @@
       "renderWidth" : 3040,
       "renderHeight" : 1440,
       "DistortionK1" : 0.74,
-      "DistortionK2" : 0.77,
-      "ZoomWidth" : 0.88,
-      "ZoomHeight" : 0.85,
+      "DistortionK2" : 0.70,
+      "ZoomWidth" : 0.95,
+      "ZoomHeight" : 0.86,
       "EyeGapOffsetPx" : -80,
       "IsDisplayRealDisplay" : true,
       "IsDisplayOnDesktop" : true
