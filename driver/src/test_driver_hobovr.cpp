@@ -484,3 +484,21 @@ void CServerDriver_hobovr::SlowUpdateThread() {
   m_bSlowUpdateThreadIsAlive = false;
 
 }
+
+
+CServerDriver_hobovr g_hobovrServerDriver;
+
+//-----------------------------------------------------------------------------
+// Purpose: driverFactory
+//-----------------------------------------------------------------------------
+HMD_DLL_EXPORT void *HmdDriverFactory(const char *pInterfaceName,
+                                      int *pReturnCode) {
+  if (0 == strcmp(IServerTrackedDeviceProvider_Version, pInterfaceName)) {
+    return &g_hobovrServerDriver;
+  }
+
+  if (pReturnCode)
+    *pReturnCode = VRInitError_Init_InterfaceNotFound;
+
+  return NULL;
+}
