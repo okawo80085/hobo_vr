@@ -28,7 +28,6 @@
 
 #define SOCKET char //needed for a type check to be possible
 #include "util.h"
-#undef SOCKET
 
 namespace SockReceiver {
 
@@ -208,6 +207,7 @@ namespace SockReceiver {
   };
 
 };
+#undef SOCKET
 
 
 #endif // RECEIVER_H
