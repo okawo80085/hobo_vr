@@ -39,6 +39,7 @@ setup(
         "pykalman",
         "pyserial",
         "docopt",
+        "aioconsole",
         "pyrr",
         "scipy",
     ],
