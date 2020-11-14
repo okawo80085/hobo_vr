@@ -34,7 +34,6 @@ setup(
         "Topic :: System :: Hardware :: Hardware Drivers",
     ],
     install_requires=[
-        "keyboard",
         "numpy",
         "pykalman",
         "pyserial",
