@@ -143,7 +143,7 @@ Options:
         pass
 
     async def close(self):
-        """Await close thread, press "q" to kill all registered threads."""
+        """Await close thread, also the thing that does cli"""
 
         await asyncio.sleep(1/2)
 
@@ -154,9 +154,7 @@ Options:
 
             try:
                 ret = docopt.docopt(self._CLI_SETTS, ss)
-                # print(ret)
                 if ret['--quit']:
-                    self.coro_keep_alive["close"].is_alive = False
                     break
 
                 for i in ret.items():
