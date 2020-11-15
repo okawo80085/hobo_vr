@@ -68,7 +68,7 @@ class Poser(templates.UduPoserTemplate):
 
     _CLI_SETTS = '''hobo_vr poser
 
-Usage: poser [-h | --help] [-q | --quit] [options]
+Usage: poser [-h | --help] [-q | --quit] [options] [-m | --ctrl_inpt_mode]...
 
 Options:
     -h, --help                  shows this message
@@ -101,7 +101,6 @@ Options:
         self.serialPaths = {}
         self.serialsInUse = []
 
-        self.mode = 0
         self._serialResetYaw = False
         self.usePos = True
 
@@ -130,7 +129,7 @@ Options:
         self.toggleRetrySerials = True
         self.signalKillSerialLoops = False
 
-        self.multiToggleMode = 0
+        self.multiToggleMode = 1
 
         self.camera_focal_px = 554.2563
 
@@ -220,7 +219,7 @@ Options:
         """Check to switch between left and right controllers."""
         while self.coro_keep_alive["mode_switcher"].is_alive:
             try:
-                if self.multiToggleMode == 0:
+                if self.multiToggleMode == 1:
                     self.poses[1].trackpad_touch = 0
                     self.poses[1].trackpad_x = 0
                     self.poses[1].trackpad_y = 0
@@ -238,7 +237,7 @@ Options:
                     self.poses[2].menu = self.temp_pose.menu
                     self.poses[2].grip = self.temp_pose.grip
 
-                elif self.multiToggleMode == 1:
+                elif self.multiToggleMode == 3:
                     self.poses[2].trackpad_touch = 0
                     self.poses[2].trackpad_x = 0
                     self.poses[2].trackpad_y = 0
@@ -256,7 +255,7 @@ Options:
                     self.poses[1].menu = self.temp_pose.menu
                     self.poses[1].grip = self.temp_pose.grip
 
-                elif self.multiToggleMode == 2:
+                elif self.multiToggleMode == 5:
                     self.poses[1].trackpad_touch = (
                         self.temp_pose.trackpad_touch
                     )
@@ -584,7 +583,7 @@ Options:
     @templates.PoserTemplate.register_member_thread(1 / 100)
     async def serial_listener(self):
         """Get orientation data from serial."""
-        my_off = Quaternion()
+        my_off = Quaternion.from_x_rotation(np.radians(10))
 
         while self.coro_keep_alive["serial_listener"].is_alive:
             # port = self.serialPaths['headset']
