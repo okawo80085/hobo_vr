@@ -14,6 +14,7 @@ from pykalman import KalmanFilter
 try:
     import cv2
     from displayarray import read_updates
+    from displayarray import display
 
     HAVE_VOD = True
 
@@ -327,10 +328,14 @@ class SerialReaderBinary(serial.threaded.Packetizer):
     ENCODING = 'utf-8'
     UNICODE_HANDLING = 'replace'
 
-    def __init__(self, struct_desc='f'*13):
+    def __init__(self, struct_type='f', struct_len=13, type_len=4):
         super().__init__()
         self._last_packet = None
-        self._struct_form = struct_desc
+        self._struct_form = struct_type*struct_len
+        self._struct_len = struct_len*type_len
+
+    def __call__(self):
+        return self
 
     @property
     def last_read(self):
@@ -346,7 +351,8 @@ class SerialReaderBinary(serial.threaded.Packetizer):
     def handle_packet(self, packet):
         """Process packets - to be overridden by subclassing"""
         # print (repr(packet))
-        self._last_packet = struct.unpack_from(self._struct_form, packet)
+        if len(packet) == self._struct_len:
+            self._last_packet = struct.unpack_from(self._struct_form, packet)
 
     def write_line(self, text):
         """
@@ -417,7 +423,7 @@ class BlobTracker(threading.Thread):
             )
 
         super().__init__()
-        self._vs = read_updates(cam_index)
+        self._vs = cv2.VideoCapture(cam_index)
 
         time.sleep(2)
 
@@ -431,7 +437,7 @@ class BlobTracker(threading.Thread):
         frame, self.can_track = self._try_get_frame()
 
         if not self.can_track:
-            self._vs.end()
+            self._vs.release()
             self._vs = None
             raise RuntimeError("invalid video source")
 
@@ -457,16 +463,18 @@ class BlobTracker(threading.Thread):
         self.pose_que = queue.Queue()
 
     def _try_get_frame(self):
-        self._vs.update()
-        try:
-            frame = self._vs.frames[str(self.cam_index)][0]
-            can_track = True
-            if frame is not self.last_frame:
-                self.time_of_last_frame = time.time()
-        except Exception as e:
-            print("_try_get_frame() failed with:", repr(e), self._vs.frames)
-            frame = None
-            can_track = False
+        # self._vs.update()
+        # try:
+        #     frame = self._vs.frames[str(self.cam_index)][0]
+        #     can_track = True
+        #     if frame is not self.last_frame:
+        #         self.time_of_last_frame = time.time()
+        # except Exception as e:
+        #     print("_try_get_frame() failed with:", repr(e), self._vs.frames)
+        #     frame = None
+        #     can_track = False
+        can_track, frame = self._vs.read()
+
         return frame, can_track
 
     def run(self):
@@ -604,7 +612,7 @@ class BlobTracker(threading.Thread):
             self.stop()
 
             if self._vs is not None:
-                self._vs.end()
+                self._vs.release()
                 self._vs = None
 
     def __enter__(self):
