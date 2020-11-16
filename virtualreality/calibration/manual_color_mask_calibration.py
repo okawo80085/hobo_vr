@@ -28,14 +28,14 @@ from virtualreality import __version__
 
 class ColorRange(object):
     def __init__(
-        self,
-        color_num,
-        hue_center=0,
-        hue_range=180,
-        sat_center=0,
-        sat_range=180,
-        val_center=0,
-        val_range=180,
+            self,
+            color_num,
+            hue_center=0,
+            hue_range=180,
+            sat_center=0,
+            sat_range=180,
+            val_center=0,
+            val_range=180,
     ):
         self.color_num = color_num
         self.hue_center = hue_center
@@ -46,15 +46,20 @@ class ColorRange(object):
         self.val_range = val_range
 
 
+    def __repr__(self):
+        return f'ColorRange({self.color_num}, {self.hue_center}, {self.hue_range}, {self.sat_center}, {self.sat_range}, {self.val_center}, {self.val_range})'
+
+
+
 class CalibrationData(object):
     def __init__(
-        self,
-        width=1,
-        height=1,
-        auto_exposure=0.25,
-        exposure=0,
-        saturation=50,
-        num_colors=4,
+            self,
+            width=1,
+            height=1,
+            auto_exposure=0.25,
+            exposure=0,
+            saturation=50,
+            num_colors=4,
     ):
         self.width = width
         self.height = height
@@ -69,9 +74,13 @@ class CalibrationData(object):
                 ColorRange(color, *[color * color_dist, color_dist] * 3)
             )
 
+    def __repr__(self):
+        return f'<{self.__class__.__module__}.{self.__class__.__name__} color_ranges={self.color_ranges} at {hex(id(self))}>'
+
+
     @classmethod
     def load_from_file(
-        cls, load_file: str = str(Path(__file__).parent) + "ranges.pickle"
+            cls, load_file: str = str(Path(__file__).parent) + "ranges.pickle"
     ) -> Optional["CalibrationData"]:
         """Load the calibration data from a file."""
         try:
@@ -82,47 +91,10 @@ class CalibrationData(object):
             logging.warning(f"Could not load calibration file '{load_file}'.")
 
     def save_to_file(
-        self, save_file: str = str(Path(__file__).parent) + "ranges.pickle"
+            self, save_file: str = str(Path(__file__).parent) + "ranges.pickle"
     ) -> None:
         with open(save_file, "wb") as file:
             pickle.dump(self, file)
-
-
-def colordata_to_blob(colordata, mapdata):
-    """
-    translates CalibrationData object to BlobTracker format masks
-
-    :colordata: CalibrationData object
-    :mapdata: a map dict with key representing the mask name and value representing the mask number
-
-    """
-    out = {}
-
-    for key, clr_range_index in mapdata.items():
-        temp = colordata.color_ranges[clr_range_index]
-        out[key] = {
-            "h": (temp.hue_center, temp.hue_range),
-            "s": (temp.sat_center, temp.sat_range),
-            "v": (temp.val_center, temp.val_range),
-        }
-
-    return out
-
-
-def load_mapdata_from_file(path):
-    """
-    loads mapdata from file, for use in colordata_to_blob
-    """
-    with open(path, "rb") as file:
-        return pickle.load(file)
-
-
-def save_mapdata_to_file(path, mapdata):
-    """
-    save mapdata to file, for use in colordata_to_blob
-    """
-    with open(path, "wb") as file:
-        pickle.dump(mapdata, file)
 
 
 def list_supported_capture_properties(cap: cv2.VideoCapture):
@@ -203,12 +175,12 @@ def _set_default_camera_properties(vs, cam, vs_supported, frame_width, frame_hei
 
 
 def manual_calibration(
-    cam=0,
-    num_colors_to_track=4,
-    frame_width=-1,
-    frame_height=-1,
-    load_file="",
-    save_file="ranges.pickle",
+        cam=0,
+        num_colors_to_track=4,
+        frame_width=-1,
+        frame_height=-1,
+        load_file="",
+        save_file="ranges.pickle",
 ):
     """Manually calibrate the hsv ranges and camera settings used for blob tracking."""
     vs = cv2.VideoCapture(cam)
@@ -219,13 +191,21 @@ def manual_calibration(
 
     cam_window = f"camera {cam} input"
     cv2.namedWindow(cam_window)
+    if "CAP_PROP_AUTO_EXPOSURE" in vs_supported:
+        cv2.createTrackbar(
+            "auto_exposure",
+            cam_window,
+            25,
+            100,
+            lambda x: vs.set(cv2.CAP_PROP_EXPOSURE, x / 100.0),
+        )
     if "CAP_PROP_EXPOSURE" in vs_supported:
         cv2.createTrackbar(
             "exposure",
             cam_window,
-            0,
-            16,
-            lambda x: vs.set(cv2.CAP_PROP_EXPOSURE, x - 8),
+            50,
+            10000,
+            lambda x: vs.set(cv2.CAP_PROP_EXPOSURE, x),
         )
     if "CAP_PROP_SATURATION" in vs_supported:
         cv2.createTrackbar(

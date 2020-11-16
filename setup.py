@@ -34,16 +34,15 @@ setup(
         "Topic :: System :: Hardware :: Hardware Drivers",
     ],
     install_requires=[
-        "keyboard",
-        "opencv-python",
         "numpy",
         "pykalman",
         "pyserial",
         "docopt",
+        "aioconsole",
         "pyrr",
         "scipy",
     ],
-    extras_require={"camera": ["displayarray"], "bluetooth": ["pybluez"]},
+    extras_require={"camera": ["displayarray", "opencv-python"], "bluetooth": ["pybluez"]},
     entry_points={"console_scripts": ["pyvr=virtualreality.main:main"]},
     python_requires=">=3.7",
 )

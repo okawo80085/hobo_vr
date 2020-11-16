@@ -1,8 +1,6 @@
 """Server loop that communicates between the driver and posers."""
 import asyncio
 
-from ..templates import PoserTemplate
-from ..util import utilz as u
 from .__init__ import __version__
 
 DOMAIN = (None, 6969)
@@ -27,6 +25,7 @@ class Server:
         ]
         self._terminator = b"\n"
         self._close_msg = b"CLOSE\n"
+        self._read_size = 400
 
     def __repr__(self):
         """do i need to explain this?"""
@@ -71,7 +70,7 @@ class Server:
         first_msg = await reader.read(50)
 
         if self._terminator in first_msg:
-            id_msg, first_msg = first_msg.split(self._terminator)
+            id_msg, first_msg = first_msg.split(self._terminator, 1)
 
         else:
             id_msg = b""
@@ -110,7 +109,7 @@ class Server:
         if whatAmI == 1:
             while 1:
                 try:
-                    data = await reader.read(400)
+                    data = await reader.read(self._read_size)
 
                     if not data or self._close_msg in data:
                         break
@@ -127,7 +126,7 @@ class Server:
         elif whatAmI == 2:
             while 1:
                 try:
-                    data = await reader.read(400)
+                    data = await reader.read(self._read_size)
 
                     if not data or self._close_msg in data:
                         break
@@ -144,7 +143,7 @@ class Server:
         elif whatAmI == 3:
             while 1:
                 try:
-                    data = await reader.read(400)
+                    data = await reader.read(self._read_size)
 
                     if not data or self._close_msg in data:
                         break
@@ -177,7 +176,7 @@ class Server:
         print(f"connection to {addr} closed")
 
 
-def run_til_dead(poser: PoserTemplate = None, conn_handle=Server()):
+def run_til_dead(poser = None, conn_handle=Server()):
     """Run the server until it dies."""
     loop = asyncio.get_event_loop()
     coro = asyncio.start_server(conn_handle, *DOMAIN, loop=loop)

@@ -1,48 +1,31 @@
-//============ Copyright (c) okawo, All rights reserved.
-//============
+// linux only dummy test driver
+// compile instructions are the same as for the real driver
 
-//#include "openvr.h"
 #include "openvr_driver.h"
-//#include "openvr_capi.h"
 #include "driverlog.h"
 
 #include <chrono>
 #include <thread>
 #include <vector>
 
-#if defined(_WIN32)
-#include "ref/receiver_win.h"
-
-#elif defined(__linux__)
-#include "ref/receiver_linux.h"
 #define _stricmp strcasecmp
-
-#endif
-
-#if defined(_WINDOWS)
-#include <windows.h>
-#endif
-
-
 
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <ctime>
 #include <variant>
 
-using namespace vr;
 
-#if defined(_WIN32)
-#define HMD_DLL_EXPORT extern "C" __declspec(dllexport)
-#define HMD_DLL_IMPORT extern "C" __declspec(dllimport)
-#elif defined(__GNUC__) || defined(COMPILER_GCC) || defined(__APPLE__)
+#if defined(__GNUC__) || defined(COMPILER_GCC) || defined(__APPLE__)
 #define HMD_DLL_EXPORT extern "C" __attribute__((visibility("default")))
 #define HMD_DLL_IMPORT extern "C"
 #else
 #error "Unsupported Platform."
 #endif
+
+using namespace vr;
+
 
 namespace hobovr {
   // le version
@@ -75,9 +58,18 @@ static const char *const k_pch_Hmd_DisplayFrequency_Float = "displayFrequency";
 static const char* const k_pch_Hmd_IPD_Float = "IPD";
 static const char* const k_pch_Hmd_UserHead2EyeDepthMeters_Float = "UserHeadToEyeDepthMeters";
 
+// just a plug
+
+namespace SockReceiver {
+    class DriverReceiver{public: int send2(const char* message){};};
+};
+
+
 // include has to be here, dont ask
 #include "ref/hobovr_device_base.h"
 #include "ref/hobovr_components.h"
+
+
 
 //-----------------------------------------------------------------------------
 // Purpose: hmd device implementation
@@ -170,6 +162,7 @@ private:
   float m_flIPD;
   float m_fUserHead2EyeDepthMeters;
 };
+
 
 //-----------------------------------------------------------------------------
 // Purpose:controller device implementation
@@ -356,11 +349,13 @@ public:
   }
 };
 
+// note that the devices are the same as in the actual driver
+
 //-----------------------------------------------------------------------------
 // Purpose: serverDriver
 //-----------------------------------------------------------------------------
 
-class CServerDriver_hobovr : public IServerTrackedDeviceProvider, public SockReceiver::Callback {
+class CServerDriver_hobovr : public IServerTrackedDeviceProvider {
 public:
   CServerDriver_hobovr() {}
   virtual EVRInitError Init(vr::IVRDriverContext *pDriverContext);
@@ -372,7 +367,6 @@ public:
   virtual void EnterStandby() {}
   virtual void LeaveStandby() {}
   virtual void RunFrame();
-  void OnPacket(char* buff, int len);
 
 private:
   void SlowUpdateThread();
@@ -380,9 +374,9 @@ private:
     ptr->SlowUpdateThread();
   }
 
-  std::vector<hobovr::HobovrDeviceElement*> m_vDevices;
-
-  std::shared_ptr<SockReceiver::DriverReceiver> m_pSocketComm;
+  hobovr::HobovrDeviceElement* m_pHmdDevice;
+  hobovr::HobovrDeviceElement* m_pControllerDevice;
+  hobovr::HobovrDeviceElement* m_pTrackerDevice;
 
   int m_iCallBack_packet_size;
 
@@ -390,6 +384,7 @@ private:
   bool m_bSlowUpdateThreadIsAlive;
   std::thread* m_ptSlowUpdateThread;
 };
+
 
 // yes
 EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
@@ -409,61 +404,26 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
   uduThing = buf;
   DriverLog("driver: device manifest list: '%s'\n", uduThing.c_str());
 
-  try{
-    m_pSocketComm = std::make_shared<SockReceiver::DriverReceiver>(uduThing);
-    m_iCallBack_packet_size = m_pSocketComm->m_iBuffSize;
-    m_pSocketComm->start();
-  } catch (...){
-    DriverLog("m_pSocketComm broke on create or broke on start, either way you're fucked\n");
-    DriverLog("check if the server is running...\n");
-    DriverLog("... 10061 means \"couldn't connect to server\"...(^_^;)..\n");
-    return VRInitError_Init_WebServerFailed;
-  }
 
-  int counter_hmd = 0;
-  int counter_cntrlr = 0;
-  int counter_trkr = 0;
-  int controller_hs = 1;
+  m_pHmdDevice = (hobovr::HobovrDeviceElement*)new HeadsetDriver("h0");
+  vr::VRServerDriverHost()->TrackedDeviceAdded(
+                    m_pHmdDevice->GetSerialNumber().c_str(), vr::TrackedDeviceClass_HMD,
+                    m_pHmdDevice);
 
-  for (std::string i:m_pSocketComm->device_list) {
-    if (i == "h") {
-      HeadsetDriver* temp = new HeadsetDriver("h" + std::to_string(counter_hmd));
 
-      m_vDevices.push_back(temp);
-      vr::VRServerDriverHost()->TrackedDeviceAdded(
-                    m_vDevices.back()->GetSerialNumber().c_str(), vr::TrackedDeviceClass_HMD,
-                    temp);
+  std::shared_ptr<SockReceiver::DriverReceiver> ReceiverObj = std::make_shared<SockReceiver::DriverReceiver>();
+  m_pControllerDevice = (hobovr::HobovrDeviceElement*)new ControllerDriver(1, "c0", ReceiverObj);
+  vr::VRServerDriverHost()->TrackedDeviceAdded(
+                    m_pControllerDevice->GetSerialNumber().c_str(), vr::TrackedDeviceClass_Controller,
+                    m_pControllerDevice);
 
-      counter_hmd++;
 
-    } else if (i == "c") {
-      ControllerDriver* temp = new ControllerDriver(controller_hs, "c" + std::to_string(counter_cntrlr), m_pSocketComm);
+  m_pTrackerDevice = (hobovr::HobovrDeviceElement*)new TrackerDriver("t0", ReceiverObj);
+  vr::VRServerDriverHost()->TrackedDeviceAdded(
+                    m_pTrackerDevice->GetSerialNumber().c_str(), vr::TrackedDeviceClass_GenericTracker,
+                    m_pTrackerDevice);
 
-      m_vDevices.push_back(temp);
-      vr::VRServerDriverHost()->TrackedDeviceAdded(
-                    m_vDevices.back()->GetSerialNumber().c_str(), vr::TrackedDeviceClass_Controller,
-                    temp);
 
-      controller_hs = (controller_hs) ? 0 : 1;
-      counter_cntrlr++;
-
-    } else if (i == "t") {
-      TrackerDriver* temp = new TrackerDriver("t" + std::to_string(counter_trkr), m_pSocketComm);
-
-      m_vDevices.push_back(temp);
-      vr::VRServerDriverHost()->TrackedDeviceAdded(
-                    m_vDevices.back()->GetSerialNumber().c_str(), vr::TrackedDeviceClass_GenericTracker,
-                    temp);
-
-      counter_trkr++;
-
-    } else {
-      DriverLog("driver: unsupported device type: %s", i.c_str());
-      return VRInitError_VendorSpecific_HmdFound_ConfigFailedSanityCheck;
-    }
-  }
-
-  m_pSocketComm->setCallback(this);
 
   m_bSlowUpdateThreadIsAlive = true;
   m_ptSlowUpdateThread = new std::thread(this->SlowUpdateThreadEnter, this);
@@ -475,64 +435,56 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
   return VRInitError_None;
 }
 
+
 void CServerDriver_hobovr::Cleanup() {
-  m_pSocketComm->stop();
   m_bSlowUpdateThreadIsAlive = false;
   m_ptSlowUpdateThread->join();
 
-  for (auto& i : m_vDevices)
-    delete i; 
-
-  m_vDevices.clear();
+  delete m_pHmdDevice;
+  delete m_pControllerDevice;
+  delete m_pTrackerDevice;
 
   CleanupDriverLog();
   VR_CLEANUP_SERVER_DRIVER_CONTEXT();
 }
 
-void CServerDriver_hobovr::OnPacket(char* buff, int len) {
-  if (len == (m_iCallBack_packet_size*4+3))
-  {
-    float* temp= (float*)buff;
-    std::vector<float> v(temp, temp+m_iCallBack_packet_size);
-    auto tempPose = SockReceiver::split_pk(v, m_pSocketComm->eps);
-
-    for (int i=0; i<m_vDevices.size(); i++){
-
-      m_vDevices[i]->RunFrame(tempPose[i]);
-
-    }
-
-  } else {
-    DriverLog("driver: bad packet, expected %d, got %d. double check your udu settings\n", (m_iCallBack_packet_size*4+3), len);
-  }
-
-
-}
 
 void CServerDriver_hobovr::RunFrame() {
   vr::VREvent_t vrEvent;
   while (vr::VRServerDriverHost()->PollNextEvent(&vrEvent, sizeof(vrEvent))) {
-    for (auto &i : m_vDevices){
-      i->ProcessEvent(vrEvent);
-
-    }
+    m_pHmdDevice->ProcessEvent(vrEvent);
+    m_pControllerDevice->ProcessEvent(vrEvent);
+    m_pTrackerDevice->ProcessEvent(vrEvent);
   }
 }
 
+
 void CServerDriver_hobovr::SlowUpdateThread() {
   DriverLog("driver: slow update thread started\n");
-  while (m_bSlowUpdateThreadIsAlive){
-    for (auto &i : m_vDevices){
-      i->UpdateDeviceBatteryCharge();
-      i->CheckForUpdates();
-    }
+  std::vector<float> temp = {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  std::vector<float> temp2 = {0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+  while (m_bSlowUpdateThreadIsAlive){
+    m_pHmdDevice->RunFrame(temp);
+    m_pControllerDevice->RunFrame(temp2);
+    m_pTrackerDevice->RunFrame(temp);
+
+    m_pHmdDevice->UpdateDeviceBatteryCharge();
+    m_pTrackerDevice->UpdateDeviceBatteryCharge();
+    m_pControllerDevice->UpdateDeviceBatteryCharge();
+
+    m_pHmdDevice->CheckForUpdates();
+    m_pControllerDevice->CheckForUpdates();
+    m_pTrackerDevice->CheckForUpdates();
+
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
   }
   DriverLog("driver: slow update thread closed\n");
   m_bSlowUpdateThreadIsAlive = false;
 
 }
+
 
 CServerDriver_hobovr g_hobovrServerDriver;
 

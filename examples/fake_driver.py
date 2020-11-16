@@ -254,6 +254,5 @@ class ShadowMapping(CameraWindow):
 
 if __name__ == "__main__":
     with myDriver:
-        myDriver.send("hello")
         moderngl_window.run_window_config(ShadowMapping)
     print("lol")

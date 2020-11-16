@@ -18,6 +18,8 @@
 #include <sstream>
 #include <algorithm>
 #include <iterator>
+#include <numeric>
+
 
 #include <thread>
 #include <chrono>
@@ -25,31 +27,12 @@
 #include <stdio.h>
 
 namespace SockReceiver {
-  int receive_till_zero( SOCKET sock, char* buf, int& numbytes, int max_packet_size )
-  {
-    // receives a message until an end token is reached
-    // thanks to https://stackoverflow.com/a/13528453/10190971
-    int i = 0;
-    do {
-      // Check if we have a complete message
-      for( ; i < numbytes; i++ ) {
-        if( buf[i] == '\0' || buf[i] == '\n') {
-          // \0 indicate end of message! so we are done
-          return i + 1; // return length of message
-        }
-      }
-      int n = recv( sock, buf + numbytes, max_packet_size - numbytes, 0 );
-      if( n == -1 ) {
-        return -1; // operation failed!
-      }
-      numbytes += n;
-    } while( true );
-  }
 
-  class DriverReceiver{
+  class DriverReceiver {
   public:
     std::vector<std::string> device_list;
     std::vector<int> eps;
+    int m_iBuffSize;
 
     DriverReceiver(std::string expected_pose_struct, int port=6969) {
       std::regex rgx("[htc]");
@@ -58,6 +41,7 @@ namespace SockReceiver {
       this->eps = split_to_number<int>(get_rgx_vector(expected_pose_struct, rgx2));
       this->device_list = get_rgx_vector(expected_pose_struct, rgx);
       this->threadKeepAlive = false;
+      m_iBuffSize = std::accumulate(this->eps.begin(), this->eps.end(), 0);
 
       // init winsock
       WSADATA wsaData;
@@ -185,22 +169,21 @@ namespace SockReceiver {
     }
 
     void my_thread() {
-      char mybuff[2048];
       int numbit = 0, msglen;
+      int tempSize = m_iBuffSize*4*2;
+      char* mybuff = new char[tempSize];
 
 #ifdef DRIVERLOG_H
       DriverLog("receiver thread started\n");
 #endif
 
-      // std::string b = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ{}[]()=+<>/,";
-
       while (this->threadKeepAlive) {
         try {
-          msglen = receive_till_zero(this->mySoc, mybuff, numbit, 2048);
+          msglen = receive_till_zero(this->mySoc, mybuff, numbit, tempSize);
 
           if (msglen == -1) break;
 
-          m_pCallback->OnPacket(buffer_to_string(mybuff, msglen-1));
+          m_pCallback->OnPacket(mybuff, msglen);
 
           remove_message_from_buffer(mybuff, numbit, msglen);
 
@@ -210,6 +193,7 @@ namespace SockReceiver {
           break;
         }
       }
+      delete[] mybuff;
 
       this->threadKeepAlive = false;
 

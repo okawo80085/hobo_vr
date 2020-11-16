@@ -4,6 +4,12 @@
 #define HOBOVR_COMPONENTS_H
 
 namespace hobovr {
+  enum ELensMathType {
+    Mt_Invalid = 0,
+    Mt_Default = 1
+  };
+
+  // ext display component keys
   static const char *const k_pch_ExtDisplay_Section = "hobovr_comp_extendedDisplay";
   static const char *const k_pch_ExtDisplay_WindowX_Int32 = "windowX";
   static const char *const k_pch_ExtDisplay_WindowY_Int32 = "windowY";
@@ -11,15 +17,20 @@ namespace hobovr {
   static const char *const k_pch_ExtDisplay_WindowHeight_Int32 = "windowHeight";
   static const char *const k_pch_ExtDisplay_RenderWidth_Int32 = "renderWidth";
   static const char *const k_pch_ExtDisplay_RenderHeight_Int32 = "renderHeight";
-  static const char *const k_pch_ExtDisplay_DistortionK1_Float = "DistortionK1";
-  static const char *const k_pch_ExtDisplay_DistortionK2_Float = "DistortionK2";
-  static const char *const k_pch_ExtDisplay_ZoomWidth_Float = "ZoomWidth";
-  static const char *const k_pch_ExtDisplay_ZoomHeight_Float = "ZoomHeight";
   static const char *const k_pch_ExtDisplay_EyeGapOffset_Int = "EyeGapOffsetPx";
   static const char *const k_pch_ExtDisplay_IsDisplayReal_Bool = "IsDisplayRealDisplay";
   static const char *const k_pch_ExtDisplay_IsDisplayOnDesktop_bool = "IsDisplayOnDesktop";
 
+  // ext display component keys related to the ELensMathType::Mt_Default distortion type
+  static const char *const k_pch_ExtDisplay_DistortionK1_Float = "DistortionK1";
+  static const char *const k_pch_ExtDisplay_DistortionK2_Float = "DistortionK2";
+  static const char *const k_pch_ExtDisplay_ZoomWidth_Float = "ZoomWidth";
+  static const char *const k_pch_ExtDisplay_ZoomHeight_Float = "ZoomHeight";
+
+  // compile time component settings
   static const bool HobovrExtDisplayComp_doLensStuff = true;
+  static const short HobovrExtDisplayComp_lensDistortionType = ELensMathType::Mt_Default; // has to be one of hobovr::ELensMathType
+
   class HobovrExtendedDisplayComponent: public vr::IVRDisplayComponent {
   public:
     HobovrExtendedDisplayComponent(){
@@ -42,19 +53,23 @@ namespace hobovr {
       m_nRenderHeight = vr::VRSettings()->GetInt32(
           k_pch_ExtDisplay_Section, k_pch_ExtDisplay_RenderHeight_Int32);
 
-      m_fDistortionK1 = vr::VRSettings()->GetFloat(
-          k_pch_ExtDisplay_Section, k_pch_ExtDisplay_DistortionK1_Float);
+      if constexpr(HobovrExtDisplayComp_doLensStuff){
+        if constexpr(HobovrExtDisplayComp_lensDistortionType == ELensMathType::Mt_Default){
+          m_fDistortionK1 = vr::VRSettings()->GetFloat(
+              k_pch_ExtDisplay_Section, k_pch_ExtDisplay_DistortionK1_Float);
 
-      m_fDistortionK2 = vr::VRSettings()->GetFloat(
-          k_pch_ExtDisplay_Section, k_pch_ExtDisplay_DistortionK2_Float);
+          m_fDistortionK2 = vr::VRSettings()->GetFloat(
+              k_pch_ExtDisplay_Section, k_pch_ExtDisplay_DistortionK2_Float);
 
-      m_fZoomWidth = vr::VRSettings()->GetFloat(k_pch_ExtDisplay_Section,
-                                                k_pch_ExtDisplay_ZoomWidth_Float);
+          m_fZoomWidth = vr::VRSettings()->GetFloat(k_pch_ExtDisplay_Section,
+                                                    k_pch_ExtDisplay_ZoomWidth_Float);
 
-      m_fZoomHeight = vr::VRSettings()->GetFloat(k_pch_ExtDisplay_Section,
-                                                 k_pch_ExtDisplay_ZoomHeight_Float);
+          m_fZoomHeight = vr::VRSettings()->GetFloat(k_pch_ExtDisplay_Section,
+                                                     k_pch_ExtDisplay_ZoomHeight_Float);
+        }
+      }
 
-      m_iEyeGapOff = vr::VRSettings()->GetFloat(k_pch_ExtDisplay_Section,
+      m_iEyeGapOff = vr::VRSettings()->GetInt32(k_pch_ExtDisplay_Section,
                                                  k_pch_ExtDisplay_EyeGapOffset_Int);
 
       m_bIsDisplayReal = vr::VRSettings()->GetBool(k_pch_ExtDisplay_Section,
@@ -63,13 +78,22 @@ namespace hobovr {
       m_bIsDisplayOnDesktop = vr::VRSettings()->GetBool(k_pch_ExtDisplay_Section,
                                                  k_pch_ExtDisplay_IsDisplayOnDesktop_bool);
 
-      DriverLog("Extended display component created\n");
-      DriverLog("distortion koeffs: k1=%f, k2=%f\n", m_fDistortionK1, m_fDistortionK2);
-      DriverLog("render target: %dx%d\n", m_nRenderWidth, m_nRenderHeight);
-      DriverLog("window target: %dx%d\n", m_nWindowWidth, m_nWindowHeight);
-      DriverLog("eye gap offset: %d", m_iEyeGapOff);
-      DriverLog("is display real: %d", (int)m_bIsDisplayReal);
-      DriverLog("is display on desktop: %d", (int)m_bIsDisplayOnDesktop);
+      DriverLog("Ext_display: component created\n");
+      DriverLog("Ext_display: lens distortion enable: %d", HobovrExtDisplayComp_doLensStuff);
+
+      if constexpr(HobovrExtDisplayComp_doLensStuff){
+        DriverLog("Ext_display: distortion math type: %d", HobovrExtDisplayComp_lensDistortionType);
+        if constexpr(HobovrExtDisplayComp_lensDistortionType == ELensMathType::Mt_Default)
+          DriverLog("Ext_display: distortion coefficient: k1=%f, k2=%f, zw=%f, zh=%f", m_fDistortionK1, m_fDistortionK2, m_fZoomWidth, m_fZoomHeight);
+      }
+
+      DriverLog("Ext_display: eye gap offset: %d", m_iEyeGapOff);
+      DriverLog("Ext_display: is display real: %d", (int)m_bIsDisplayReal);
+      DriverLog("Ext_display: is display on desktop: %d", (int)m_bIsDisplayOnDesktop);
+      DriverLog("Ext_display: window bounds: %d %d %d %d", m_nWindowX, m_nWindowY, m_nWindowWidth, m_nWindowHeight);
+      DriverLog("Ext_display: render target: %d %d", m_nRenderWidth, m_nRenderHeight);
+      DriverLog("Ext_display: left eye viewport: %d %d %d %d", 0, 0, m_nWindowWidth/2, m_nWindowHeight);
+      DriverLog("Ext_display: right eye viewport: %d %d %d %d", m_nWindowWidth/2 + m_iEyeGapOff, 0, m_nWindowWidth/2, m_nWindowHeight);
 
     }
 
@@ -117,27 +141,25 @@ namespace hobovr {
       DistortionCoordinates_t coordinates;
 
       if constexpr(HobovrExtDisplayComp_doLensStuff) {
-        // Distortion for lens implementation from
-        // https://github.com/HelenXR/openvr_survivor/blob/master/src/head_mount_display_device.cc
-        float hX;
-        float hY;
-        double rr;
-        double r2;
-        double theta;
+        if constexpr(HobovrExtDisplayComp_lensDistortionType == ELensMathType::Mt_Default) {
+          // Distortion implementation from
+          // https://github.com/HelenXR/openvr_survivor/blob/master/src/head_mount_display_device.cc#L232
 
-        rr = sqrt((fU - 0.5f) * (fU - 0.5f) + (fV - 0.5f) * (fV - 0.5f));
-        r2 = rr * (1 + m_fDistortionK1 * (rr * rr) +
-                   m_fDistortionK2 * (rr * rr * rr * rr));
-        theta = atan2(fU - 0.5f, fV - 0.5f);
-        hX = float(sin(theta) * r2) * m_fZoomWidth;
-        hY = float(cos(theta) * r2) * m_fZoomHeight;
+          // in here 0.5f is the distortion center
+          double rr = sqrt((fU - 0.5f) * (fU - 0.5f) + (fV - 0.5f) * (fV - 0.5f));
+          double r2 = rr * (1 + m_fDistortionK1 * (rr * rr) +
+                     m_fDistortionK2 * (rr * rr * rr * rr));
+          double theta = atan2(fU - 0.5f, fV - 0.5f);
+          auto hX = float(sin(theta) * r2) * m_fZoomWidth;
+          auto hY = float(cos(theta) * r2) * m_fZoomHeight;
 
-        coordinates.rfBlue[0] = hX + 0.5f;
-        coordinates.rfBlue[1] = hY + 0.5f;
-        coordinates.rfGreen[0] = hX + 0.5f;
-        coordinates.rfGreen[1] = hY + 0.5f;
-        coordinates.rfRed[0] = hX + 0.5f;
-        coordinates.rfRed[1] = hY + 0.5f;
+          coordinates.rfBlue[0] = hX + 0.5f;
+          coordinates.rfBlue[1] = hY + 0.5f;
+          coordinates.rfGreen[0] = hX + 0.5f;
+          coordinates.rfGreen[1] = hY + 0.5f;
+          coordinates.rfRed[0] = hX + 0.5f;
+          coordinates.rfRed[1] = hY + 0.5f;
+        }
       } else {
         coordinates.rfBlue[0] = fU;
         coordinates.rfBlue[1] = fV;

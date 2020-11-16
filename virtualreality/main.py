@@ -5,6 +5,7 @@ The most commonly used pyvr commands are:
    calibrate  Calibrate the vr headset's tracking
    track      Start the tracking system
    server     Start the server that communicates with SteamVR
+   gui        Start a kivy based gui
 
 See 'pyvr help <command>' for more information on a specific command.
 
@@ -37,6 +38,10 @@ def main():
         main()
     elif args["<command>"] == "track":
         from virtualreality.trackers.color_tracker import main
+
+        main()
+    elif args["<command>"] == "gui":
+        from virtualreality.gui.gui import main
 
         main()
     elif args["<command>"] == "server":

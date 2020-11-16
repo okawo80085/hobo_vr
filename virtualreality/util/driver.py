@@ -4,6 +4,7 @@ import socket
 import time
 import threading
 from . import utilz as u
+import struct
 
 
 class DummyDriverReceiver(threading.Thread):
@@ -32,10 +33,10 @@ class DummyDriverReceiver(threading.Thread):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((addr, port))
         self.sock.settimeout(2)
+        self.sock.send(b'hello\n')
 
-        self.backBuffer = bytearray()
-        self.readSize = 50
-        self._terminator = b"\n"
+        self.readSize = expected_pose_size*4
+        self._terminator = b"\t\r\n"
 
         self.newPose = [0 for _ in range(self.eps)]
 
@@ -75,37 +76,28 @@ class DummyDriverReceiver(threading.Thread):
         self.sock.send(u.format_str_for_write(text))
 
     def _handlePacket(self, lastPacket):
-        lastPacket = lastPacket.decode("utf-8")
-        if self.alive and not u.strings_share_characters(
-            lastPacket.lower(), "qwrtyuiopsasdfghjklzxcvbnm><*[]{}()"
-        ):
-            pose = u.get_numbers_from_text(lastPacket.strip("\n").strip(" "), " ")
-
-            if len(pose) != self.eps:
-                print(f"pose size miss match, expected {self.eps}, got {len(pose)}")
-                return False
-
-            else:
-                self.newPose = pose
-                return True
-
+        if self.alive and len(lastPacket) == self.readSize:
+            self.newPose = struct.unpack_from('f'*self.eps, lastPacket)
+            return True
         return False
 
     def run(self):
+        backBuffer = bytearray()
         while self.alive:
             try:
                 data = self.sock.recv(self.readSize)
-                self.backBuffer.extend(data)
+                backBuffer.extend(data)
 
                 if not data:
                     break
 
-                while self._terminator in self.backBuffer:
-                    lastPacket, self.backBuffer = self.backBuffer.split(
+                while self._terminator in backBuffer:
+                    lastPacket, backBuffer = backBuffer.split(
                         self._terminator, 1
                     )
+
                     if not self._handlePacket(lastPacket):
-                        print(repr(lastPacket), repr(self.backBuffer))
+                        print(len(lastPacket), repr(backBuffer))
 
             except socket.timeout as e:
                 pass
@@ -146,10 +138,11 @@ class UduDummyDriverReceiver(threading.Thread):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((addr, port))
         self.sock.settimeout(2)
+        self.sock.send(b'hello\n')
 
-        self.backBuffer = bytearray()
-        self.readSize = 50
-        self._terminator = b"\n"
+
+        self.readSize = sum(self.eps)*4
+        self._terminator = b"\t\r\n"
 
         self.newPoses = [tuple(0 for _ in range(i)) for i in self.eps]
 
@@ -189,42 +182,34 @@ class UduDummyDriverReceiver(threading.Thread):
         self.sock.send(u.format_str_for_write(text))
 
     def _handlePacket(self, lastPacket):
-        lastPacket = lastPacket.decode("utf-8")
-        if self.alive and not u.strings_share_characters(
-            lastPacket.lower(), "qwrtyuiopsasdfghjklzxcvbnm><*[]{}()"
-        ):
-            poses = u.parse_poses_from_packet(
-                u.get_numbers_from_text(lastPacket.strip("\n").strip(" "), " "),
-                self.eps,
-            )
+        if self.alive and len(lastPacket) >= self.readSize:
+            n = struct.unpack_from('f'*sum(self.eps), lastPacket)
+            nn = []
+            for i in self.eps:
+                nn.append(n[:i])
+                n = n[i:]
 
-            if u.get_poses_shape(poses) != self.eps:
-                print(
-                    f"pose size miss match, expected {self.eps}, got {u.get_poses_shape(poses)}"
-                )
-                return False
-
-            else:
-                self.newPoses = poses
-                return True
+            self.newPoses = nn
+            return True
 
         return False
 
     def run(self):
+        backBuffer = bytearray()
         while self.alive:
             try:
-                data = self.sock.recv(self.readSize)
-                self.backBuffer.extend(data)
+                data = self.sock.recv(self.readSize+3)
+                backBuffer.extend(data)
 
                 if not data:
                     break
 
-                while self._terminator in self.backBuffer:
-                    lastPacket, self.backBuffer = self.backBuffer.split(
+                while self._terminator in backBuffer:
+                    lastPacket, backBuffer = backBuffer.split(
                         self._terminator, 1
                     )
                     if not self._handlePacket(lastPacket):
-                        print(repr(lastPacket), repr(self.backBuffer))
+                        print(len(lastPacket), repr(backBuffer))
 
             except socket.timeout as e:
                 pass

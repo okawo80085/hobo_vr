@@ -2,8 +2,15 @@
 import asyncio
 import numbers
 import warnings
+from aioconsole import ainput
+import shlex
+import docopt
 
-from ..util import utilz as u
+try:
+    from ..util import utilz as u
+
+except Exception as e:
+    print (f'failed to import utilities, some things will be broken: {e}')
 
 
 class KeepAliveTrigger:
@@ -45,6 +52,15 @@ class PoserTemplateBase(object):
     methods with the PoserTemplate.register_member_thread decorator
     """
 
+    _CLI_SETTS = '''hobo_vr poser
+
+Usage: poser [-h | --help] [options]
+
+Options:
+    -h, --help      shows this message
+    -q, --quit      exits the poser
+'''
+
     def __init__(
         self,
         *,
@@ -80,7 +96,7 @@ class PoserTemplateBase(object):
         }
         self.last_read = b""
         self.id_message = "holla"
-        self._terminator = b"\n"
+        self._terminator = b"\t\r\n"
 
     async def _socket_init(self):
         """
@@ -122,22 +138,32 @@ class PoserTemplateBase(object):
                 self.coro_keep_alive["recv"].is_alive = False
                 break
 
-    async def close(self):
-        """Await close thread, press "q" to kill all registered threads."""
-        try:
-            import keyboard
+    async def _cli_arg_map(self, pair):
+        ''':pair: is a pair of (key, value) from a dict returned by docopt command parse, override this if you want, it has to be async thread safe'''
+        pass
 
-            while self.coro_keep_alive["close"].is_alive:
-                if keyboard.is_pressed("q"):
+    async def close(self):
+        """Await close thread, also the thing that does cli"""
+
+        await asyncio.sleep(1/2)
+
+        print (self._CLI_SETTS.strip())
+
+        while self.coro_keep_alive["close"].is_alive:
+            ss = shlex.split(await ainput('> '))
+
+            try:
+                ret = docopt.docopt(self._CLI_SETTS, ss)
+                if ret['--quit']:
                     break
 
-                await asyncio.sleep(self.coro_keep_alive["close"].sleep_delay)
+                for i in ret.items():
+                    await self._cli_arg_map(i)
 
-        except ImportError as e:
-            print(
-                f"close: failed to import keyboard, poser will close in 10 seconds: {e}"
-            )
-            await asyncio.sleep(10)
+            except:
+                print (f'error parsing {ss} arguments\n{self._CLI_SETTS.strip()}')
+
+            await asyncio.sleep(self.coro_keep_alive["close"].sleep_delay)
 
         print("closing...")
         self.coro_keep_alive["close"].is_alive = False

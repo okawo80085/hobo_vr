@@ -8,21 +8,22 @@
    "hobovr_device_hmd": {
       "IPD" : 0.063,
       "secondsFromVsyncToPhotons" : 0.01,
-      "displayFrequency" : 90.0
+      "displayFrequency" : 90.0,
+      "UserHeadToEyeDepthMeters" : 0.16
    },
    "hobovr_comp_extendedDisplay": {
-      "windowX" : 10,
-      "windowY" : 10,
-      "windowWidth" : 3840,
-      "windowHeight" : 2160,
-      "renderWidth" : 1920,
-      "renderHeight" : 1080,
-      "DistortionK1" : 0.4,
-      "DistortionK2" : 0.5,
-      "ZoomWidth" : 1,
-      "ZoomHeight" : 1,
-      "EyeGapOffsetPx" : 0,
-      "IsDisplayRealDisplay" : false,
-      "IsDisplayOnDesktop" : false
+      "windowX" : 1920,
+      "windowY" : 0,
+      "windowWidth" : 1520,
+      "windowHeight" : 720,
+      "renderWidth" : 3040,
+      "renderHeight" : 1440,
+      "DistortionK1" : 0.74,
+      "DistortionK2" : 0.70,
+      "ZoomWidth" : 0.95,
+      "ZoomHeight" : 0.86,
+      "EyeGapOffsetPx" : -80,
+      "IsDisplayRealDisplay" : true,
+      "IsDisplayOnDesktop" : true
    }
 }
