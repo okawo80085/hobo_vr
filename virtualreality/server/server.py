@@ -66,8 +66,11 @@ class Server:
         """this is will run for each incoming connection"""
 
         addr = writer.get_extra_info("peername")
+        try:
+            first_msg = await reader.read(50)
 
-        first_msg = await reader.read(50)
+        except Exception as e:
+            print (f'pipe {addr} broke on id, reason: {e}')
 
         if self._terminator in first_msg:
             id_msg, first_msg = first_msg.split(self._terminator, 1)
@@ -148,8 +151,8 @@ class Server:
                     if not data or self._close_msg in data:
                         break
 
+                    await self.send_to_all_driver(data, me) # send to posers too, prioritize posers tho
                     await self.send_to_all(data, me) # send to all not identified connections
-                    await self.send_to_all_driver(data, me) # send to posers too
 
                     if self.debug:
                         print(f"{repr(data)} from {addr}")
