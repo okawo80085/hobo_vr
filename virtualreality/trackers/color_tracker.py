@@ -295,10 +295,10 @@ Options:
     async def get_location(self):
         """Get locations from blob trackers."""
 
-        axisScale = np.array([0.8, 1/1.8, 0.8]) * [-1, 1, 1]
+        axisScale = np.array([1, 1, 1]) * [-1, 1, 1]
 
         l_oof = np.array([0, 0, 0.037])
-        r_oof = np.array([0, 0, 0.034])
+        r_oof = np.array([0, 0, 0.032])
 
         hmd_oof = np.array([-0.035, -0.03, 0.05])
 
