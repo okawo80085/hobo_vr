@@ -306,9 +306,10 @@ def manual_calibration(
 
             mask = get_color_mask(hsv, ranges.color_ranges[color])
 
-            # res = cv2.bitwise_and(hsv, hsv, mask=mask)
+            res = cv2.bitwise_and(hsv, hsv, mask=mask)
 
-            cv2.imshow(tracker_window_names[color], mask)
+            cv2.imshow(tracker_window_names[color]+'_mask', mask)
+            cv2.imshow(tracker_window_names[color], res)
 
         cv2.imshow(cam_window, blurred)
 

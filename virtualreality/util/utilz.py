@@ -423,7 +423,8 @@ class BlobTracker(threading.Thread):
             )
 
         super().__init__()
-        self._vs = cv2.VideoCapture(cam_index)
+        # self._vs = cv2.VideoCapture(cam_index)
+        self._vs = read_updates(cam_index)
 
         time.sleep(2)
 
@@ -437,7 +438,8 @@ class BlobTracker(threading.Thread):
         frame, self.can_track = self._try_get_frame()
 
         if not self.can_track:
-            self._vs.release()
+            # self._vs.release()
+            self._vs.end()
             self._vs = None
             raise RuntimeError("invalid video source")
 
@@ -463,17 +465,17 @@ class BlobTracker(threading.Thread):
         self.pose_que = queue.Queue()
 
     def _try_get_frame(self):
-        # self._vs.update()
-        # try:
-        #     frame = self._vs.frames[str(self.cam_index)][0]
-        #     can_track = True
-        #     if frame is not self.last_frame:
-        #         self.time_of_last_frame = time.time()
-        # except Exception as e:
-        #     print("_try_get_frame() failed with:", repr(e), self._vs.frames)
-        #     frame = None
-        #     can_track = False
-        can_track, frame = self._vs.read()
+        self._vs.update()
+        try:
+            frame = self._vs.frames[str(self.cam_index)][0]
+            can_track = True
+            # if frame is not self.last_frame:
+            #     self.time_of_last_frame = time.time()
+        except Exception as e:
+            print("_try_get_frame() failed with:", repr(e), self._vs.frames)
+            frame = None
+            can_track = False
+        # can_track, frame = self._vs.read()
 
         return frame, can_track
 
@@ -612,7 +614,8 @@ class BlobTracker(threading.Thread):
             self.stop()
 
             if self._vs is not None:
-                self._vs.release()
+                # self._vs.release()
+                self._vs.end()
                 self._vs = None
 
     def __enter__(self):
