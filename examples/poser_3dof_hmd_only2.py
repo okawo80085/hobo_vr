@@ -19,7 +19,7 @@ import serial.threaded
 from virtualreality import templates
 from virtualreality.util import utilz as u
 
-SERIAL_PORT = "/dev/ttyUSB0" # serial port, this can be replaced with a device search function now
+SERIAL_PORT = "COM3" # serial port, this can be replaced with a device search function now
 
 SERIAL_BAUD = 115200 # baud rate of the serial port
 
@@ -31,7 +31,7 @@ async def serial_listener():
         irl_rot_off = Quaternion.from_x_rotation(0)  # supply your own imu offsets here, has to be a Quaternion object
 
         with serial.Serial(SERIAL_PORT, SERIAL_BAUD, timeout=1 / 4) as ser:
-            with serial.threaded.ReaderThread(ser, u.SerialReaderBinary) as protocol:
+            with serial.threaded.ReaderThread(ser, u.SerialReaderBinary(struct_len=19)) as protocol:
                 protocol.write_line("nut")
                 await asyncio.sleep(1)
 
@@ -40,9 +40,11 @@ async def serial_listener():
                 while poser.coro_keep_alive["serial_listener"].is_alive:
                     gg = protocol.last_read
 
-                    if gg is not None and len(gg) >= 4:
-                        w, x, y, z, *_ = gg
+                    if gg is not None:
+                        w, x, y, z, *rest = gg
                         my_q = Quaternion([-y, z, -x, w])
+
+                        print (rest, len(rest))
 
                         my_q = Quaternion(my_q * irl_rot_off).normalised
                         poser.poses[0].r_w = round(my_q[3], 5)
