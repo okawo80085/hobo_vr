@@ -500,6 +500,11 @@ Options:
 
         my_off = Quaternion()
 
+        aa_last = np.zeros((3,))
+        aa_last2 = np.zeros((3,))
+        vel = np.zeros((3,))
+        grav_v = np.array((0, 1, 0))*9.8
+
         while self.coro_keep_alive["serial_listener3"].is_alive:
             # port = self.serialPaths['right_controller']
             loop = asyncio.get_running_loop()
@@ -538,7 +543,7 @@ Options:
                             # print(f"cont_r: {gg}")
 
                             if gg is not None and len(gg) >= 4:
-                                w, x, y, z, trgr, grp, padClk, padY, padX, *_ = gg
+                                w, x, y, z, ax, ay, az, gx, gy, gz, *_ = gg
 
                                 my_q = Quaternion([-y, z, -x, w])
 
@@ -547,6 +552,27 @@ Options:
                                 self.poses[1].r_x = round(my_q[0], 5)
                                 self.poses[1].r_y = round(my_q[1], 5)
                                 self.poses[1].r_z = round(my_q[2], 5)
+
+                                mm = pyrr.matrix33.create_from_quaternion(my_off * irl_rot_off2 * irl_rot_off)
+                                aa = np.array([ay, az, ax])
+                                ge = np.array([gy, gz, gx])
+                                aa = mm.dot(aa)
+                                ge = mm.dot(ge) / 250 * np.pi
+
+                                if np.linalg.norm(aa-aa_last2) < 0.08:
+                                    vel = np.zeros((3,))
+                                else:
+                                    vel = ((aa+aa_last+aa_last2))/3
+
+                                aa_last2 = aa_last
+                                aa_last = aa
+
+                                self.poses[1].vel_x = vel[0]
+                                self.poses[1].vel_y = vel[1]
+                                self.poses[1].vel_z = vel[2]
+                                self.poses[1].ang_vel_x = ge[0]
+                                self.poses[1].ang_vel_y = ge[1]
+                                self.poses[1].ang_vel_z = ge[2]
 
                                 # self.temp_pose.trigger_value = trgr
                                 # self.temp_pose.grip = grp
