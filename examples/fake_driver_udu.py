@@ -135,6 +135,60 @@ class Velocity_vector(Device_base):
         self.basic_light_prog["lightDir"].write(lightDir)
 
 
+
+class AngularVelocity_vector(Device_base):
+    def __init__(self, ctx, color, center_offs=(0, 0, 0)):
+        super().__init__(ctx, color, "programs/shadow_mapping/directional_light.glsl")
+        thicc = 0.4
+        self.center_offs = center_offs
+        self.meshes = [
+            geometry.cube(size=(0, 0, 1), center=(0, 0, 0)),
+            geometry.cube(size=(0, 0, 1), center=(0, 0, 0)),
+            geometry.cube(size=(0, 0, 1), center=(0, 0, 0)),
+        ]
+
+    def update_ang_vel(self, vel):
+        vel = np.array(vel)
+        ident = np.eye(3)
+
+        a = (vel >= 0).astype(int)
+        b = -(vel < 0).astype(int)
+
+        c = a+b
+
+        sizes = c*ident*vel + ((1 - ident)/5)
+        centers = ident*(-vel/2) + self.center_offs
+
+        temp = [
+            geometry.cube(size=sizes[0], center=centers[0]),
+            geometry.cube(size=sizes[1], center=centers[1]),
+            geometry.cube(size=sizes[2], center=centers[2]),
+        ]
+        for i in range(len(self.meshes)):
+            self.meshes[i].release()
+
+        self.meshes = temp
+
+
+    def write_bl(self, pose, camera, m_shadow_bias, lightDir):
+        x, y, z, w, rx, ry, rz, vx, vy, vz, gx, gy, gz, *_ = pose
+        # y = -y
+        ry = -ry
+        rx = -rx
+        rz = -rz
+
+        self.update_ang_vel((gx, gy, gz))
+
+        rotz = Matrix44.from_quaternion([rx, ry, rz, w], dtype="f4")
+        mat1 = Matrix44.from_translation([x * 10, y * 10, z * 10], dtype="f4")
+
+        self.basic_light_prog["m_model"].write(mat1 * rotz)
+        self.basic_light_prog["m_proj"].write(camera.projection.matrix)
+        self.basic_light_prog["m_camera"].write(camera.matrix)
+        self.basic_light_prog["m_shadow_bias"].write(m_shadow_bias)
+        self.basic_light_prog["lightDir"].write(lightDir)
+
+
 class ShadowMapping(CameraWindow):
     title = "hobo_vr fake udu driver"
     resource_dir = (Path(__file__) / "../resources").resolve()
@@ -202,19 +256,22 @@ class ShadowMapping(CameraWindow):
             if i == "h":
                 self.device_list.append(
                     (Device_hmd(self.ctx, tuple(np.random.randint(100, size=(4,)) / 100)),
-                    Velocity_vector(self.ctx, (1, 0, 0, 1)))
+                    Velocity_vector(self.ctx, (1, 0, 0, 1)),
+                    AngularVelocity_vector(self.ctx, (0, 1, 0, 1), (0.2, 0.2, 0.2)))
                 )
 
             elif i == "c":
                 self.device_list.append(
                     (Device_cntrlr(self.ctx, tuple(np.random.randint(100, size=(4,)) / 100)),
-                    Velocity_vector(self.ctx, (1, 0, 0, 1), (-0.75, 0, -1.75)))
+                    Velocity_vector(self.ctx, (1, 0, 0, 1), (-0.75, 0, -1.75)),
+                    AngularVelocity_vector(self.ctx, (0, 1, 0, 1), (-0.75+0.2, 0.2, -1.75+0.2)))
                 )
 
             elif i == "t":
                 self.device_list.append(
                     (Device_trkr(self.ctx, tuple(np.random.randint(100, size=(4,)) / 100)),
-                    Velocity_vector(self.ctx, (1, 0, 0, 1)))
+                    Velocity_vector(self.ctx, (1, 0, 0, 1)),
+                    AngularVelocity_vector(self.ctx, (0, 1, 0, 1), (0.2, 0.2, 0.2)))
                 )
 
     def render(self, time, frametime):
@@ -238,6 +295,7 @@ class ShadowMapping(CameraWindow):
         for i in range(len(myDriver.device_order)):
             self.device_list[i][0].render(self.shadowmap_program)
             self.device_list[i][1].render(self.shadowmap_program)
+            self.device_list[i][2].render(self.shadowmap_program)
 
         self.floor.render(self.shadowmap_program)
 
@@ -273,10 +331,17 @@ class ShadowMapping(CameraWindow):
                 matrix44.multiply(depth_mvp, bias_matrix),
                 self.lightpos,
             )
+            self.device_list[i][2].write_bl(
+                all_poses[i],
+                self.camera,
+                matrix44.multiply(depth_mvp, bias_matrix),
+                self.lightpos,
+            )
 
         for i in range(len(myDriver.device_order)):
             self.device_list[i][0].render(self.device_list[i][0].basic_light_prog)
             self.device_list[i][1].render(self.device_list[i][1].basic_light_prog)
+            self.device_list[i][2].render(self.device_list[i][2].basic_light_prog)
 
         # floor
         self.basic_lightFloor["m_model"].write(
