@@ -25,6 +25,7 @@ except Exception as e:
 
 from itertools import islice, takewhile
 import re
+from typing import Optional
 
 
 def format_str_for_write(input_str: str) -> bytes:
@@ -144,10 +145,10 @@ def get_numbers_from_text(text, separator="\t"):
             text = text.decode("utf-8")
 
         if (
-            strings_share_characters(
-                text.lower(), "qwrtyuiopsasdfghjklzxcvbnm><*[]{}()"
-            )
-            or len(text) == 0
+                strings_share_characters(
+                    text.lower(), "qwrtyuiopsasdfghjklzxcvbnm><*[]{}()"
+                )
+                or len(text) == 0
         ):
             return []
 
@@ -200,7 +201,7 @@ class LazyKalman:
     """
 
     def __init__(
-        self, init_state, transition_matrix, observation_matrix, n_iter=5, train_size=15
+            self, init_state, transition_matrix, observation_matrix, n_iter=5, train_size=15
     ):
         """
         Create the Kalman filter.
@@ -294,7 +295,6 @@ class SerialReaderFactory(serial.threaded.LineReader):
     """
     TERMINATOR = b'\n'
 
-
     def __init__(self):
         """Create the SerialReaderFactory."""
         super().__init__()
@@ -316,6 +316,7 @@ class SerialReaderFactory(serial.threaded.LineReader):
             f"SerialReaderFactory: port {repr(self.transport.serial.port)} closed {repr(exc)}"
         )
 
+
 class SerialReaderBinary(serial.threaded.Packetizer):
     """
     Read binary packets from serial port. Packets are expected to be terminated
@@ -331,8 +332,8 @@ class SerialReaderBinary(serial.threaded.Packetizer):
     def __init__(self, struct_type='f', struct_len=13, type_len=4):
         super().__init__()
         self._last_packet = None
-        self._struct_form = struct_type*struct_len
-        self._struct_len = struct_len*type_len
+        self._struct_form = struct_type * struct_len
+        self._struct_len = struct_len * type_len
 
     def __call__(self):
         return self
@@ -385,12 +386,12 @@ class BlobTracker(threading.Thread):
     """
 
     def __init__(
-        self,
-        cam_index=0,
-        *,
-        focal_length_px=490,
-        ball_radius_cm=2,
-        color_masks=[],
+            self,
+            cam_index=0,
+            *,
+            focal_length_px=490,
+            ball_radius_cm=2,
+            color_masks=[],
     ):
         """
         Create a blob tracker.
@@ -423,10 +424,9 @@ class BlobTracker(threading.Thread):
             )
 
         super().__init__()
-        # self._vs = cv2.VideoCapture(cam_index)
-        self._vs = read_updates(cam_index)
-
-        time.sleep(2)
+        self.cam_index = cam_index
+        self._vs: Optional[display] = None
+        self.color_masks = color_masks
 
         self.camera_focal_length = focal_length_px
         self.BALL_RADIUS_CM = ball_radius_cm
@@ -435,17 +435,10 @@ class BlobTracker(threading.Thread):
         self.last_frame = None
         self.time_of_last_frame = -1
 
-        frame, self.can_track = self._try_get_frame()
-
-        if not self.can_track:
-            # self._vs.release()
-            self._vs.end()
-            self._vs = None
-            raise RuntimeError("invalid video source")
-
-        self.frame_height, self.frame_width, _ = frame.shape
-        self.markerMasks = np.array([[i.hue_center, i.hue_range, i.sat_center, i.sat_range, i.val_center, i.val_range] for i in color_masks], dtype=np.float32)
-
+        self.markerMasks = np.array(
+            [[i.hue_center, i.hue_range, i.sat_center, i.sat_range, i.val_center, i.val_range] for i in
+             self.color_masks],
+            dtype=np.float32)
         self.poses = np.zeros((self.markerMasks.shape[0], 3))
         self.blobs = []
 
@@ -464,6 +457,19 @@ class BlobTracker(threading.Thread):
         self.daemon = False
         self.pose_que = queue.Queue()
 
+    def at_start(self) -> None:
+        self._vs = read_updates(self.cam_index)
+
+        frame, self.can_track = self._try_get_frame()
+
+        if not self.can_track:
+            # self._vs.release()
+            self._vs.end()
+            self._vs = None
+            raise RuntimeError("invalid video source")
+
+        self.frame_height, self.frame_width, _ = frame.shape
+
     def _try_get_frame(self):
         self._vs.update()
         try:
@@ -481,6 +487,8 @@ class BlobTracker(threading.Thread):
 
     def run(self):
         """Run the main blob tracking thread."""
+        self.at_start()
+
         try:
             _, self.can_track = self._try_get_frame()
 
@@ -496,6 +504,7 @@ class BlobTracker(threading.Thread):
             try:
                 self.find_blobs_in_frame()
                 self.solve_blob_poses()
+                time.sleep(0)
                 # rotate(self.poses, self.offsets)
 
                 if not self.can_track:
@@ -523,7 +532,8 @@ class BlobTracker(threading.Thread):
 
                     hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
-                    mask = cv2.inRange(hsv, self.markerMasks[key][::2] - self.markerMasks[key][1::2], self.markerMasks[key][::2] + self.markerMasks[key][1::2])
+                    mask = cv2.inRange(hsv, self.markerMasks[key][::2] - self.markerMasks[key][1::2],
+                                       self.markerMasks[key][::2] + self.markerMasks[key][1::2])
 
                     temp = cv2.findContours(
                         mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
@@ -616,6 +626,7 @@ class BlobTracker(threading.Thread):
             if self._vs is not None:
                 # self._vs.release()
                 self._vs.end()
+                del self._vs
                 self._vs = None
 
     def __enter__(self):

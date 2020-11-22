@@ -53,12 +53,14 @@ def check_serial_dict(ser_dict, key):
 
     return False
 
+
 def is_port_gud(port):
     try:
         ser = serial.Serial(port)
         return True
     except:
         return False
+
 
 class Poser(templates.UduPoserTemplate):
     """A pose estimator."""
@@ -116,9 +118,9 @@ Options:
                 ColorRange(98, 10, 200, 55, 250, 32),
                 ColorRange(68, 15, 135, 53, 255, 50),
                 ColorRange(68, 15, 135, 53, 255, 50),
-                                ]
+            ]
 
-        #cli interface related
+        # cli interface related
 
         # self.toggle
         # self.signal
@@ -145,12 +147,12 @@ Options:
     async def _cli_arg_map(self, pair):
         if pair[0] == '--ctrl_inpt_mode' and pair[1]:
             self.multiToggleMode = int(pair[1])
-            print (f'mode set to {self.multiToggleMode}')
+            print(f'mode set to {self.multiToggleMode}')
             return
 
         elif pair[0] == '--kill_blob' and pair[1]:
             self.signalKillBlobTrackerLoop = True
-            await asyncio.sleep(1/50)
+            await asyncio.sleep(1 / 50)
             self.signalKillBlobTrackerLoop = False
             print('blob kill loop signal sent')
             return
@@ -163,14 +165,14 @@ Options:
         elif pair[0] == '--camera_focal' and pair[1]:
             if float(pair[1]) != self.camera_focal_px:
                 self.camera_focal_px = float(pair[1])
-                print (f'new blob tracker camera focal point: {pair[1]}px')
+                print(f'new blob tracker camera focal point: {pair[1]}px')
             return
 
         elif pair[0] == '--kill_serial' and pair[1]:
             # self.serialPaths = {i:None for i in self.serialPaths.keys()}
             self.serialsInUse = []
             self.signalKillSerialLoops = True
-            await asyncio.sleep(1/50)
+            await asyncio.sleep(1 / 50)
             self.signalKillSerialLoops = False
             print('serial kill loops signal sent')
             return
@@ -181,13 +183,13 @@ Options:
             return
 
     # im lazy, so its here now
-    def _get_serial_for_device(self, device_name: str, timeout:int=10) -> Optional[str]:
+    def _get_serial_for_device(self, device_name: str, timeout: int = 10) -> Optional[str]:
         available_ports = set([comport.device for comport in serial.tools.list_ports.comports()])
         used_ports = set(iter(self.serialPaths.values())) | self._serials2ignore
         ports_to_check = list(available_ports - used_ports)
         attempts = 10
         t0 = time.time()
-        while (time.time()-t0)<timeout:
+        while (time.time() - t0) < timeout:
             for p in ports_to_check:
                 if p not in self.serialsInUse:
                     self.serialsInUse.append(p)
@@ -207,10 +209,10 @@ Options:
                         if attempts == 0:
                             continue
                 except Exception as e:
-                    print (f'_get_serial_for_device: {p} failed, skipping, reason: {e}')
+                    print(f'_get_serial_for_device: {p} failed, skipping, reason: {e}')
 
                 self.serialsInUse.remove(p)
-            time.sleep(1/100)
+            time.sleep(1 / 100)
 
         return None
 
@@ -319,7 +321,6 @@ Options:
                     try:
                         if self.signalKillBlobTrackerLoop:
                             break
-
                         poses = BlobT.get_poses()
 
                         u.rotate(poses, offsets)
@@ -404,11 +405,10 @@ Options:
             if not is_port_gud(port) or self.signalKillSerialLoops:
                 if self.toggleRetrySerials:
                     await asyncio.sleep(1)
-                    print ('retrying2')
+                    print('retrying2')
                     continue
                 else:
                     return
-
 
             with serial.Serial(port, 115200, timeout=10) as ser:
                 with serial.threaded.ReaderThread(ser, u.SerialReaderBinary) as protocol:
@@ -520,11 +520,10 @@ Options:
             if not is_port_gud(port) or self.signalKillSerialLoops:
                 if self.toggleRetrySerials:
                     await asyncio.sleep(1)
-                    print ('retrying')
+                    print('retrying')
                     continue
                 else:
                     return
-
 
             with serial.Serial(port, 115200, timeout=10) as ser2:
                 with serial.threaded.ReaderThread(ser2, u.SerialReaderBinary) as protocol:
@@ -605,11 +604,10 @@ Options:
             if not is_port_gud(port) or self.signalKillSerialLoops:
                 if self.toggleRetrySerials:
                     await asyncio.sleep(1)
-                    print ('retrying')
+                    print('retrying')
                     continue
                 else:
                     return
-
 
             with serial.Serial(port, 115200, timeout=10) as ser2:
                 with serial.threaded.ReaderThread(ser2, u.SerialReaderBinary) as protocol:
@@ -655,16 +653,16 @@ Options:
 def run_poser_only(addr="127.0.0.1", cam=4, colordata=None, serz=[]):
     """Run the poser only. The server must be started in another program."""
     t = Poser('h c c',
-        addr=addr, camera=cam, calibration_file=colordata, bad_serials=serz
-    )
+              addr=addr, camera=cam, calibration_file=colordata, bad_serials=serz
+              )
     asyncio.run(t.main())
 
 
 def run_poser_and_server(addr="127.0.0.1", cam=4, colordata=None, serz=[]):
     """Run the poser and server in one program."""
     t = Poser('h c c',
-        addr=addr, camera=cam, calibration_file=colordata, bad_serials=serz
-    )
+              addr=addr, camera=cam, calibration_file=colordata, bad_serials=serz
+              )
     server.run_til_dead(t)
 
 
@@ -703,6 +701,7 @@ def main():
             args["--load_calibration"],
             args["--serial2ignore"]
         )
+
 
 if __name__ == "__main__":
     main()
