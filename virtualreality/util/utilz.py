@@ -12,10 +12,11 @@ import serial.threaded
 from pykalman import KalmanFilter
 
 try:
-    import cv2
-    from displayarray import read_updates
+    #import cv2
+    #from displayarray import read_updates
 
-    HAVE_VOD = True
+    #HAVE_VOD = True
+    pass
 
 except Exception as e:
     print(f"failed to import displayarray and/or opencv, reason: {e}")
