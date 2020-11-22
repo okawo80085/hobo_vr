@@ -3,6 +3,17 @@
 #ifndef HOBOVR_COMPONENTS_H
 #define HOBOVR_COMPONENTS_H
 
+// The includes here allow this file to be imported anywhere:
+#include "../openvr_driver.h"
+#include "../driverlog.h"
+#include <cmath>
+
+#if defined (USING_VULKAN)
+#include"VulkanWindow.hpp"
+#endif
+
+using namespace vr;
+
 namespace hobovr {
   enum ELensMathType {
     Mt_Invalid = 0,
@@ -204,11 +215,51 @@ namespace hobovr {
     HobovrCameraComponent() {}
   };
 
+#if defined (USING_VULKAN)
+  class HobovrVirtualDisplayComponent : public IVRVirtualDisplay {
+  public:
+    HobovrVirtualDisplayComponent() {
+        try {
+            app.initWindow();
+            app.initVulkan();
+        } catch (const std::exception& e) {
+            std::cerr << e.what() << std::endl;
+        }
+    }
+    ~HobovrVirtualDisplayComponent(){
+        try {
+            app.cleanup();
+        } catch (const std::exception& e) {
+            std::cerr << e.what() << std::endl;
+        }
+    }
+
+    // IVRVirtualDisplay interface
+  public:
+    void Present(const PresentInfo_t *pPresentInfo, uint32_t unPresentInfoSize){
+        try {
+            app.setTexture((VkImage)pPresentInfo->backbufferTextureHandle);
+            app.loopOnce();
+        }catch (const std::exception& e) {
+            std::cerr << e.what() << std::endl;
+        }
+    }
+    void WaitForPresent(){
+        return; // present immedietely for now.
+    }
+    bool GetTimeSinceLastVsync(float *pfSecondsSinceLastVsync, uint64_t *pulFrameCounter){
+        return true; //give thumbs up and don't modify anything for now.
+    }
+  private:
+    VulkanWindow app;
+  };
+#else
   // this is a dummy class meant to expand the component handling system, DO NOT USE THIS!
   class HobovrVirtualDisplayComponent {
   public:
     HobovrVirtualDisplayComponent() {}
   };
+#endif
 
 }
 
