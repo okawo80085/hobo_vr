@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+#define _DEBUG
+
 static vr::IVRDriverLog * s_pLogFile = NULL;
 
 #if !defined( WIN32)

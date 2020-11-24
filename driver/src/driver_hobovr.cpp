@@ -74,6 +74,7 @@ static const char *const k_pch_Hmd_SecondsFromVsyncToPhotons_Float = "secondsFro
 static const char *const k_pch_Hmd_DisplayFrequency_Float = "displayFrequency";
 static const char* const k_pch_Hmd_IPD_Float = "IPD";
 static const char* const k_pch_Hmd_UserHead2EyeDepthMeters_Float = "UserHeadToEyeDepthMeters";
+static const char* const k_pch_Hmd_display_type_str = "displayType";
 
 // include has to be here, dont ask
 #include "ref/hobovr_device_base.h"
@@ -101,13 +102,23 @@ public:
 
     m_fUserHead2EyeDepthMeters = vr::VRSettings()->GetFloat(k_pch_Hmd_Section,
                                          k_pch_Hmd_UserHead2EyeDepthMeters_Float);
+    char m_display_type[64];
+    vr::VRSettings()->GetString(k_pch_Hmd_Section, k_pch_Hmd_display_type_str, m_display_type, 64);
 
     // log non boilerplate device specific settings 
     DriverLog("device hmd settings: vsync time %fs, display freq %f, ipd %fm, head2eye depth %fm", m_flSecondsFromVsyncToPhotons,
                     m_flDisplayFrequency, m_flIPD, m_fUserHead2EyeDepthMeters);
+    hobovr::HobovrComponent_t extDisplayComp;
+    if(std::string(m_display_type)=="virtual"){
+        DriverLog("Virtual HMD Driver Chosen. Using VulkanWindow.");
+        extDisplayComp = {hobovr::EHobovrCompType::EHobovrComp_VirtualDisplay, vr::IVRDisplayComponent_Version};
+        extDisplayComp.compHandle = std::make_shared<hobovr::HobovrVirtualDisplayComponent>();
+    } else{
+        DriverLog("Steam Default HMD Driver Chosen. Using VulkanWindow.");
+        extDisplayComp = {hobovr::EHobovrCompType::EHobovrComp_ExtendedDisplay, vr::IVRDisplayComponent_Version};
+        extDisplayComp.compHandle = std::make_shared<hobovr::HobovrExtendedDisplayComponent>();
+    }
 
-    hobovr::HobovrComponent_t extDisplayComp = {hobovr::EHobovrCompType::EHobovrComp_ExtendedDisplay, vr::IVRDisplayComponent_Version};
-    extDisplayComp.compHandle = std::make_shared<hobovr::HobovrExtendedDisplayComponent>();
     m_vComponents.push_back(extDisplayComp);
   }
 

@@ -48,12 +48,15 @@ endif()
 
 include_directories(${VULKAN_INCLUDES} ${OPENVR_INCLUDE_DIR})
 
+
 add_library(${TARGET_NAME} SHARED
   driverlog.cpp
   driverlog.h
   driver_hobovr.cpp
   ${VULKAN_FILES}
 )
+
+set_target_properties(${TARGET_NAME} PROPERTIES PREFIX "")
 
 add_definitions(-DDRIVER_HOBOVR_EXPORTS)
 

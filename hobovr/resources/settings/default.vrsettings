@@ -9,7 +9,8 @@
       "IPD" : 0.063,
       "secondsFromVsyncToPhotons" : 0.01,
       "displayFrequency" : 90.0,
-      "UserHeadToEyeDepthMeters" : 0.16
+      "UserHeadToEyeDepthMeters" : 0.16,
+      "displayType": "virtual"
    },
    "hobovr_comp_extendedDisplay": {
       "windowX" : 1920,

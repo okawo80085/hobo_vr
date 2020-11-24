@@ -4,9 +4,12 @@
 #include <set>
 #include <fstream>
 #include <chrono>
+#include <sstream>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+
+#include "../driverlog.h"
 
 bool QueueFamilyIndices::isComplete() {
     return graphicsFamily.has_value() && presentFamily.has_value();
@@ -76,6 +79,7 @@ void VulkanWindow::run() {
  * L0
  */
 void VulkanWindow::initWindow() {
+    DebugDriverLog("Initializing vulkan window.");
     SDL_Init(SDL_INIT_EVERYTHING);
     window = SDL_CreateWindow("Getting Started", SDL_WINDOWPOS_UNDEFINED,
                               SDL_WINDOWPOS_UNDEFINED, 800, 600, SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
@@ -83,27 +87,70 @@ void VulkanWindow::initWindow() {
     SDL_SetWindowData(window, "VulkanWindow", this);
 }
 void VulkanWindow::initVulkan() {
+    DebugDriverLog("Creating vulkan instance.");
     createInstance();
+
+    DebugDriverLog("Creating vulkan debug messenger.");
     setupDebugMessenger();
+
+    DebugDriverLog("Creating vulkan surface.");
     createSurface();
+
+    DebugDriverLog("Picking vulkan physical surface.");
     pickPhysicalDevice();
+
+    DebugDriverLog("Creating vulkan logical device.");
     createLogicalDevice();
+
+    DebugDriverLog("Creating vulkan swap chain.");
     createSwapChain();
+
+    DebugDriverLog("Creating vulkan image views.");
     createImageViews();
+
+    DebugDriverLog("Creating vulkan render pass.");
     createRenderPass();
+
+    DebugDriverLog("Creating vulkan description set layout.");
     createDescriptorSetLayout();
+
+    DebugDriverLog("Creating vulkan graphics pipeline.");
     createGraphicsPipeline();
+
+    DebugDriverLog("Creating vulkan frame buffers.");
     createFramebuffers();
+
+    DebugDriverLog("Creating vulkan command pool.");
     createCommandPool();
+
+    DebugDriverLog("Creating vulkan texture image.");
     createTextureImage();
+
+    DebugDriverLog("Creating vulkan texture image view.");
     createTextureImageView();
+
+    DebugDriverLog("Creating vulkan texture sampler.");
     createTextureSampler();
+
+    DebugDriverLog("Creating vulkan vertex buffer.");
     createVertexBuffer();
+
+    DebugDriverLog("Creating vulkan image buffer.");
     createIndexBuffer();
+
+    DebugDriverLog("Creating vulkan uniform buffers.");
     createUniformBuffers();
+
+    DebugDriverLog("Creating vulkan descriptor pool.");
     createDescriptorPool();
+
+    DebugDriverLog("Creating vulkan descriptor sets.");
     createDescriptorSets();
+
+    DebugDriverLog("Creating vulkan command buffers.");
     createCommandBuffers();
+
+    DebugDriverLog("Creating vulkan sync objects.");
     createSyncObjects();
 }
 
@@ -212,6 +259,7 @@ void VulkanWindow::createInstance(){
     if (enableValidationLayers && !checkValidationLayerSupport()) {
         throw std::runtime_error("validation layers requested, but not available!");
     }
+    DebugDriverLog("validation step worked.");
 
     VkApplicationInfo appInfo{};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -221,13 +269,19 @@ void VulkanWindow::createInstance(){
     appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
     appInfo.apiVersion = VK_API_VERSION_1_0;
 
+    DebugDriverLog("appInfo step worked.");
+
     VkInstanceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
 
+    DebugDriverLog("createInfo step worked.");
+
     auto extensions = getRequiredExtensions();
     createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
     createInfo.ppEnabledExtensionNames = extensions.data();
+
+    DebugDriverLog("extensions step worked.");
 
     VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo;
     if (enableValidationLayers) {
@@ -242,9 +296,15 @@ void VulkanWindow::createInstance(){
         createInfo.pNext = nullptr;
     }
 
+    DebugDriverLog("debugCreateInfo step worked.");
+
+
     if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
+        DebugDriverLog("failed to create instance!.");
         throw std::runtime_error("failed to create instance!");
     }
+
+    DebugDriverLog("vkCreateInstance step worked.");
 }
 void VulkanWindow::setupDebugMessenger(){
     if (!enableValidationLayers) return;
@@ -453,8 +513,8 @@ void VulkanWindow::createDescriptorSetLayout(){
     }
 }
 void VulkanWindow::createGraphicsPipeline(){
-    auto vertShaderCode = readFile("../shaders/vert.spv");
-    auto fragShaderCode = readFile("../shaders/frag.spv");
+    auto vertShaderCode = readFile("../vulkan_shaders/vert.spv");
+    auto fragShaderCode = readFile("../vulkan_shaders/frag.spv");
 
     VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
     VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
@@ -605,7 +665,7 @@ void VulkanWindow::createCommandPool(){
 
 void VulkanWindow::createTextureImage(){
     int texWidth, texHeight, texChannels;
-    stbi_uc* pixels = stbi_load("../textures/texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+    stbi_uc* pixels = stbi_load("../vulkan_textures/texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
     VkDeviceSize imageSize = texWidth * texHeight * 4;
 
     if (!pixels) {
@@ -1409,8 +1469,9 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanWindow::debugCallback(
         VkDebugUtilsMessageTypeFlagsEXT messageType,
         const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
         void* pUserData){
-    std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
-
+    std::stringstream err;
+    err << "VulkanWindow:" << "validation layer: " << pCallbackData->pMessage << std::endl;
+    DriverLog(err.str().c_str());
     // needed to not get warnings from an abstract function
     unused_parameter(messageSeverity);
     unused_parameter(messageType);

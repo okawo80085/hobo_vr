@@ -49,3 +49,17 @@ Vector3.hpp
 Quaternion.hpp
 boost/
 driver/build-src-Desktop-Debug/
+driver/build32/
+driver/build64/
+hobovr/bin/linux32/.cmake/
+hobovr/bin/linux32/CMakeCache.txt
+hobovr/bin/linux32/CMakeFiles/
+hobovr/bin/linux32/Makefile
+hobovr/bin/linux32/Project.cbp
+hobovr/bin/linux32/cmake_install.cmake
+hobovr/bin/linux64/.cmake/
+hobovr/bin/linux64/CMakeCache.txt
+hobovr/bin/linux64/CMakeFiles/
+hobovr/bin/linux64/Makefile
+hobovr/bin/linux64/Project.cbp
+hobovr/bin/linux64/cmake_install.cmake
