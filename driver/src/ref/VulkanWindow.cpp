@@ -1,4 +1,5 @@
 #include "VulkanWindow.hpp"
+#ifdef VULKAN_WINDOW_H__
 #include <stdexcept>
 #include <cstdlib>
 #include <set>
@@ -1479,3 +1480,4 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanWindow::debugCallback(
 
     return VK_FALSE;
 }
+#endif

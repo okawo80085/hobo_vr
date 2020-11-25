@@ -1,4 +1,4 @@
-#ifndef VULKAN_WINDOW_H__
+#ifdef VULKAN_WINDOW_H__
 #define VULKAN_WINDOW_H__
 
 #include <vulkan/vulkan.h>

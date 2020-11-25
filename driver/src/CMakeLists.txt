@@ -46,6 +46,22 @@ if(CMAKE_HOST_UNIX)
   endif()
 endif()
 
+## OpenVR API path
+#find_library(OPENVR_LIBRARIES
+#  NAMES
+#    openvr_api
+#  PATHS
+#    ${CMAKE_CURRENT_SOURCE_DIR}/../bin
+#    ${CMAKE_CURRENT_SOURCE_DIR}/../lib
+#  PATH_SUFFIXES
+#    osx32
+#    linux64
+#    ${WINDOWS_PATH_SUFFIXES}
+#  NO_DEFAULT_PATH
+#  NO_CMAKE_FIND_ROOT_PATH
+#)
+#set(OPENVR_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../headers)
+
 include_directories(${VULKAN_INCLUDES} ${OPENVR_INCLUDE_DIR})
 
 
@@ -59,6 +75,8 @@ add_library(${TARGET_NAME} SHARED
 set_target_properties(${TARGET_NAME} PROPERTIES PREFIX "")
 
 add_definitions(-DDRIVER_HOBOVR_EXPORTS)
+
+message(HI ${OPENVR_LIBRARIES} ${OPENVR_INCLUDE_DIR})
 
 target_link_libraries(${TARGET_NAME}
   ${OPENVR_LIBRARIES}
