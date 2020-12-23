@@ -365,6 +365,80 @@ class SerialReaderBinary(serial.threaded.Packetizer):
         # + is not the best choice but bytes does not support % or .format in py3 and we want a single write call
         self.transport.write(text.encode(self.ENCODING, self.UNICODE_HANDLING) + self.TERMINATOR)
 
+class SerialReaderMultiBinary(serial.threaded.Packetizer):
+    """
+    Read binary packets from serial port. Packets are expected to be terminated
+    with a TERMINATOR byte (null byte by default).
+
+    The class also keeps track of the transport.
+    """
+
+    HEADINGS = [b'hmd:', b'lc:', b'rc:']
+    HEADING_FORMS = {b'hmd:': '4f', b'lc:': '7f5?', b'rc:': '7f5?'}
+    TERMINATOR = b'\t\r\n'
+    ENCODING = 'utf-8'
+    UNICODE_HANDLING = 'replace'
+
+    def __init__(self, struct_type='f', struct_len=13, type_len=4):
+        super().__init__()
+        self._last_packet = None
+        self._struct_form = struct_type * struct_len
+        self._struct_len = struct_len * type_len
+        self._last_headed_packet = None
+
+    def __call__(self):
+        return self
+
+    @property
+    def last_read(self):
+        """Get the readonly last read."""
+        return self._last_packet
+
+    def connection_lost(self, exc):
+        """Notify the user that the connection was lost."""
+        print(
+            f"SerialReaderBinary: port {repr(self.transport.serial.port)} closed {repr(exc)}"
+        )
+        raise exc
+
+    def data_received(self, data):
+        """Buffer received data, find TERMINATOR, call handle_packet"""
+        self.buffer.extend(data)
+        while self.TERMINATOR in self.buffer:
+            packet, self.buffer = self.buffer.split(self.TERMINATOR, 1)
+            for h in self.HEADINGS:
+                if h in packet:
+                    _, p = packet.split(h, 1)
+                    self.handle_packet((h,p))
+
+    def handle_packet(self, packet):
+        """Process packets - to be overridden by subclassing"""
+        # print (repr(packet))
+        header = packet[0]
+        data = packet[1]
+        #print(data)
+        if header not in self.HEADINGS:
+            return
+
+        form = self.HEADING_FORMS[header]
+
+        offset = 0
+        temp_last_packet = [header]
+        check = struct.calcsize(form)
+        packet_section = data[:check]
+        if len(packet_section) != check:
+            return
+        temp_last_packet.append(struct.unpack_from(form, packet_section))
+        self._last_packet = tuple(temp_last_packet)
+
+    def write_line(self, text):
+        """
+        Write text to the transport. ``text`` is a Unicode string and the encoding
+        is applied before sending ans also the newline is append.
+        """
+        # + is not the best choice but bytes does not support % or .format in py3 and we want a single write call
+        self.transport.write(text.encode(self.ENCODING, self.UNICODE_HANDLING) + self.TERMINATOR)
+
 
 def cnt_2_x_y_w(cnt):
     nc = cnt.reshape((cnt.shape[0], 2))

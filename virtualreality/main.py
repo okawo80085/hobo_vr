@@ -40,6 +40,10 @@ def main():
         from virtualreality.trackers.color_tracker import main
 
         main()
+    elif args["<command>"] == "track-nrf":
+        from virtualreality.trackers.color_tracker_nrf import main
+
+        main()
     elif args["<command>"] == "gui":
         from virtualreality.gui.gui import main
 
