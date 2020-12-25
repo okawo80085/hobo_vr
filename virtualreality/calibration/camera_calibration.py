@@ -175,7 +175,7 @@ def main():
 
     cam = int(args["--camera"]) if args["--camera"].isdigit() else args["--camera"]
     spacing = None
-    f = args["--file"]
+    f = args["--load"]
     try:
         spacing = float(args["--spacing"])
     except ValueError:

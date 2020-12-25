@@ -96,7 +96,7 @@ Options:
         self.serialsInUse = []
 
         self._serialResetYaw = False
-        self.usePos = False
+        self.usePos = True
 
         self.camera = camera
         self.width = width
@@ -106,11 +106,19 @@ Options:
             self.calibration = CalibrationData.load_from_file(calibration_file).color_ranges
 
         else:
+            # full brightness
+            '''self.calibration = [
+                ColorRange(0, 180, 39, 221, 96, 197, 60),
+                ColorRange(1, 126, 32, 192, 67, 209, 79),
+                ColorRange(2, 75, 24, 220, 39, 167, 114),
+            ]'''
+            # indoor lighting
             self.calibration = [
-                ColorRange(98, 10, 200, 55, 250, 32),
-                ColorRange(68, 15, 135, 53, 255, 50),
-                ColorRange(68, 15, 135, 53, 255, 50),
+                ColorRange(0, 151, 34, 176, 68, 185, 60),# daylight:75
+                ColorRange(2, 126, 32, 192, 67, 209, 114),
+                ColorRange(1, 75, 20, 220, 39, 197, 131),
             ]
+            print('using default calibration')
 
         # cli interface related
 
@@ -125,8 +133,12 @@ Options:
 
         self.multiToggleMode = 1
 
-        self.camera_focal_px = 554.2563
-
+        # old:
+        # self.camera_focal_px = 554.2563
+        # standard laptop:
+        # self.camera_focal_px = 395.1670900912165
+        # fisheye. Requires special equation depending on type of fisheye
+        self.camera_focal_px = 180.0  # approximate
         print(f"current color masks {self.calibration}")
 
     # def _find_serial_devices(self):
@@ -207,7 +219,7 @@ Options:
 
                                 l = ser.readline()
                                 l = str(l)
-                                print(l)
+                                #print(l)
                                 if device_name in l:
                                     # self.serialsInUse.remove(p)
                                     print(f'Connected! {p}')
@@ -359,7 +371,7 @@ Options:
                             #print(f'poses: {self.poses}')
 
                             if header == b'hmd:':
-                                print('hmd')
+                                #print('hmd')
                                 if data is not None and len(data[0]) >= 4:
                                     w, x, y, z, *_ = data[0]
                                     my_q = Quaternion([-y, z, -x, w])
@@ -372,9 +384,9 @@ Options:
                                     self.poses[0].r_x = round(my_q[0], 5)
                                     self.poses[0].r_y = round(my_q[1], 5)
                                     self.poses[0].r_z = round(my_q[2], 5)
-                                    print(self.poses[0])
+                                    #print(self.poses[0])
                             elif header == b'lc:':
-                                print('lc')
+                                #print('lc')
                                 irl_rot_off = Quaternion.from_z_rotation(
                                     np.pi / 2
                                 )
@@ -426,7 +438,7 @@ Options:
 
                                 else:
                                     self.poses[1].trigger_click = 0
-                                print(self.poses[1])
+                                #print(self.poses[1])
                             elif header == b'rc:':
                                 irl_rot_off = Quaternion.from_y_rotation(
                                     np.pi

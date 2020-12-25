@@ -10,6 +10,7 @@ import struct
 import numpy as np
 import serial.threaded
 from pykalman import KalmanFilter
+from copy import copy
 
 try:
     import cv2
@@ -558,6 +559,11 @@ class BlobTracker(threading.Thread):
     def _try_get_frame(self):
         self._vs.update()
         try:
+            # view may return empty dicts in between frames and before camera initializes.
+            # Wait until we receive a frame.
+            t0 = time.time()
+            while not self._vs.frames and time.time() - t0 < 3.0:
+                self._vs.update()
             frame = self._vs.frames[str(self.cam_index)][0]
             can_track = True
             # if frame is not self.last_frame:
@@ -617,8 +623,36 @@ class BlobTracker(threading.Thread):
 
                     hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
-                    mask = cv2.inRange(hsv, self.markerMasks[key][::2] - self.markerMasks[key][1::2],
-                                       self.markerMasks[key][::2] + self.markerMasks[key][1::2])
+                    color_low = [
+                        int(self.markerMasks[key][0] - self.markerMasks[key][1]),
+                        int(self.markerMasks[key][2] - self.markerMasks[key][3]),
+                        int(self.markerMasks[key][4] - self.markerMasks[key][5]),
+                    ]
+
+                    color_high = [
+                        int(self.markerMasks[key][0] + self.markerMasks[key][1]),
+                        int(self.markerMasks[key][2] + self.markerMasks[key][3]),
+                        int(self.markerMasks[key][4] + self.markerMasks[key][5]),
+                    ]
+
+                    color_low_neg = copy(color_low)
+                    color_high_neg = copy(color_high)
+                    for c in range(3):
+                        if c == 0:
+                            c_max = 180
+                        else:
+                            c_max = 255
+                        if color_low_neg[c] < 0:
+                            color_low_neg[c] = c_max + color_low_neg[c]
+                            color_high_neg[c] = c_max
+                            color_low[c] = 0
+                        elif color_high_neg[c] > c_max:
+                            color_low_neg[c] = 0
+                            color_high_neg[c] = color_high_neg[c] - c_max
+                            color_high[c] = c_max
+                    mask1 = cv2.inRange(hsv, tuple(color_low), tuple(color_high))
+                    mask2 = cv2.inRange(hsv, tuple(color_low_neg), tuple(color_high_neg))
+                    mask = cv2.bitwise_or(mask1, mask2)
 
                     temp = cv2.findContours(
                         mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_KCOS
