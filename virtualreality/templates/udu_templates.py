@@ -91,6 +91,7 @@ class UduPoserTemplate(PoserTemplateBase):
 
                 self.writer.write(msg)
                 await self.writer.drain()
+                #print('written and drained')
 
                 await asyncio.sleep(self.coro_keep_alive["send"].sleep_delay-0.0001)
             except Exception as e:

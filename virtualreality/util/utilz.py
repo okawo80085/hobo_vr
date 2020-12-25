@@ -10,6 +10,7 @@ import struct
 import numpy as np
 import serial.threaded
 from pykalman import KalmanFilter
+from copy import copy
 
 try:
     import cv2
@@ -365,6 +366,80 @@ class SerialReaderBinary(serial.threaded.Packetizer):
         # + is not the best choice but bytes does not support % or .format in py3 and we want a single write call
         self.transport.write(text.encode(self.ENCODING, self.UNICODE_HANDLING) + self.TERMINATOR)
 
+class SerialReaderMultiBinary(serial.threaded.Packetizer):
+    """
+    Read binary packets from serial port. Packets are expected to be terminated
+    with a TERMINATOR byte (null byte by default).
+
+    The class also keeps track of the transport.
+    """
+
+    HEADINGS = [b'hmd:', b'lc:', b'rc:']
+    HEADING_FORMS = {b'hmd:': '4f', b'lc:': '7f5?', b'rc:': '7f5?'}
+    TERMINATOR = b'\t\r\n'
+    ENCODING = 'utf-8'
+    UNICODE_HANDLING = 'replace'
+
+    def __init__(self, struct_type='f', struct_len=13, type_len=4):
+        super().__init__()
+        self._last_packet = None
+        self._struct_form = struct_type * struct_len
+        self._struct_len = struct_len * type_len
+        self._last_headed_packet = None
+
+    def __call__(self):
+        return self
+
+    @property
+    def last_read(self):
+        """Get the readonly last read."""
+        return self._last_packet
+
+    def connection_lost(self, exc):
+        """Notify the user that the connection was lost."""
+        print(
+            f"SerialReaderBinary: port {repr(self.transport.serial.port)} closed {repr(exc)}"
+        )
+        raise exc
+
+    def data_received(self, data):
+        """Buffer received data, find TERMINATOR, call handle_packet"""
+        self.buffer.extend(data)
+        while self.TERMINATOR in self.buffer:
+            packet, self.buffer = self.buffer.split(self.TERMINATOR, 1)
+            for h in self.HEADINGS:
+                if h in packet:
+                    _, p = packet.split(h, 1)
+                    self.handle_packet((h,p))
+
+    def handle_packet(self, packet):
+        """Process packets - to be overridden by subclassing"""
+        # print (repr(packet))
+        header = packet[0]
+        data = packet[1]
+        #print(data)
+        if header not in self.HEADINGS:
+            return
+
+        form = self.HEADING_FORMS[header]
+
+        offset = 0
+        temp_last_packet = [header]
+        check = struct.calcsize(form)
+        packet_section = data[:check]
+        if len(packet_section) != check:
+            return
+        temp_last_packet.append(struct.unpack_from(form, packet_section))
+        self._last_packet = tuple(temp_last_packet)
+
+    def write_line(self, text):
+        """
+        Write text to the transport. ``text`` is a Unicode string and the encoding
+        is applied before sending ans also the newline is append.
+        """
+        # + is not the best choice but bytes does not support % or .format in py3 and we want a single write call
+        self.transport.write(text.encode(self.ENCODING, self.UNICODE_HANDLING) + self.TERMINATOR)
+
 
 def cnt_2_x_y_w(cnt):
     nc = cnt.reshape((cnt.shape[0], 2))
@@ -484,6 +559,11 @@ class BlobTracker(threading.Thread):
     def _try_get_frame(self):
         self._vs.update()
         try:
+            # view may return empty dicts in between frames and before camera initializes.
+            # Wait until we receive a frame.
+            t0 = time.time()
+            while not self._vs.frames and time.time() - t0 < 3.0:
+                self._vs.update()
             frame = self._vs.frames[str(self.cam_index)][0]
             can_track = True
             # if frame is not self.last_frame:
@@ -543,8 +623,36 @@ class BlobTracker(threading.Thread):
 
                     hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
-                    mask = cv2.inRange(hsv, self.markerMasks[key][::2] - self.markerMasks[key][1::2],
-                                       self.markerMasks[key][::2] + self.markerMasks[key][1::2])
+                    color_low = [
+                        int(self.markerMasks[key][0] - self.markerMasks[key][1]),
+                        int(self.markerMasks[key][2] - self.markerMasks[key][3]),
+                        int(self.markerMasks[key][4] - self.markerMasks[key][5]),
+                    ]
+
+                    color_high = [
+                        int(self.markerMasks[key][0] + self.markerMasks[key][1]),
+                        int(self.markerMasks[key][2] + self.markerMasks[key][3]),
+                        int(self.markerMasks[key][4] + self.markerMasks[key][5]),
+                    ]
+
+                    color_low_neg = copy(color_low)
+                    color_high_neg = copy(color_high)
+                    for c in range(3):
+                        if c == 0:
+                            c_max = 180
+                        else:
+                            c_max = 255
+                        if color_low_neg[c] < 0:
+                            color_low_neg[c] = c_max + color_low_neg[c]
+                            color_high_neg[c] = c_max
+                            color_low[c] = 0
+                        elif color_high_neg[c] > c_max:
+                            color_low_neg[c] = 0
+                            color_high_neg[c] = color_high_neg[c] - c_max
+                            color_high[c] = c_max
+                    mask1 = cv2.inRange(hsv, tuple(color_low), tuple(color_high))
+                    mask2 = cv2.inRange(hsv, tuple(color_low_neg), tuple(color_high_neg))
+                    mask = cv2.bitwise_or(mask1, mask2)
 
                     temp = cv2.findContours(
                         mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_KCOS

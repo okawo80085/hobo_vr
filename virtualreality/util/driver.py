@@ -86,6 +86,7 @@ class DummyDriverReceiver(threading.Thread):
         while self.alive:
             try:
                 data = self.sock.recv(self.readSize)
+                #print(data)
                 backBuffer.extend(data)
 
                 if not data:

@@ -11,6 +11,7 @@ Options:
    -n, --n_masks <n_masks>      Number of masks to calibrate [default: 1]
    -l, --load_from_file <file>  Load previous calibration settings [default: ranges.pickle]
    -s, --save <file>            Save calibration settings to a file [default: ranges.pickle]
+   -L, --linux                  Linux based v4l2 settings.
 """
 
 import logging
@@ -181,6 +182,7 @@ def manual_calibration(
         frame_height=-1,
         load_file="",
         save_file="ranges.pickle",
+        linux=False
 ):
     """Manually calibrate the hsv ranges and camera settings used for blob tracking."""
     vs = cv2.VideoCapture(cam)
@@ -191,32 +193,60 @@ def manual_calibration(
 
     cam_window = f"camera {cam} input"
     cv2.namedWindow(cam_window)
-    if "CAP_PROP_AUTO_EXPOSURE" in vs_supported:
-        cv2.createTrackbar(
-            "auto_exposure",
-            cam_window,
-            25,
-            100,
-            lambda x: vs.set(cv2.CAP_PROP_EXPOSURE, x / 100.0),
-        )
-    if "CAP_PROP_EXPOSURE" in vs_supported:
-        cv2.createTrackbar(
-            "exposure",
-            cam_window,
-            50,
-            10000,
-            lambda x: vs.set(cv2.CAP_PROP_EXPOSURE, x),
-        )
-    if "CAP_PROP_SATURATION" in vs_supported:
-        cv2.createTrackbar(
-            "saturation",
-            cam_window,
-            0,
-            100,
-            lambda x: vs.set(cv2.CAP_PROP_SATURATION, x),
-        )
+    if linux:
+        if "CAP_PROP_AUTO_EXPOSURE" in vs_supported:
+            cv2.createTrackbar(
+                "auto_exposure",
+                cam_window,
+                25,
+                100,
+                lambda x: vs.set(cv2.CAP_PROP_EXPOSURE, x / 100.0),
+            )
+        if "CAP_PROP_EXPOSURE" in vs_supported:
+            cv2.createTrackbar(
+                "exposure",
+                cam_window,
+                50,
+                10000,
+                lambda x: vs.set(cv2.CAP_PROP_EXPOSURE, x),
+            )
+        if "CAP_PROP_SATURATION" in vs_supported:
+            cv2.createTrackbar(
+                "saturation",
+                cam_window,
+                0,
+                100,
+                lambda x: vs.set(cv2.CAP_PROP_SATURATION, x),
+            )
+        else:
+            logging.warning(f"Camera {cam} does not support setting saturation.")
     else:
-        logging.warning(f"Camera {cam} does not support setting saturation.")
+        if "CAP_PROP_AUTO_EXPOSURE" in vs_supported:
+            cv2.createTrackbar(
+                "auto_exposure",
+                cam_window,
+                25,
+                100,
+                lambda x: vs.set(cv2.CAP_PROP_EXPOSURE, x / 100.0),
+            )
+        if "CAP_PROP_EXPOSURE" in vs_supported:
+            cv2.createTrackbar(
+                "exposure",
+                cam_window,
+                0,
+                400,
+                lambda x: vs.set(cv2.CAP_PROP_EXPOSURE, (x-200.0)/10),
+            )
+        if "CAP_PROP_SATURATION" in vs_supported:
+            cv2.createTrackbar(
+                "saturation",
+                cam_window,
+                0,
+                100,
+                lambda x: vs.set(cv2.CAP_PROP_SATURATION, x),
+            )
+        else:
+            logging.warning(f"Camera {cam} does not support setting saturation.")
 
     ranges = None
     if load_file:
@@ -367,4 +397,5 @@ def main():
         frame_height=int(height),
         load_file=args["--load_from_file"],
         save_file=args["--save"],
+        linux=args['--linux']
     )
