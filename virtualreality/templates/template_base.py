@@ -127,9 +127,9 @@ Options:
                 data = await self.reader.read(200)
                 backBuffer.extend(data)
 
-                while self._terminator in backBuffer:
+                while b'\n' in backBuffer:
                     self.last_read, backBuffer = backBuffer.split(
-                        self._terminator, 1
+                        b'\n', 1
                     )
 
                 await asyncio.sleep(self.coro_keep_alive["recv"].sleep_delay)

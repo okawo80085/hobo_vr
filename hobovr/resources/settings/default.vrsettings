@@ -1,7 +1,7 @@
 {
    "driver_hobovr" : {
       "enable" : true,
-      "PoseTimeOffset" : 0.0,
+      "PoseTimeOffset" : 0.035,
       "ManualUpdateURL" : "https://gist.github.com/okawo80085/dd327eda3b87c8df353cf783b17e1c82",
       "DeviceManifestList" : "h13 c22 c22"
    },
@@ -14,15 +14,15 @@
    "hobovr_comp_extendedDisplay": {
       "windowX" : 1920,
       "windowY" : 0,
-      "windowWidth" : 1520,
-      "windowHeight" : 720,
-      "renderWidth" : 3040,
-      "renderHeight" : 1440,
+      "windowWidth" : 2560,
+      "windowHeight" : 1440,
+      "renderWidth" : 3840,
+      "renderHeight" : 2160,
       "DistortionK1" : 0.74,
       "DistortionK2" : 0.70,
-      "ZoomWidth" : 0.95,
-      "ZoomHeight" : 0.86,
-      "EyeGapOffsetPx" : -80,
+      "ZoomWidth" : 0.82,
+      "ZoomHeight" : 0.82,
+      "EyeGapOffsetPx" : -10,
       "IsDisplayRealDisplay" : true,
       "IsDisplayOnDesktop" : true
    }

@@ -29,6 +29,7 @@ import pyrr
 from pyrr import Quaternion
 from docopt import docopt
 import glob
+import ahrs
 
 import time
 import subprocess as sub
@@ -81,6 +82,7 @@ Options:
     -s, --kill_serial           send a kill loop to serial threads
     -S, --serial_reboot         toggle reboot on kill for serial threads
     -f, --camera_focal <val>    focal point of the camera in pixels[default: 554.2563]
+    -k, --kalman_learning       toggle learning for BlobTracke's kalman filters
 '''
 
     def __init__(
@@ -110,6 +112,8 @@ Options:
         self.width = width
         self.height = height
 
+        self.cont_l_acc_tresh = 1
+
         if calibration_file is not None:
             self.calibration = CalibrationData.load_from_file(calibration_file).color_ranges
 
@@ -124,6 +128,8 @@ Options:
 
         # self.toggle
         # self.signal
+
+        self.toggleKalmanLearning = True
 
         self.toggleRetryBlobTracker = False
         self.signalKillBlobTrackerLoop = False
@@ -181,6 +187,12 @@ Options:
             self.toggleRetrySerials = True if not self.toggleRetrySerials else False
             print(f'serial reboot loops set to {"on" if self.toggleRetrySerials else "off"}')
             return
+
+        elif pair[0] == '--kalman_learning' and pair[1]:
+            self.toggleKalmanLearning = True if not self.toggleKalmanLearning else False
+            print(f'kalman learning is set to {"on" if self.toggleKalmanLearning else "off"}')
+            return
+
 
     # im lazy, so its here now
     def _get_serial_for_device(self, device_name: str, timeout: int = 10) -> Optional[str]:
@@ -297,16 +309,21 @@ Options:
     async def get_location(self):
         """Get locations from blob trackers."""
 
-        axisScale = np.array([1, 1, 1]) * [-1, 1, 1]
+        my_dd = np.float64
 
-        l_oof = np.array([0, 0, 0.037])
-        r_oof = np.array([0, 0, 0.032])
+        axisScale = np.array([1, 1, 1], dtype=my_dd) * [-1, 1, 1]
 
-        hmd_oof = np.array([-0.035, -0.03, 0.05])
+        l_oof = np.array([0, 0, 0.037], dtype=my_dd)
+        r_oof = np.array([0, 0, 0.032], dtype=my_dd)
+
+        hmd_oof = np.array([-0.035, -0.03, 0.05], dtype=my_dd)
+
+        global_oof = u.make_rotmat([0.6981317007977318, 0, 0])
+
+        toggleLearning = True
 
         while self.coro_keep_alive["get_location"].is_alive:
             try:
-                offsets = [0.6981317007977318, 0, 0]
                 BlobT = u.BlobTracker(
                     self.camera, color_masks=self.calibration, focal_length_px=self.camera_focal_px
                 )
@@ -321,9 +338,17 @@ Options:
                     try:
                         if self.signalKillBlobTrackerLoop:
                             break
+
+                        if toggleLearning != self.toggleKalmanLearning:
+                            BlobT.set_kalman_learning(self.toggleKalmanLearning)
+                            toggleLearning = self.toggleKalmanLearning
+
                         poses = BlobT.get_poses()
 
-                        u.rotate(poses, offsets)
+                        # for i in [0, 1, 2]:
+                        poses[0] = global_oof.dot(poses[0])
+                        poses[1] = global_oof.dot(poses[1])
+                        poses[2] = global_oof.dot(poses[2])
 
                         poses *= axisScale
 
@@ -333,12 +358,12 @@ Options:
                             # origin point correction math
                             m33_r = pyrr.matrix33.create_from_quaternion(
                                 [self.poses[2].r_x, self.poses[2].r_y, self.poses[2].r_z,
-                                 self.poses[2].r_w])
+                                 self.poses[2].r_w], dtype=my_dd)
                             m33_l = pyrr.matrix33.create_from_quaternion(
                                 [self.poses[1].r_x, self.poses[1].r_y, self.poses[1].r_z,
-                                 self.poses[1].r_w])
+                                 self.poses[1].r_w], dtype=my_dd)
                             m33_hmd = pyrr.matrix33.create_from_quaternion(
-                                [self.poses[0].r_x, self.poses[0].r_y, self.poses[0].r_z, self.poses[0].r_w])
+                                [self.poses[0].r_x, self.poses[0].r_y, self.poses[0].r_z, self.poses[0].r_w], dtype=my_dd)
 
                             r_oof2 = m33_r.dot(r_oof)
                             l_oof2 = m33_l.dot(l_oof)
@@ -356,9 +381,17 @@ Options:
                             self.poses[2].y = poses[1][1]
                             self.poses[2].z = poses[1][2]
 
+                            # if self.cont_l_acc_tresh > 0.045:
                             self.poses[1].x = poses[2][0]
                             self.poses[1].y = poses[2][1]
                             self.poses[1].z = poses[2][2]
+
+                            if poses.shape[0] > 3 and len(self.poses) > 3:
+                                for i in range(3, len(self.poses)):
+                                    temp = global_oof.dot(poses[i])
+                                    self.poses[i].x = temp[0]
+                                    self.poses[i].y = temp[1]
+                                    self.poses[i].z = temp[2]
 
                         await asyncio.sleep(
                             self.coro_keep_alive["get_location"].sleep_delay
@@ -429,10 +462,10 @@ Options:
                                 my_q = Quaternion([-y, z, -x, w])
 
                                 my_q = Quaternion(my_off * my_q * irl_rot_off).normalised
-                                self.poses[2].r_w = round(my_q[3], 5)
-                                self.poses[2].r_x = round(my_q[0], 5)
-                                self.poses[2].r_y = round(my_q[1], 5)
-                                self.poses[2].r_z = round(my_q[2], 5)
+                                self.poses[2].r_w = my_q[3]
+                                self.poses[2].r_x = my_q[0]
+                                self.poses[2].r_y = my_q[1]
+                                self.poses[2].r_z = my_q[2]
 
                                 self.temp_pose.trigger_value = trgr
                                 self.temp_pose.grip = grp
@@ -500,6 +533,11 @@ Options:
 
         my_off = Quaternion()
 
+        aa_last = np.zeros((3,))
+        aa_last2 = np.zeros((3,))
+        vel = np.zeros((3,))
+        grav_v = np.array((0, 1, 0))*9.8
+
         while self.coro_keep_alive["serial_listener3"].is_alive:
             # port = self.serialPaths['right_controller']
             loop = asyncio.get_running_loop()
@@ -525,8 +563,9 @@ Options:
                 else:
                     return
 
+            h = 0
             with serial.Serial(port, 115200, timeout=10) as ser2:
-                with serial.threaded.ReaderThread(ser2, u.SerialReaderBinary) as protocol:
+                with serial.threaded.ReaderThread(ser2, u.SerialReaderBinary(struct_len=19)) as protocol:
                     protocol.write_line("nut")
                     await asyncio.sleep(1)
 
@@ -538,15 +577,41 @@ Options:
                             # print(f"cont_r: {gg}")
 
                             if gg is not None and len(gg) >= 4:
-                                w, x, y, z, trgr, grp, padClk, padY, padX, *_ = gg
+                                w, x, y, z, ax, ay, az, gx, gy, gz, *_ = gg
 
                                 my_q = Quaternion([-y, z, -x, w])
 
                                 my_q = Quaternion(my_off * irl_rot_off2 * my_q * irl_rot_off).normalised
-                                self.poses[1].r_w = round(my_q[3], 5)
-                                self.poses[1].r_x = round(my_q[0], 5)
-                                self.poses[1].r_y = round(my_q[1], 5)
-                                self.poses[1].r_z = round(my_q[2], 5)
+                                self.poses[1].r_w = my_q[3]
+                                self.poses[1].r_x = my_q[0]
+                                self.poses[1].r_y = my_q[1]
+                                self.poses[1].r_z = my_q[2]
+
+                                mm = pyrr.matrix33.create_from_quaternion(my_off * irl_rot_off2 * irl_rot_off)
+                                aa = np.array([ay, az, ax])
+                                ge = np.array([gy, gz, gx])
+                                aa = mm.dot(aa)
+                                ge = mm.dot(ge) / 250 * np.pi
+
+                                self.cont_l_acc_tresh = np.linalg.norm(aa-aa_last2)
+                                if self.cont_l_acc_tresh > 0.045:
+                                    vel += aa/100
+
+                                if h%80 == 0:
+                                    vel = np.zeros((3,))
+                                    h = 1
+
+                                aa_last2 = aa_last
+                                aa_last = aa
+
+                                self.poses[1].vel_x = vel[0]
+                                self.poses[1].vel_y = vel[1]
+                                self.poses[1].vel_z = vel[2]
+                                self.poses[1].ang_vel_x = ge[0]
+                                self.poses[1].ang_vel_y = ge[1]
+                                self.poses[1].ang_vel_z = ge[2]
+
+                                h+=1
 
                                 # self.temp_pose.trigger_value = trgr
                                 # self.temp_pose.grip = grp
@@ -649,6 +714,39 @@ Options:
 
         self.coro_keep_alive["serial_listener"].is_alive = False
 
+
+    # @templates.PoserTemplate.register_member_thread(1 / 100)
+    # async def nut(self):
+    #     my_qq = np.array([1, 0, 0, 0], dtype=np.float64)
+    #     my_off = Quaternion()
+    #     my_off2 = Quaternion.from_x_rotation(np.pi/2)
+
+    #     mig = ahrs.filters.Madgwick(frequency=100.0)
+    #     gg = []
+    #     while self.coro_keep_alive['nut'].is_alive:
+    #         try:
+    #             if self.last_read:
+    #                 gg = u.get_numbers_from_text(self.last_read.decode().strip('\r'), ',')
+    #                 self.last_read = b''
+
+    #             if len(gg) == 6 and len(self.poses) > 3:
+    #                 my_qq = mig.updateIMU(my_qq, gg[:3], gg[3:])
+    #                 # print (my_qq)
+    #                 temp = Quaternion(my_off*Quaternion([*my_qq[1:], my_qq[0]])*my_off2).normalised
+    #                 self.poses[3].r_w = temp[3]
+    #                 self.poses[3].r_x = temp[0]
+    #                 self.poses[3].r_z = -temp[1]
+    #                 self.poses[3].r_y = temp[2]
+
+    #                 if self._serialResetYaw:
+    #                     my_off = Quaternion([0, temp[2], 0, temp[3]]).inverse.normalised
+    #                     mig = ahrs.filters.Madgwick(frequency=100.0)
+
+    #         except Exception as e:
+    #             print (f'nut: dead, reason: {e}')
+    #             # break
+
+    #         await asyncio.sleep(self.coro_keep_alive['nut'].sleep_delay)
 
 def run_poser_only(addr="127.0.0.1", cam=4, colordata=None, serz=[]):
     """Run the poser only. The server must be started in another program."""

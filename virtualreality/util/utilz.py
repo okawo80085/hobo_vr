@@ -77,7 +77,7 @@ async def read3(reader: StreamReader, read_len: int = 20) -> str:
     return data
 
 
-def rotate(points, angls):
+def make_rotmat(angls, dtype=np.float64):
     """
     Rotate a set of points around the x, y, then z axes.
 
@@ -90,7 +90,7 @@ def rotate(points, angls):
             [0, np.cos(angls[0]), -np.sin(angls[0])],
             [0, np.sin(angls[0]), np.cos(angls[0])],
         ],
-        dtype=np.float64,
+        dtype=dtype,
     )
 
     roty = np.array(
@@ -99,7 +99,7 @@ def rotate(points, angls):
             [0, 1, 0],
             [-np.sin(angls[1]), 0, np.cos(angls[1])],
         ],
-        dtype=np.float64,
+        dtype=dtype,
     )
 
     rotz = np.array(
@@ -108,16 +108,10 @@ def rotate(points, angls):
             [np.sin(angls[2]), np.cos(angls[2]), 0],
             [0, 0, 1],
         ],
-        dtype=np.float64,
+        dtype=dtype,
     )
 
-    rot = np.matmul(np.matmul(rotx, roty), rotz)
-
-    for i, p in enumerate(points):
-        points[i] = np.around(np.sum(rot * p, axis=1), decimals=6)
-
-    return points
-
+    return np.matmul(np.matmul(rotx, roty), rotz)
 
 def translate(points, offsets: Sequence[float]) -> None:
     """
@@ -229,6 +223,8 @@ class LazyKalman:
             initial_state_mean=init_state,
         )
 
+        self.do_learning = True
+
         self._calibration_countdown = 0
         self._calibration_observations = []
         self._em_iter = n_iter
@@ -242,15 +238,21 @@ class LazyKalman:
         """Apply the Kalman filter against the observation obz."""
         # Todo: automatically start a calibration routine if everything is at rest for long enough,
         #  or if the user leaves, or if there is enough error. Also, add some UI calibrate button, save, and load.
-        obz = np.array(obz)
 
-        assert obz.shape == self._expected_shape, "shape miss match"
-
-        self._x_now, self._p_now = self._filter.filter_update(
-            filtered_state_mean=self._x_now,
-            filtered_state_covariance=self._p_now,
-            observation=obz,
-        )
+        if self.do_learning:
+            self._x_now, self._p_now = self._filter.filter_update(
+                filtered_state_mean=self._x_now,
+                filtered_state_covariance=self._p_now,
+                observation=obz,
+            )
+        else:
+            # print(obz.shape)
+            # self._x_now, self._p_now = self._filter.filter([obz,])
+            self._x_now, _ = self._filter.filter_update(
+                filtered_state_mean=self._x_now,
+                filtered_state_covariance=self._p_now,
+                observation=obz,
+            )
 
         if self._calibration_countdown:
             self._calibration_observations.append(obz)
@@ -435,20 +437,22 @@ class BlobTracker(threading.Thread):
         self.last_frame = None
         self.time_of_last_frame = -1
 
-        self.markerMasks = np.array(
-            [[i.hue_center, i.hue_range, i.sat_center, i.sat_range, i.val_center, i.val_range] for i in
-             self.color_masks],
-            dtype=np.float32)
-        self.poses = np.zeros((self.markerMasks.shape[0], 3))
-        self.blobs = []
+        frame, self.can_track = self._try_get_frame()
 
-        self.kalmanFilterz = []
-        self.kalmanFilterz2 = []
+        if not self.can_track:
+            # self._vs.release()
+            self._vs.end()
+            self._vs = None
+            raise RuntimeError("invalid video source")
 
-        for i in range(self.markerMasks.shape[0]):
-            self.blobs.append(None)
-            self.kalmanFilterz.append([False, None])
-            self.kalmanFilterz2.append([False, None])
+        self.frame_height, self.frame_width, _ = frame.shape
+        self.markerMasks = np.array([[i.hue_center, i.hue_range, i.sat_center, i.sat_range, i.val_center, i.val_range] for i in color_masks], dtype=np.float64)
+
+        self.poses = np.zeros((self.markerMasks.shape[0], 3), dtype=np.float64)
+        self.blobs = [None for _ in range(self.markerMasks.shape[0])]
+
+        self.kalmanFilterz = [None for _ in range(self.markerMasks.shape[0])]
+        self.kalmanFilterz2 = [None for _ in range(self.markerMasks.shape[0])]
 
         # -------------------threading related------------------------
 
@@ -469,6 +473,13 @@ class BlobTracker(threading.Thread):
             raise RuntimeError("invalid video source")
 
         self.frame_height, self.frame_width, _ = frame.shape
+
+    def set_kalman_learning(self, do_learning):
+        for i in range(self.markerMasks.shape[0]):
+            if self.kalmanFilterz[i] is not None:
+                self.kalmanFilterz[i].do_learning = do_learning
+            if self.kalmanFilterz2[i] is not None:
+                self.kalmanFilterz2[i].do_learning = do_learning
 
     def _try_get_frame(self):
         self._vs.update()
@@ -536,7 +547,7 @@ class BlobTracker(threading.Thread):
                                        self.markerMasks[key][::2] + self.markerMasks[key][1::2])
 
                     temp = cv2.findContours(
-                        mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+                        mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_KCOS
                     )
 
                     if len(temp) == 3:
@@ -555,20 +566,20 @@ class BlobTracker(threading.Thread):
         """Solve for and set the poses of all blobs visible by the camera."""
         for key, blob in enumerate(self.blobs):
             if blob is not None:
-                elip = cv2.fitEllipse(blob)
+                elip = cv2.fitEllipseDirect(blob)
 
                 x, y = elip[0]
                 w, h = elip[1]
+                w = (w+h)/2
                 # x, y, w = cnt_2_x_y_w(blob)
 
-                if not self.kalmanFilterz2[key][0]:
-                    self.kalmanFilterz2[key][1] = LazyKalman(
-                        [x, y, w], np.eye(3), np.eye(3)
-                    )
-                    self.kalmanFilterz2[key][0] = True
+                # if self.kalmanFilterz2[key] is None:
+                #     self.kalmanFilterz2[key] = LazyKalman(
+                #         [x, y, w], np.eye(3), np.eye(3)
+                #     )
 
-                else:
-                    x, y, w = self.kalmanFilterz2[key][1].apply([x, y, w])
+                # else:
+                #     x, y, w = self.kalmanFilterz2[key].apply(np.array([x, y, w]))
 
                 f_px = self.camera_focal_length
                 x_px = x
@@ -578,7 +589,7 @@ class BlobTracker(threading.Thread):
                 x_px -= self.frame_width / 2
                 y_px = self.frame_height / 2 - y_px
 
-                l_px = np.sqrt(x_px ** 2 + y_px ** 2)
+                l_px = np.linalg.norm([x_px, y_px])
 
                 k = l_px / f_px
 
@@ -586,29 +597,28 @@ class BlobTracker(threading.Thread):
 
                 l = (j - k) / (1 + j * k)
 
-                d_cm = self.BALL_RADIUS_CM * np.sqrt(1 + l ** 2) / l
+                d_cm = self.BALL_RADIUS_CM * np.sqrt(1 + l ** 2, dtype=np.clongdouble) / l
 
-                fl = f_px / l_px
+                fl = np.divide(f_px, l_px, dtype=np.clongdouble)
 
-                z_cm = d_cm * fl / np.sqrt(1 + fl ** 2)
+                z_cm = d_cm * fl / np.sqrt(1 + fl ** 2, dtype=np.clongdouble)
 
                 l_cm = z_cm * k
 
                 x_cm = l_cm * x_px / l_px
                 y_cm = l_cm * y_px / l_px
 
-                self.poses[key] = np.array((x_cm / 100, y_cm / 100, z_cm / 100))
+                self.poses[key] = np.array((x_cm / 100, y_cm / 100, z_cm / 100), dtype=np.clongdouble)
 
                 # self._translate()
 
                 if not has_nan_in_pose(self.poses[key]):
-                    if not self.kalmanFilterz[key][0]:
-                        self.kalmanFilterz[key][1] = LazyKalman(
+                    if self.kalmanFilterz[key] is None:
+                        self.kalmanFilterz[key] = LazyKalman(
                             self.poses[key], np.eye(3), np.eye(3)
                         )
-                        self.kalmanFilterz[key][0] = True
                     else:
-                        self.poses[key] = self.kalmanFilterz[key][1].apply(
+                        self.poses[key] = self.kalmanFilterz[key].apply(
                             self.poses[key]
                         )
 
