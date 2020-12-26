@@ -357,7 +357,14 @@ public:
 };
 
 //-----------------------------------------------------------------------------
-// Purpose: settings manager using a tracking reference
+// Purpose: settings manager using a tracking reference, this thing is pretty much useless right now
+// it's meant to be a settings and other utility communication and management tool
+// for that purose it will have a it's own server connection and poser protocol
+// for now tho it will just stay as a tracking reference
+// also a device that will always be present with hobo_vr devices from now on
+// it will also allow live device management in the future
+// 
+// think of it as a settings manager made to look like a tracking reference
 //-----------------------------------------------------------------------------
 
 class HobovrTrackingRef_SettManager: public vr::ITrackedDeviceServerDriver {
@@ -367,6 +374,7 @@ public:
     m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
 
     m_sModelNumber = "tracking_reference_" + m_sSerialNumber;
+    m_sRenderModelPath = "{hobovr}/rendermodels/hobovr_tracking_reference";
 
     DriverLog("device: settings manager tracking reference created\n");
 
@@ -376,10 +384,10 @@ public:
     m_Pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
     m_Pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
     m_Pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    m_Pose.vecPosition[0] = 0.;
-    m_Pose.vecPosition[1] = 0.;
-    m_Pose.vecPosition[2] = 0.;
-    m_Pose.willDriftInYaw = true;
+    m_Pose.vecPosition[0] = 0.01;
+    m_Pose.vecPosition[1] = 0;
+    m_Pose.vecPosition[2] = 0;
+    m_Pose.willDriftInYaw = false;
     m_Pose.deviceIsConnected = true;
     m_Pose.poseIsValid = true;
     m_Pose.shouldApplyHeadModel = false;
@@ -399,30 +407,61 @@ public:
 
     DriverLog("device: tracking reference activated\n");
     DriverLog("device: serial: %s\n", m_sSerialNumber.c_str());
-    DriverLog("device: render model: \"%s\"\n", m_sRenderModelPath.c_str());
+    DriverLog("device: model: %s\n", m_sModelNumber.c_str());
+    DriverLog("device: render model path: \"%s\"\n", m_sRenderModelPath.c_str());
 
     // return a constant that's not 0 (invalid) or 1 (reserved for Oculus)
     vr::VRProperties()->SetUint64Property(m_ulPropertyContainer,
                                           Prop_CurrentUniverseId_Uint64, 2);
 
+    vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer,
+       Prop_FieldOfViewLeftDegrees_Float,
+       180);
+
+    vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer,
+       Prop_FieldOfViewRightDegrees_Float,
+       180);
+
+    vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer,
+       Prop_FieldOfViewTopDegrees_Float,
+       180);
+
+    vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer,
+       Prop_FieldOfViewBottomDegrees_Float,
+       180);
+
+    vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer,
+       Prop_TrackingRangeMinimumMeters_Float,
+       0);
+
+    vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer,
+       Prop_TrackingRangeMaximumMeters_Float,
+       10);
+
+    vr::VRProperties()->SetStringProperty(
+      m_ulPropertyContainer, Prop_ModeLabel_String, m_sModelNumber.c_str());
+
+    vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
+      Prop_CanWirelessIdentify_Bool, false);
+
     return VRInitError_None;
   }
 
   virtual void Deactivate() {
-      DriverLog("device: \"%s\" deactivated\n", m_sSerialNumber.c_str());
-      // "signal" device disconnected
-      m_Pose.poseIsValid = false;
-      m_Pose.deviceIsConnected = false;
-      if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
-        vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
-            m_unObjectId, m_Pose, sizeof(DriverPose_t));
-      }
-      m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
+    DriverLog("device: \"%s\" deactivated\n", m_sSerialNumber.c_str());
+    // "signal" device disconnected
+    m_Pose.poseIsValid = false;
+    m_Pose.deviceIsConnected = false;
+    if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
+      vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
+          m_unObjectId, m_Pose, sizeof(DriverPose_t));
     }
+    m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
+  }
 
   virtual void EnterStandby() {}
 
-  void *GetComponent(const char *pchComponentNameAndVersion) {return NULL;}
+  void *GetComponent(const char *pchComponentNameAndVersion) {DriverLog("tracking reference: got a request for \"%s\" component, request ignored\n", pchComponentNameAndVersion); return NULL;}
 
   virtual void DebugRequest(const char *pchRequest, char *pchResponseBuffer,
                             uint32_t unResponseBufferSize) {
@@ -433,6 +472,13 @@ public:
 
   virtual vr::DriverPose_t GetPose() {return m_Pose;}
   std::string GetSerialNumber() const { return m_sSerialNumber;}
+  void UpdatePose() {
+    DriverLog("tracking reference: pose updated");
+    if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
+      vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
+          m_unObjectId, m_Pose, sizeof(DriverPose_t));
+    }
+  }
 
 private:
   // openvr api stuff
@@ -476,6 +522,7 @@ private:
   std::vector<hobovr::HobovrDeviceElement*> m_vDevices;
 
   std::shared_ptr<SockReceiver::DriverReceiver> m_pSocketComm;
+  std::shared_ptr<HobovrTrackingRef_SettManager> m_pSettManTref;
 
   int m_iCallBack_packet_size;
 
@@ -500,8 +547,9 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
                               k_pch_Hobovr_UduDeviceManifestList_String, buf,
                               sizeof(buf));
   uduThing = buf;
-  DriverLog("driver: device manifest list: '%s'\n", uduThing.c_str());
+  DriverLog("driver: udu settings: '%s'\n", uduThing.c_str());
 
+  // udu setting parse is done by SockReceiver
   try{
     m_pSocketComm = std::make_shared<SockReceiver::DriverReceiver>(uduThing);
     m_iCallBack_packet_size = m_pSocketComm->m_iBuffSize;
@@ -518,6 +566,7 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
   int counter_trkr = 0;
   int controller_hs = 1;
 
+  // add new devices based on the udu parse 
   for (std::string i:m_pSocketComm->device_list) {
     if (i == "h") {
       HeadsetDriver* temp = new HeadsetDriver("h" + std::to_string(counter_hmd));
@@ -556,14 +605,23 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
     }
   }
 
+  // start listening for device data
   m_pSocketComm->setCallback(this);
 
+  // misc slow update thread
   m_bSlowUpdateThreadIsAlive = true;
   m_ptSlowUpdateThread = new std::thread(this->SlowUpdateThreadEnter, this);
   if (!m_bSlowUpdateThreadIsAlive) {
     DriverLog("driver: slow update thread broke on start\n");
     return VRInitError_IPC_Failed;
   }
+
+  // settings manager
+  m_pSettManTref = std::make_shared<HobovrTrackingRef_SettManager>("trsm0");
+  vr::VRServerDriverHost()->TrackedDeviceAdded(
+      m_pSettManTref->GetSerialNumber().c_str(), vr::TrackedDeviceClass_TrackingReference,
+      m_pSettManTref.get());
+  m_pSettManTref->UpdatePose();
 
   return VRInitError_None;
 }
@@ -624,11 +682,8 @@ void CServerDriver_hobovr::SlowUpdateThread() {
     std::this_thread::sleep_for(std::chrono::seconds(10));
 
     if (!h) {
-      m_vDevices[1]->PowerOff();
+      m_pSettManTref->UpdatePose();
       h = 1;
-    } else {
-      m_vDevices[1]->PowerOn();
-      h = 0;
     }
   }
   DriverLog("driver: slow update thread closed\n");

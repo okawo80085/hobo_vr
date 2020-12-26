@@ -136,10 +136,13 @@ namespace hobovr {
           m_ulPropertyContainer, Prop_InputProfilePath_String,
           m_sBindPath.c_str());
 
+      vr::VRProperties()->SetBoolProperty(
+          m_ulPropertyContainer, vr::Prop_DeviceCanPowerOff_Bool, true);
+
       DriverLog("device: activated\n");
       DriverLog("device: serial: %s\n", m_sSerialNumber.c_str());
-      DriverLog("device: render model: \"%s\"\n", m_sRenderModelPath.c_str());
-      DriverLog("device: input binding: \"%s\"\n", m_sBindPath.c_str());
+      DriverLog("device: render model path: \"%s\"\n", m_sRenderModelPath.c_str());
+      DriverLog("device: input binding path: \"%s\"\n", m_sBindPath.c_str());
 
       if constexpr(UseHaptics) {
         DriverLog("device: haptics added\n");
@@ -209,7 +212,7 @@ namespace hobovr {
 
     virtual void EnterStandby() {}
 
-    /** debug request from a client, TODO: uh... actually implement this? */
+    /* debug request from a client, TODO: uh... actually implement this? */
     virtual void DebugRequest(const char *pchRequest, char *pchResponseBuffer,
                               uint32_t unResponseBufferSize) {
       DriverLog("device: \"%s\" got a debug request: \"%s\"", m_sSerialNumber.c_str(), pchRequest);
