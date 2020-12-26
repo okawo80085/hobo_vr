@@ -374,7 +374,7 @@ public:
     m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
 
     m_sModelNumber = "tracking_reference_" + m_sSerialNumber;
-    m_sRenderModelPath = "{hobovr}/rendermodels/hobovr_tracking_reference";
+    // m_sRenderModelPath = "{hobovr}/rendermodels/hobovr_tracking_reference";
 
     DriverLog("device: settings manager tracking reference created\n");
 
@@ -473,8 +473,8 @@ public:
   virtual vr::DriverPose_t GetPose() {return m_Pose;}
   std::string GetSerialNumber() const { return m_sSerialNumber;}
   void UpdatePose() {
-    DriverLog("tracking reference: pose updated");
     if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
+      DriverLog("tracking reference: pose updated");
       vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
           m_unObjectId, m_Pose, sizeof(DriverPose_t));
     }
@@ -679,7 +679,7 @@ void CServerDriver_hobovr::SlowUpdateThread() {
       i->CheckForUpdates();
     }
 
-    std::this_thread::sleep_for(std::chrono::seconds(10));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
 
     if (!h) {
       m_pSettManTref->UpdatePose();
