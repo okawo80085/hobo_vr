@@ -47,9 +47,9 @@ using namespace vr;
 namespace hobovr {
   // le version
   static const uint32_t k_nHobovrVersionMajor = 0;
-  static const uint32_t k_nHobovrVersionMinor = 5;
-  static const uint32_t k_nHobovrVersionBuild = 6;
-  static const std::string k_sHobovrVersionGG = "phantom pain";
+  static const uint32_t k_nHobovrVersionMinor = 6;
+  static const uint32_t k_nHobovrVersionBuild = 0;
+  static const std::string k_sHobovrVersionGG = "the hidden world";
 
 } // namespace hobovr
 
@@ -357,6 +357,99 @@ public:
 };
 
 //-----------------------------------------------------------------------------
+// Purpose: settings manager using a tracking reference
+//-----------------------------------------------------------------------------
+
+class HobovrTrackingRef_SettManager: public vr::ITrackedDeviceServerDriver {
+public:
+  HobovrTrackingRef_SettManager(std::string myserial): m_sSerialNumber(myserial) {
+    m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
+    m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
+
+    m_sModelNumber = "tracking_reference_" + m_sSerialNumber;
+
+    DriverLog("device: settings manager tracking reference created\n");
+
+
+    m_Pose.result = TrackingResult_Running_OK;
+    m_Pose.poseTimeOffset = 0;
+    m_Pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
+    m_Pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
+    m_Pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
+    m_Pose.vecPosition[0] = 0.;
+    m_Pose.vecPosition[1] = 0.;
+    m_Pose.vecPosition[2] = 0.;
+    m_Pose.willDriftInYaw = true;
+    m_Pose.deviceIsConnected = true;
+    m_Pose.poseIsValid = true;
+    m_Pose.shouldApplyHeadModel = false;
+
+
+  }
+
+  virtual vr::EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId) {
+    m_unObjectId = unObjectId;
+    m_ulPropertyContainer =
+        vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
+
+    vr::VRProperties()->SetStringProperty(
+        m_ulPropertyContainer, Prop_ModelNumber_String, m_sModelNumber.c_str());
+    vr::VRProperties()->SetStringProperty(
+        m_ulPropertyContainer, Prop_RenderModelName_String, m_sRenderModelPath.c_str());
+
+    DriverLog("device: tracking reference activated\n");
+    DriverLog("device: serial: %s\n", m_sSerialNumber.c_str());
+    DriverLog("device: render model: \"%s\"\n", m_sRenderModelPath.c_str());
+
+    // return a constant that's not 0 (invalid) or 1 (reserved for Oculus)
+    vr::VRProperties()->SetUint64Property(m_ulPropertyContainer,
+                                          Prop_CurrentUniverseId_Uint64, 2);
+
+    return VRInitError_None;
+  }
+
+  virtual void Deactivate() {
+      DriverLog("device: \"%s\" deactivated\n", m_sSerialNumber.c_str());
+      // "signal" device disconnected
+      m_Pose.poseIsValid = false;
+      m_Pose.deviceIsConnected = false;
+      if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
+        vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
+            m_unObjectId, m_Pose, sizeof(DriverPose_t));
+      }
+      m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
+    }
+
+  virtual void EnterStandby() {}
+
+  void *GetComponent(const char *pchComponentNameAndVersion) {return NULL;}
+
+  virtual void DebugRequest(const char *pchRequest, char *pchResponseBuffer,
+                            uint32_t unResponseBufferSize) {
+    DriverLog("device: \"%s\" got a debug request: \"%s\"", m_sSerialNumber.c_str(), pchRequest);
+    if (unResponseBufferSize >= 1)
+      pchResponseBuffer[0] = 0;
+  }
+
+  virtual vr::DriverPose_t GetPose() {return m_Pose;}
+  std::string GetSerialNumber() const { return m_sSerialNumber;}
+
+private:
+  // openvr api stuff
+  vr::TrackedDeviceIndex_t m_unObjectId; // DO NOT TOUCH THIS, parent will handle this, use it as read only!
+  vr::PropertyContainerHandle_t m_ulPropertyContainer; // THIS EITHER, use it as read only!
+
+  std::string m_sRenderModelPath; // path to the device's render model, should be populated in the constructor of the derived class
+
+  vr::DriverPose_t m_Pose; // device's pose, use this at runtime
+
+  std::string m_sSerialNumber; // steamvr uses this to identify devices, no need for you to touch this after init
+  std::string m_sModelNumber; // steamvr uses this to identify devices, no need for you to touch this after init
+
+};
+
+
+//-----------------------------------------------------------------------------
 // Purpose: serverDriver
 //-----------------------------------------------------------------------------
 
@@ -521,13 +614,22 @@ void CServerDriver_hobovr::RunFrame() {
 
 void CServerDriver_hobovr::SlowUpdateThread() {
   DriverLog("driver: slow update thread started\n");
+  int h = 0;
   while (m_bSlowUpdateThreadIsAlive){
     for (auto &i : m_vDevices){
       i->UpdateDeviceBatteryCharge();
       i->CheckForUpdates();
     }
 
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    std::this_thread::sleep_for(std::chrono::seconds(10));
+
+    if (!h) {
+      m_vDevices[1]->PowerOff();
+      h = 1;
+    } else {
+      m_vDevices[1]->PowerOn();
+      h = 0;
+    }
   }
   DriverLog("driver: slow update thread closed\n");
   m_bSlowUpdateThreadIsAlive = false;

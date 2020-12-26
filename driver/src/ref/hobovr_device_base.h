@@ -65,6 +65,8 @@ namespace hobovr {
     virtual std::string GetSerialNumber() const {return "";};
     virtual void UpdateDeviceBatteryCharge() {};
     virtual void CheckForUpdates() {};
+    virtual void PowerOff() {};
+    virtual void PowerOn() {};
 
     virtual void RunFrame(std::vector<float> &trackingPacket) {} // override this
   };
@@ -144,6 +146,8 @@ namespace hobovr {
         vr::VRDriverInput()->CreateHapticComponent(m_ulPropertyContainer,
                                                        "/output/haptic", &m_compHaptic);
       }
+      vr::VRProperties()->SetBoolProperty(
+          m_ulPropertyContainer, vr::Prop_Identifiable_Bool, UseHaptics);
 
 
       vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
@@ -157,9 +161,6 @@ namespace hobovr {
                                          m_fDeviceCharge);
         DriverLog("device: has battery, current charge: %.3f", m_fDeviceCharge*100);
       }
-
-      vr::VRProperties()->SetBoolProperty(
-          m_ulPropertyContainer, vr::Prop_Identifiable_Bool, UseHaptics);
 
       vr::VRProperties()->SetStringProperty(
         m_ulPropertyContainer, Prop_Firmware_ManualUpdateURL_String,
@@ -175,18 +176,38 @@ namespace hobovr {
       vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
                                           Prop_Firmware_ManualUpdate_Bool, shouldUpdate);
 
-
       return VRInitError_None;
+    }
+
+    virtual void PowerOff() {
+      // signal device is "aliven't"
+      m_Pose.poseIsValid = false;
+      m_Pose.deviceIsConnected = false;
+      if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
+        vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
+            m_unObjectId, m_Pose, sizeof(DriverPose_t));
+      }
+      DriverLog("device: '%s' disconnected", m_sSerialNumber.c_str());
+    }
+
+    virtual void PowerOn() {
+      // signal device is "alive"
+      m_Pose.poseIsValid = true;
+      m_Pose.deviceIsConnected = true;
+      if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
+        vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
+            m_unObjectId, m_Pose, sizeof(DriverPose_t));
+      }
+      DriverLog("device: '%s' connected", m_sSerialNumber.c_str());
     }
 
     virtual void Deactivate() {
       DriverLog("device: \"%s\" deactivated\n", m_sSerialNumber.c_str());
+      PowerOff();
       m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
     }
 
     virtual void EnterStandby() {}
-
-    virtual void PowerOff() {}
 
     /** debug request from a client, TODO: uh... actually implement this? */
     virtual void DebugRequest(const char *pchRequest, char *pchResponseBuffer,
