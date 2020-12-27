@@ -87,8 +87,7 @@ class UduPoserTemplate(PoserTemplateBase):
         """Send all poses thread."""
         while self.coro_keep_alive["send"].is_alive:
             try:
-                msg = b"".join([struct.pack('f'*len(i), *i.get_vals()) for i in self.poses]) + self._terminator
-
+                msg = b"".join([struct.pack(f"{len(i)}f", *i.get_vals()) for i in self.poses]) + self._terminator
                 self.writer.write(msg)
                 await self.writer.drain()
                 #print('written and drained')

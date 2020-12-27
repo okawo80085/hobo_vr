@@ -10,6 +10,8 @@
 #include <winsock2.h>
 
 #pragma comment(lib, "Ws2_32.lib")
+#pragma comment (lib, "Mswsock.lib")
+#pragma comment (lib, "AdvApi32.lib")
 
 #include "util.h"
 
@@ -27,12 +29,14 @@
 #include <stdio.h>
 
 namespace SockReceiver {
+  static bool g_bDriverReceiver_wsastartup_happen = false;
 
   class DriverReceiver {
   public:
     std::vector<std::string> device_list;
     std::vector<int> eps;
     int m_iBuffSize;
+    std::string m_sIdMessage = "hello\n";
 
     DriverReceiver(std::string expected_pose_struct, int port=6969) {
       std::regex rgx("[htc]");
@@ -43,16 +47,19 @@ namespace SockReceiver {
       this->threadKeepAlive = false;
       m_iBuffSize = std::accumulate(this->eps.begin(), this->eps.end(), 0);
 
-      // init winsock
-      WSADATA wsaData;
-      int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
-      if (iResult != NO_ERROR) {
-        // log init error
-        // printf("init error: %d\n", iResult);
-#ifdef DRIVERLOG_H
-        DriverLog("receiver init error: %d\n", WSAGetLastError());
-#endif
-        throw std::runtime_error("failed to init winsock");
+      if (!g_bDriverReceiver_wsastartup_happen) {
+        // init winsock
+        WSADATA wsaData;
+        int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+        if (iResult != NO_ERROR) {
+          // log init error
+          // printf("init error: %d\n", iResult);
+  #ifdef DRIVERLOG_H
+          DriverLog("receiver init error: %d\n", WSAGetLastError());
+  #endif
+          throw std::runtime_error("failed to init winsock");
+        }
+        g_bDriverReceiver_wsastartup_happen = true;
       }
 
       // create socket
@@ -75,15 +82,15 @@ namespace SockReceiver {
       addrDetails.sin_port = htons(port);
 
       // connect socket
-      iResult = connect(this->mySoc, (SOCKADDR *) & addrDetails, sizeof (addrDetails));
-      if (iResult == SOCKET_ERROR) {
+      int iResult2 = connect(this->mySoc, (SOCKADDR *) & addrDetails, sizeof (addrDetails));
+      if (iResult2 == SOCKET_ERROR) {
         // log connect error
         // printf("cennect error: %d\n", iResult);
 #ifdef DRIVERLOG_H
         DriverLog("receiver connect error: %d\n", WSAGetLastError());
 #endif
-        iResult = closesocket(this->mySoc);
-        if (iResult == SOCKET_ERROR)
+        int iResult3 = closesocket(this->mySoc);
+        if (iResult3 == SOCKET_ERROR)
           // log closesocket error
           // printf("closesocket error: %d\n", iResult);
 #ifdef DRIVERLOG_H
@@ -92,6 +99,7 @@ namespace SockReceiver {
         WSACleanup();
         throw std::runtime_error("failed to connect");
       }
+
     }
 
     ~DriverReceiver() {
@@ -100,7 +108,7 @@ namespace SockReceiver {
 
     void start() {
       this->threadKeepAlive = true;
-      this->send2("hello\n");
+      this->send2(m_sIdMessage.c_str());
 
       this->m_pMyTread = new std::thread(this->my_thread_enter, this);
 

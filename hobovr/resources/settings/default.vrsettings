@@ -3,7 +3,7 @@
       "enable" : true,
       "PoseTimeOffset" : 0.035,
       "ManualUpdateURL" : "https://gist.github.com/okawo80085/dd327eda3b87c8df353cf783b17e1c82",
-      "DeviceManifestList" : "h13 c22 c22"
+      "uduSettings" : "h13 c22 c22"
    },
    "hobovr_device_hmd": {
       "IPD" : 0.063,

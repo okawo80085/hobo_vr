@@ -17,8 +17,28 @@ from virtualreality import templates
 
 
 class MyPoser(templates.PoserTemplate):
+    _CLI_SETTS = '''hobo_vr poser
+
+Usage: poser [-h | --help] [options]
+
+Options:
+    -h, --help              shows this message
+    -q, --quit              exits the poser
+    -t, --test <pair>       test
+'''
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # self.coro_keep_alive['send'].is_alive = False
+        # self.coro_keep_alive['send'].sleep_delay = 1
+
+    async def _cli_arg_map(self, pair):
+        if pair[0] == "--test":
+            print (repr(pair[1]))
+            a, b = pair[1].split(',')
+            a, b = int(a), int(b)
+            data = templates.settManager_Message_t.pack(a, b, *list(range(128)))
+            resp = await self._send_manager(data)
+            print (resp)
 
     @templates.PoserTemplate.register_member_thread(1 / 100)
     async def example_thread1(self):

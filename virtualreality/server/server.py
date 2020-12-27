@@ -15,6 +15,7 @@ class Server:
         self.conz = []
         self.driver_conz = []
         self.poser_conz = []
+        self.manager_conz = []
         self.debug = False
 
         self._driver_idz = [
@@ -22,6 +23,9 @@ class Server:
         ]
         self._poser_idz = [
             b"holla",
+        ]
+        self._manager_idz = [
+            b"monky"
         ]
         self._terminator = b"\n"
         self._close_msg = b"CLOSE\n"
@@ -62,6 +66,17 @@ class Server:
         except Exception as e:
             print(f"message from {me[0]} driver lost: {e}")
 
+    async def send_to_all_manager(self, msg, me):
+        """send a message to all registered connections that are not self"""
+        try:
+            for i in self.manager_conz:
+                if i != me:
+                    i[1].write(msg)
+                    await i[1].drain()
+
+        except Exception as e:
+            print(f"message from {me[0]} lost: {e}")
+
     async def __call__(self, reader, writer):
         """this is will run for each incoming connection"""
 
@@ -71,6 +86,7 @@ class Server:
 
         except Exception as e:
             print (f'pipe {addr} broke on id, reason: {e}')
+            return
 
         if self._terminator in first_msg:
             id_msg, first_msg = first_msg.split(self._terminator, 1)
@@ -94,6 +110,10 @@ class Server:
             whatAmI = 2
             self.poser_conz.append(me)
 
+        elif id_msg in self._manager_idz and me not in self.manager_conz:
+            whatAmI = 4
+            self.manager_conz.append(me)
+
         elif me not in self.conz:
             whatAmI = 3
             self.conz.append(me)
@@ -107,6 +127,9 @@ class Server:
 
         elif id_msg in self._poser_idz:
             print("its a poser")
+
+        elif id_msg in self._manager_idz:
+            print("its a manager")
 
         # main receive/transmit loop
         if whatAmI == 1:
@@ -161,6 +184,23 @@ class Server:
                     print(f"{addr} broke: {e}")
                     break
 
+        elif whatAmI == 4:
+            while 1:
+                try:
+                    data = await reader.read(self._read_size)
+
+                    if not data or self._close_msg in data:
+                        break
+
+                    await self.send_to_all_manager(data, me) # send to all managers
+
+                    if self.debug:
+                        print(f"{repr(data)} from {addr}")
+
+                except Exception as e:
+                    print(f"manager {addr} broke: {e}")
+                    break
+
         if me in self.conz:
             self.conz.remove(me)
 
@@ -169,6 +209,9 @@ class Server:
 
         if me in self.poser_conz:
             self.poser_conz.remove(me)
+
+        if me in self.manager_conz:
+            self.manager_conz.remove(me)
 
         try:
             writer.close()

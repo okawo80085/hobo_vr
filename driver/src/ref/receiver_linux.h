@@ -36,6 +36,7 @@ namespace SockReceiver {
     std::vector<std::string> device_list;
     std::vector<int> eps;
     int m_iBuffSize;
+    std::string m_sIdMessage = "hello\n";
 
     DriverReceiver(std::string expected_pose_struct, char *port="6969", char* addr="127.0.01") {
       std::regex rgx("[htc]");
@@ -99,7 +100,7 @@ namespace SockReceiver {
 
      void start() {
       this->threadKeepAlive = true;
-      this->send2("hello\n");
+      this->send2(m_sIdMessage.c_str());
 
       this->m_pMyTread = new std::thread(this->my_thread_enter, this);
 

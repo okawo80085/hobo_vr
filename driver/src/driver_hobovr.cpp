@@ -48,7 +48,7 @@ namespace hobovr {
   // le version
   static const uint32_t k_nHobovrVersionMajor = 0;
   static const uint32_t k_nHobovrVersionMinor = 6;
-  static const uint32_t k_nHobovrVersionBuild = 0;
+  static const uint32_t k_nHobovrVersionBuild = 1;
   static const std::string k_sHobovrVersionGG = "the hidden world";
 
 } // namespace hobovr
@@ -66,7 +66,7 @@ inline HmdQuaternion_t HmdQuaternion_Init(double w, double x, double y,
 // keys for use with the settings API
 // driver keys
 static const char *const k_pch_Hobovr_Section = "driver_hobovr";
-static const char *const k_pch_Hobovr_UduDeviceManifestList_String = "DeviceManifestList";
+static const char *const k_pch_Hobovr_UduDeviceManifestList_String = "uduSettings";
 
 // hmd device keys
 static const char *const k_pch_Hmd_Section = "hobovr_device_hmd";
@@ -367,14 +367,16 @@ public:
 // think of it as a settings manager made to look like a tracking reference
 //-----------------------------------------------------------------------------
 
-class HobovrTrackingRef_SettManager: public vr::ITrackedDeviceServerDriver {
+class HobovrTrackingRef_SettManager: public vr::ITrackedDeviceServerDriver, public SockReceiver::Callback {
+private:
+  std::shared_ptr<SockReceiver::DriverReceiver> m_pSocketComm;
 public:
   HobovrTrackingRef_SettManager(std::string myserial): m_sSerialNumber(myserial) {
     m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
     m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
 
     m_sModelNumber = "tracking_reference_" + m_sSerialNumber;
-    // m_sRenderModelPath = "{hobovr}/rendermodels/hobovr_tracking_reference";
+    m_sRenderModelPath = "{hobovr}/rendermodels/hobovr_tracking_reference";
 
     DriverLog("device: settings manager tracking reference created\n");
 
@@ -393,6 +395,26 @@ public:
     m_Pose.shouldApplyHeadModel = false;
 
 
+    // manager stuff
+    try {
+      m_pSocketComm = std::make_shared<SockReceiver::DriverReceiver>("h520");
+      m_pSocketComm->m_sIdMessage = "monky\n";
+      m_pSocketComm->start();
+    } catch (...) {
+      DriverLog("tracking reference: couldn't connect to the server");
+    }
+    m_pSocketComm->setCallback(this);
+
+  }
+
+  void OnPacket(char* buff, int len) {
+    // buff += '\0';
+    // DriverLog("%s, %d", buff, len);
+    if (len == 523) {
+      uint32_t* data = (uint32_t*)buff;
+      DriverLog("tracking reference: message %d %d %d %d", data[0], data[1], data[2], data[129]);
+      m_pSocketComm->send2("2000");
+    }
   }
 
   virtual vr::EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId) {

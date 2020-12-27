@@ -5,6 +5,7 @@ import warnings
 from aioconsole import ainput
 import shlex
 import docopt
+import struct
 
 try:
     from ..util import utilz as u
@@ -26,6 +27,7 @@ class KeepAliveTrigger:
         self.is_alive = is_alive
         self.sleep_delay = sleep_delay
 
+settManager_Message_t = struct.Struct("130I")
 
 class PoserTemplateBase(object):
     """
@@ -96,6 +98,7 @@ Options:
         }
         self.last_read = b""
         self.id_message = "holla"
+        self.manager_id_message = "monky"
         self._terminator = b"\t\r\n"
 
     async def _socket_init(self):
@@ -106,16 +109,29 @@ Options:
         It is not recommended you override this method
         """
         print(f'connecting to the server at "{self.addr}:{self.port}"...')
-        # connect to the server
+        # connect
         self.reader, self.writer = await asyncio.open_connection(
             self.addr, self.port, loop=asyncio.get_event_loop()
         )
-        # send poser id message
+        # send poser id
         self.writer.write(u.format_str_for_write(self.id_message))
+
+        # connect manager
+        self._manager_reader, self._manager_writer = await asyncio.open_connection(
+            self.addr, self.port, loop=asyncio.get_event_loop()
+        )
+        # send manager id
+        self._manager_writer.write(u.format_str_for_write(self.manager_id_message))
 
     async def send(self):
         """Send all poses thread, you need to implement this!"""
         raise NotImplementedError("please implement the send thread")
+
+    async def _send_manager(self, byte_msg):
+        self._manager_writer.write(byte_msg+self._terminator)
+        await self._manager_writer.drain()
+        resp = await self._manager_reader.read(4)
+        return resp
 
     async def recv(self):
         """Receive messages thread."""
@@ -150,9 +166,9 @@ Options:
         print (self._CLI_SETTS.strip())
 
         while self.coro_keep_alive["close"].is_alive:
-            ss = shlex.split(await ainput('> '))
-
             try:
+                ss = shlex.split(await ainput('> '))
+
                 ret = docopt.docopt(self._CLI_SETTS, ss)
                 if ret['--quit']:
                     break
