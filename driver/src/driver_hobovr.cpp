@@ -367,6 +367,16 @@ public:
 // think of it as a settings manager made to look like a tracking reference
 //-----------------------------------------------------------------------------
 
+enum HobovrTrackingRef_Msg_type
+{
+  Emsg_invalid = 0,
+  Emsg_ipd = 10,
+  Emsg_uduString = 20,
+  Emsg_poseTimeOffset = 30,
+  Emsg_distortion = 40,
+  Emsg_eyeGap = 50,
+};
+
 class HobovrTrackingRef_SettManager: public vr::ITrackedDeviceServerDriver, public SockReceiver::Callback {
 private:
   std::shared_ptr<SockReceiver::DriverReceiver> m_pSocketComm;
@@ -412,8 +422,21 @@ public:
     // DriverLog("%s, %d", buff, len);
     if (len == 523) {
       uint32_t* data = (uint32_t*)buff;
-      DriverLog("tracking reference: message %d %d %d %d", data[0], data[1], data[2], data[129]);
-      m_pSocketComm->send2("2000");
+      // DriverLog("tracking reference: message %d %d %d %d", data[0], data[1], data[2], data[129]);
+      switch(data[0]) {
+        case Emsg_ipd: {
+          float newIpd = (float)data[1]/1000;
+          DriverLog("tracking reference: ipd changed: %f", newIpd);
+          vr::VRSettings()->SetFloat(k_pch_Hmd_Section, k_pch_Hmd_IPD_Float, newIpd);
+          // vr::VRSettings()->SetFloat(vr::k_pch_SteamVR_Section, k_pch_SteamVR_IPD_Float, newIpd);
+          m_pSocketComm->send2("2000");
+          break;
+        }
+
+        default:
+          DriverLog("tracking reference: message not recognized");
+          m_pSocketComm->send2("-100");
+      }
     }
   }
 

@@ -25,6 +25,7 @@ Options:
     -h, --help              shows this message
     -q, --quit              exits the poser
     -t, --test <pair>       test
+    -e, --ipd <millim>      ipd in millimeters, int
 '''
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -33,10 +34,16 @@ Options:
 
     async def _cli_arg_map(self, pair):
         if pair[0] == "--test":
-            print (repr(pair[1]))
             a, b = pair[1].split(',')
             a, b = int(a), int(b)
             data = templates.settManager_Message_t.pack(a, b, *list(range(128)))
+            resp = await self._send_manager(data)
+            print (resp)
+
+        elif pair[0] == "--ipd":
+            print(repr(pair[1]))
+            temp = int(pair[1])
+            data = templates.settManager_Message_t.pack(10, temp, *list(range(128)))
             resp = await self._send_manager(data)
             print (resp)
 
