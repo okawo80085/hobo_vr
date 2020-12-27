@@ -33,14 +33,15 @@ Options:
         # self.coro_keep_alive['send'].sleep_delay = 1
 
     async def _cli_arg_map(self, pair):
-        if pair[0] == "--test":
+        if pair[0] == "--test" and pair[1]:
+            print(repr(pair[1]))
             a, b = pair[1].split(',')
             a, b = int(a), int(b)
             data = templates.settManager_Message_t.pack(a, b, *list(range(128)))
             resp = await self._send_manager(data)
             print (resp)
 
-        elif pair[0] == "--ipd":
+        elif pair[0] == "--ipd" and pair[1]:
             print(repr(pair[1]))
             temp = int(pair[1])
             data = templates.settManager_Message_t.pack(10, temp, *list(range(128)))

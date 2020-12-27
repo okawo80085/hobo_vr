@@ -67,6 +67,7 @@ namespace hobovr {
     virtual void CheckForUpdates() {};
     virtual void PowerOff() {};
     virtual void PowerOn() {};
+    virtual void UpdateSectionSettings() {};
 
     virtual void RunFrame(std::vector<float> &trackingPacket) {} // override this
   };
@@ -253,18 +254,21 @@ namespace hobovr {
     void ProcessEvent(const vr::VREvent_t &vrEvent) {
       if constexpr(UseHaptics)
       {
-        switch (vrEvent.eventType) {
-          case vr::VREvent_Input_HapticVibration: {
-            if (vrEvent.data.hapticVibration.componentHandle == m_compHaptic) {
-                // haptic!
-                m_pBrodcastSocket->send2((m_sSerialNumber + ',' +
-                std::to_string(vrEvent.data.hapticVibration.fDurationSeconds) + ',' +
-                std::to_string(vrEvent.data.hapticVibration.fFrequency) + ',' +
-                std::to_string(vrEvent.data.hapticVibration.fAmplitude) + "\n").c_str());
-            }
-          } break;
-
+        if (vrEvent.eventType == vr::VREvent_Input_HapticVibration) {
+          if (vrEvent.data.hapticVibration.componentHandle == m_compHaptic) {
+              // haptic!
+              m_pBrodcastSocket->send2((m_sSerialNumber + ',' +
+              std::to_string(vrEvent.data.hapticVibration.fDurationSeconds) + ',' +
+              std::to_string(vrEvent.data.hapticVibration.fFrequency) + ',' +
+              std::to_string(vrEvent.data.hapticVibration.fAmplitude) + "\n").c_str());
+          }
         }
+      }
+      switch (vrEvent.eventType) {
+        case vr::VREvent_OtherSectionSettingChanged: {
+          UpdateSectionSettings();
+          DriverLog("device '%s': section settings changed", m_sSerialNumber.c_str());
+        } break;
       }
     }
 
