@@ -16,7 +16,7 @@ class UduPoserTemplate(PoserTemplateBase):
     udu poser template.
 
     supplies a list of poses:
-        self.poses - pose object will correspond to value of device_list_manifest, keep in mind that, as of now, only 3 types of devices are supported(h-hmd, c-controller, t-tracker)
+        self.poses - pose object will correspond to value of udu_string, keep in mind that, as of now, only 3 types of devices are supported(h-hmd, c-controller, t-tracker)
 
     for more info: help(PoserTemplateBase)
 
@@ -41,11 +41,11 @@ class UduPoserTemplate(PoserTemplateBase):
 
     """
 
-    def __init__(self, device_list_manifest, *args, **kwargs):
+    def __init__(self, udu_string, *args, **kwargs):
         """
         init
 
-        :device_list_manifest: should completely match this regex: ([htc][ ])*([htc]$)
+        :udu_string: should completely match this regex: ([htc][ ])*([htc]$)
         :addr: is the address of the server to connect to, stored in self.addr
         :port: is the port of the server to connect to, stored in self.port
         :send_delay: sleep delay for the self.send thread(in seconds)
@@ -53,16 +53,16 @@ class UduPoserTemplate(PoserTemplateBase):
         """
         super().__init__(**kwargs)
 
-        re_s = re.search("([htc][ ])*([htc]$)", device_list_manifest)
+        re_s = re.search("([htc][ ])*([htc]$)", udu_string)
 
-        if not device_list_manifest or re_s is None:
+        if not udu_string or re_s is None:
             raise RuntimeError("empty pose struct")
 
-        if re_s.group() != device_list_manifest:
-            raise RuntimeError(f"invalid pose struct: {repr(device_list_manifest)}")
+        if re_s.group() != udu_string:
+            raise RuntimeError(f"invalid pose struct: {repr(udu_string)}")
 
         self.poses = []
-        self.device_types = device_list_manifest.split(" ")
+        self.device_types = udu_string.split(" ")
 
         new_struct = []
         for i in self.device_types:
@@ -77,7 +77,7 @@ class UduPoserTemplate(PoserTemplateBase):
         new_struct = " ".join(new_struct)
 
         print(
-            f"total of {len(self.poses)} device(s) have been added, a new pose struct has been generated: {repr(new_struct)}"
+            f"total of {len(self.poses)} device(s) have been added, your new udu settings: {repr(new_struct)}"
         )
         print(
             "full device list is now available through self.device_types, all device poses are in self.poses"

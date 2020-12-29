@@ -386,6 +386,7 @@ enum HobovrTrackingRef_Msg_type
   Emsg_poseTimeOffset = 30,
   Emsg_distortion = 40,
   Emsg_eyeGap = 50,
+  Emsg_setSelfPose = 60,
 };
 
 class HobovrTrackingRef_SettManager: public vr::ITrackedDeviceServerDriver, public SockReceiver::Callback {
@@ -440,6 +441,21 @@ public:
           vr::VRSettings()->SetFloat(k_pch_Hmd_Section, k_pch_Hmd_IPD_Float, newIpd);
           m_pSocketComm->send2("2000");
           DriverLog("tracking reference: ipd change request processed");
+          break;
+        }
+
+        case Emsg_uduString: {
+          DriverLog("tracking reference: you can't use that yet, the cooldown isn't over");
+          m_pSocketComm->send2("-200");
+          break;
+        }
+
+        case Emsg_setSelfPose: {
+          m_Pose.vecPosition[0] = (float)data[1]/(float)data[2];
+          m_Pose.vecPosition[1] = (float)data[3]/(float)data[4];
+          m_Pose.vecPosition[2] = (float)data[5]/(float)data[6];
+          m_pSocketComm->send2("2000");
+          DriverLog("tracking reference: pose change request processed");
           break;
         }
 
