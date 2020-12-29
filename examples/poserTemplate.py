@@ -12,6 +12,7 @@ more examples/references:
 import asyncio
 import time
 import numpy as np
+from fractions import Fraction
 
 from virtualreality import templates
 
@@ -34,7 +35,6 @@ Options:
 
     async def _cli_arg_map(self, pair):
         if pair[0] == "--test" and pair[1]:
-            print(repr(pair[1]))
             a, b = pair[1].split(',')
             a, b = int(a), int(b)
             data = templates.settManager_Message_t.pack(a, b, *list(range(128)))
@@ -42,9 +42,8 @@ Options:
             print (resp)
 
         elif pair[0] == "--ipd" and pair[1]:
-            print(repr(pair[1]))
-            temp = int(pair[1])
-            data = templates.settManager_Message_t.pack(10, temp, *list(range(128)))
+            f = Fraction(pair[1]).limit_denominator(10000000)
+            data = templates.settManager_Message_t.pack(10, int(f.numerator), int(f.denominator), *list(range(127)))
             resp = await self._send_manager(data)
             print (resp)
 

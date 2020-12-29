@@ -200,6 +200,14 @@ Options:
         except Exception as e:
             print(f"failed to close connection: {e}")
 
+        try:
+            self._manager_writer.write(u.format_str_for_write("CLOSE"))
+            self._manager_writer.close()
+            await self._manager_writer.wait_closed()
+
+        except Exception as e:
+            print(f"failed to close manager connection: {e}")
+
         print("finished")
 
     async def main(self):

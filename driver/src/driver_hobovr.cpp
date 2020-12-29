@@ -48,7 +48,7 @@ namespace hobovr {
   // le version
   static const uint32_t k_nHobovrVersionMajor = 0;
   static const uint32_t k_nHobovrVersionMinor = 6;
-  static const uint32_t k_nHobovrVersionBuild = 1;
+  static const uint32_t k_nHobovrVersionBuild = 2;
   static const std::string k_sHobovrVersionGG = "the hidden world";
 
 } // namespace hobovr
@@ -136,6 +136,17 @@ public:
                                         Prop_UserHeadToEyeDepthMeters_Float, m_fUserHead2EyeDepthMeters);
 
     return VRInitError_None;
+  }
+
+  void UpdateSectionSettings() {
+    // get new ipd
+    m_flIPD = vr::VRSettings()->GetFloat(k_pch_Hmd_Section,
+                                         k_pch_Hmd_IPD_Float);
+    // set new ipd
+    vr::VRProperties()->SetFloatProperty(m_ulPropertyContainer,
+                                         Prop_UserIpdMeters_Float, m_flIPD);
+
+    DriverLog("device hmd: ipd set to %f", m_flIPD);
   }
 
 
@@ -425,11 +436,10 @@ public:
       // DriverLog("tracking reference: message %d %d %d %d", data[0], data[1], data[2], data[129]);
       switch(data[0]) {
         case Emsg_ipd: {
-          float newIpd = (float)data[1]/1000;
-          DriverLog("tracking reference: ipd changed: %f", newIpd);
+          float newIpd = (float)data[1]/(float)data[2];
           vr::VRSettings()->SetFloat(k_pch_Hmd_Section, k_pch_Hmd_IPD_Float, newIpd);
-          // vr::VRSettings()->SetFloat(vr::k_pch_SteamVR_Section, k_pch_SteamVR_IPD_Float, newIpd);
           m_pSocketComm->send2("2000");
+          DriverLog("tracking reference: ipd change request processed");
           break;
         }
 

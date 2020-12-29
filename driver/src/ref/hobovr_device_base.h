@@ -267,7 +267,7 @@ namespace hobovr {
       switch (vrEvent.eventType) {
         case vr::VREvent_OtherSectionSettingChanged: {
           UpdateSectionSettings();
-          DriverLog("device '%s': section settings changed", m_sSerialNumber.c_str());
+          // DriverLog("device '%s': section settings changed", m_sSerialNumber.c_str());
         } break;
       }
     }
