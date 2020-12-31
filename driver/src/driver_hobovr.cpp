@@ -368,9 +368,9 @@ public:
 };
 
 //-----------------------------------------------------------------------------
-// Purpose: settings manager using a tracking reference, this thing is pretty much useless right now
-// it's meant to be a settings and other utility communication and management tool
-// for that purose it will have a it's own server connection and poser protocol
+// Purpose: settings manager using a tracking reference, this is meant to be
+// a settings and other utility communication and management tool
+// for that purpose it will have a it's own server connection and poser protocol
 // for now tho it will just stay as a tracking reference
 // also a device that will always be present with hobo_vr devices from now on
 // it will also allow live device management in the future
@@ -445,7 +445,7 @@ public:
         }
 
         case Emsg_uduString: {
-          DriverLog("tracking reference: you can't use that yet, the cooldown isn't over");
+          DriverLog("tracking reference: it's not implemented yet forehead");
           m_pSocketComm->send2("-200");
           break;
         }
@@ -456,6 +456,38 @@ public:
           m_Pose.vecPosition[2] = (float)data[5]/(float)data[6];
           m_pSocketComm->send2("2000");
           DriverLog("tracking reference: pose change request processed");
+          break;
+        }
+
+        case Emsg_distortion: {
+          float newK1 = (float)data[1]/(float)data[2];
+          float newK2 = (float)data[3]/(float)data[4];
+          float newZoomW = (float)data[5]/(float)data[6];
+          float newZoomH = (float)data[7]/(float)data[8];
+          vr::VRSettings()->SetFloat(hobovr::k_pch_ExtDisplay_Section, hobovr::k_pch_ExtDisplay_DistortionK1_Float, newK1);
+          vr::VRSettings()->SetFloat(hobovr::k_pch_ExtDisplay_Section, hobovr::k_pch_ExtDisplay_DistortionK2_Float, newK2);
+          vr::VRSettings()->SetFloat(hobovr::k_pch_ExtDisplay_Section, hobovr::k_pch_ExtDisplay_ZoomWidth_Float, newZoomW);
+          vr::VRSettings()->SetFloat(hobovr::k_pch_ExtDisplay_Section, hobovr::k_pch_ExtDisplay_ZoomHeight_Float, newZoomH);
+
+          m_pSocketComm->send2("2000");
+          DriverLog("tracking reference: distortion update request processed");
+          break;
+        }
+
+        case Emsg_eyeGap: {
+          vr::VRSettings()->SetInt32(hobovr::k_pch_ExtDisplay_Section, hobovr::k_pch_ExtDisplay_EyeGapOffset_Int, data[1]);
+
+          m_pSocketComm->send2("2000");
+          DriverLog("tracking reference: eye gap change request processed");
+          break;
+        }
+
+        case Emsg_poseTimeOffset: {
+          float newTimeOffset = (float)data[1]/(float)data[2];
+          vr::VRSettings()->SetFloat(k_pch_Hobovr_Section, hobovr::k_pch_Hobovr_PoseTimeOffset_Float, newTimeOffset);
+
+          m_pSocketComm->send2("2000");
+          DriverLog("tracking reference: pose time offset change request processed");
           break;
         }
 

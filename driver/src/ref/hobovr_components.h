@@ -97,6 +97,28 @@ namespace hobovr {
 
     }
 
+    // if there was a section settings change, the device's base will call this method
+    void ReloadSectionSettings() {
+      if constexpr(HobovrExtDisplayComp_doLensStuff){
+        if constexpr(HobovrExtDisplayComp_lensDistortionType == ELensMathType::Mt_Default){
+          m_fDistortionK1 = vr::VRSettings()->GetFloat(
+              k_pch_ExtDisplay_Section, k_pch_ExtDisplay_DistortionK1_Float);
+
+          m_fDistortionK2 = vr::VRSettings()->GetFloat(
+              k_pch_ExtDisplay_Section, k_pch_ExtDisplay_DistortionK2_Float);
+
+          m_fZoomWidth = vr::VRSettings()->GetFloat(k_pch_ExtDisplay_Section,
+                                                    k_pch_ExtDisplay_ZoomWidth_Float);
+
+          m_fZoomHeight = vr::VRSettings()->GetFloat(k_pch_ExtDisplay_Section,
+                                                     k_pch_ExtDisplay_ZoomHeight_Float);
+        }
+      }
+
+      m_iEyeGapOff = vr::VRSettings()->GetInt32(k_pch_ExtDisplay_Section,
+                                                 k_pch_ExtDisplay_EyeGapOffset_Int);
+    }
+
     virtual void GetWindowBounds(int32_t *pnX, int32_t *pnY, uint32_t *pnWidth,
                                  uint32_t *pnHeight) {
       *pnX = m_nWindowX;
@@ -196,18 +218,21 @@ namespace hobovr {
   class HobovrDriverDirectModeComponent {
   public:
     HobovrDriverDirectModeComponent() {}
+    virtual void ReloadSectionSettings() {} // this is here for compatibility reasons
   };
 
   // this is a dummy class meant to expand the component handling system, DO NOT USE THIS!
   class HobovrCameraComponent {
   public:
     HobovrCameraComponent() {}
+    virtual void ReloadSectionSettings() {} // this is here for compatibility reasons
   };
 
   // this is a dummy class meant to expand the component handling system, DO NOT USE THIS!
   class HobovrVirtualDisplayComponent {
   public:
     HobovrVirtualDisplayComponent() {}
+    virtual void ReloadSectionSettings() {} // this is here for compatibility reasons
   };
 
 }

@@ -266,6 +266,28 @@ namespace hobovr {
       }
       switch (vrEvent.eventType) {
         case vr::VREvent_OtherSectionSettingChanged: {
+          // handle component settings update
+          for (auto &i : m_vComponents) {
+            switch(i.compType){
+              case EHobovrCompType::EHobovrComp_ExtendedDisplay:
+                std::get<std::shared_ptr<HobovrExtendedDisplayComponent>>(i.compHandle)->ReloadSectionSettings();
+                break;
+
+              case EHobovrCompType::EHobovrComp_DriverDirectMode:
+                std::get<std::shared_ptr<HobovrDriverDirectModeComponent>>(i.compHandle)->ReloadSectionSettings();
+                break;
+
+              case EHobovrCompType::EHobovrComp_Camera:
+                std::get<std::shared_ptr<HobovrCameraComponent>>(i.compHandle)->ReloadSectionSettings();
+                break;
+
+              case EHobovrCompType::EHobovrComp_VirtualDisplay:
+                std::get<std::shared_ptr<HobovrVirtualDisplayComponent>>(i.compHandle)->ReloadSectionSettings();
+                break;
+
+            }
+          }
+          // handle device settings update
           UpdateSectionSettings();
           // DriverLog("device '%s': section settings changed", m_sSerialNumber.c_str());
         } break;
