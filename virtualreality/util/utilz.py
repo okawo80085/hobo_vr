@@ -181,6 +181,37 @@ def has_nan_in_pose(pose):
     """Determine if any numbers in pose are invalid."""
     return np.isnan(pose).any() or np.isinf(pose).any()
 
+# experimental contour solver function, uses cone fitting instead of ellipse fitting(and some other things), not tested yet 
+def fit_focal_cone_to_sphere(points2D, points2D_count, sphere_radius, camera_focal_length):
+    zz = camera_focal_length**2
+
+    A = np.zeros((points2D_count, 3), dtype=np.float64)
+    for i in range(points2D_count):
+        p = points2D[i]
+        norm_A = np.sqrt(p[0]**2 + p[1]**2 + zz)
+        A[i][0] = p[0]
+        A[i][1] = p[1]
+        A[i][2] = -norm_A
+
+    b = np.zeros((points2D_count,))
+    b.fill(-zz)
+
+    # print (A.shape)
+    Bx_By_c = np.linalg.lstsq(A, b, rcond=None)[0]
+    # print (Bx_By_c)
+    # lu, piv = lu_factor(A)
+    # Bx_By_c = lu_solve((lu, piv), b)
+    norm_norm_B = np.sqrt(Bx_By_c[0] * Bx_By_c[0] +
+        Bx_By_c[1] * Bx_By_c[1] +
+        zz)
+    cos_theta = Bx_By_c[2] / norm_norm_B
+    k = cos_theta * cos_theta
+    norm_B = sphere_radius / np.sqrt(1 - k)
+
+    out = np.array((Bx_By_c[0], Bx_By_c[1], camera_focal_length), dtype=np.float64)
+    out *= (norm_B / norm_norm_B)
+    return out
+
 
 class LazyKalman:
     """
