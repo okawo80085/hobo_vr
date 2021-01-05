@@ -97,13 +97,66 @@ def find_blob(arr):
                     slice(w_min, w_max),
                     slice(h_min, h_max)
                 ]
+            # skip to last plane once we have enough knowledge about the location
+            if blob_size > 9 and crop_section is not None:
+
+                w_min = int(min(max(0, (final_center[0] - blob_size*multiplier_to_get_full_img_size - blob_clearance)), arr.shape[0]-1))
+                w_max = int(min(max(w_min + 1,(final_center[0] + blob_size*multiplier_to_get_full_img_size + blob_clearance)),arr.shape[0]))
+                h_min = int(min(max(0, (final_center[1] - blob_size*multiplier_to_get_full_img_size - blob_clearance)), arr.shape[1]-1))
+                h_max = int(min(max(h_min + 1,(final_center[1] + blob_size*multiplier_to_get_full_img_size + blob_clearance)), arr.shape[1]))
+                avg_w = (w_min+w_max)//2
+                avg_h = (h_min+h_max)//2
+                crop_section_h = [ slice(w_min, w_max), slice(avg_h, avg_h+1), slice(None) ]
+                crop_section_v = [ slice(avg_w, avg_w+1), slice(h_min, h_max), slice(None) ]
+                crop_section_i = [
+                    slice(w_min, w_max),
+                    slice(h_min, h_max),
+                    slice(None)
+                ]
+                cropph = arr[tuple(crop_section_h)]
+                croppv = arr[tuple(crop_section_v)]
+                mh = mask_for_hsv_range(cropph, crange)
+                mv = mask_for_hsv_range(croppv, crange)
+                blobh_locs = np.argwhere(mh)
+                blobv_locs = np.argwhere(mv)
+                img_pos_h = np.average(blobh_locs, axis=0)
+                img_pos_v = np.average(blobv_locs, axis=0)
+                img_pos = [img_pos_h[0], img_pos_v[1]]
+                if(any(np.isnan(img_pos))):
+                    continue
+
+                img_center = np.asarray([avg_w-w_min, avg_h-h_min])
+                img_diff = img_pos - img_center
+                img_poss.append(img_diff)
+                final_center = np.sum(np.asarray(img_poss), axis=0)
+
+                arr[crop_section_h]//=2
+                arr[crop_section_v]//=2
+                #arr[[slice(int(x), int(x + 1)) for x in img_pos] + [slice(None)]] = 0
+                arr[[slice(int(x), int(x + 1)) for x in final_center] + [slice(None)]] = 0
+                #arr[[slice(int(x), int(x+1)) for x in img_pos]+[slice(2)]]=255
+                arr[[slice(int(x), int(x+1)) for x in final_center]+[slice(2,3)]]=255
+
+                image_percent = final_center / np.asarray(arr.shape[:2])
+                #print("{:.4f}, {:.4f}".format(float(image_percent[0]), float(image_percent[1])))
+
+                #cropp = arr[crop_section_i]
+                t1 = time.time()
+                print(f'latency: {(t1 - t0) * 1000.0}ms')
+                return arr
+
+
+
+
+
+
     if final_center is not None:
         image_percent = final_center / np.asarray(arr.shape[:2])
-        print("{:.4f}, {:.4f}".format(float(image_percent[0]), float(image_percent[1])))
+        #print("{:.4f}, {:.4f}".format(float(image_percent[0]), float(image_percent[1])))
     else:
         print("Blob not found. :(")
     t1 = time.time()
-    #print(f'latency: {(t1-t0)*1000.0}ms')
+    print(f'latency: {(t1-t0)*1000.0}ms')
     return m
 
 
