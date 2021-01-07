@@ -305,20 +305,20 @@ Options:
                 break
         self.coro_keep_alive["mode_switcher"].is_alive = False
 
-    @templates.PoserTemplate.register_member_thread(1 / 65)
+    @templates.PoserTemplate.register_member_thread(1 / 60)
     async def get_location(self):
         """Get locations from blob trackers."""
 
         my_dd = np.float64
 
-        axisScale = np.array([1, 1, 1], dtype=my_dd) * [-1, 1, 1]
+        axisScale = np.array([1, 1, 1], dtype=my_dd) * [-1, -1, 1]
 
         l_oof = np.array([0, 0, 0.037], dtype=my_dd)
         r_oof = np.array([0, 0, 0.032], dtype=my_dd)
 
         hmd_oof = np.array([-0.035, -0.03, 0.05], dtype=my_dd)
 
-        global_oof = u.make_rotmat([0.6981317007977318, 0, 0])
+        global_oof = u.make_rotmat([-0.6981317007977318, 0, 0])
 
         toggleLearning = True
 

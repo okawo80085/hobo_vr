@@ -310,7 +310,7 @@ def manual_calibration(
         if frame is None:
             break
 
-        blurred = cv2.GaussianBlur(frame, (9, 9), 0)
+        blurred = cv2.blur(frame, (9, 9))
         hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
         exposure = cv2.getTrackbarPos("exposure", cam_window)
