@@ -674,7 +674,9 @@ class BlobTracker(threading.Thread):
                 if len(cnts) > 0:
                     c = max(cnts, key=cv2.contourArea)
                     c = c.reshape((c.shape[0], 2))
-                    c -= np.array((self.frame_width / 2, self.frame_height / 2), dtype=np.int32)
+                    c -= np.array((self.frame_width / 2, 0), dtype=np.int32)
+                    c = np.array((0, self.frame_height / 2), dtype=np.int32) - c
+
                     self.poses[key] = fit_focal_cone_to_sphere(c, len(c), self.BALL_RADIUS_CM, self.camera_focal_length)/100
 
 

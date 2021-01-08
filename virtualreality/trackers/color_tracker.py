@@ -43,6 +43,7 @@ from ..server import server
 from ..templates import ControllerState
 import serial.tools.list_ports
 from typing import Optional
+from fractions import Fraction
 
 import concurrent.futures
 
@@ -83,6 +84,8 @@ Options:
     -S, --serial_reboot         toggle reboot on kill for serial threads
     -f, --camera_focal <val>    focal point of the camera in pixels[default: 554.2563]
     -k, --kalman_learning       toggle learning for BlobTracke's kalman filters
+    -e, --ipd <ipd>             ipd in meters, float
+    -r, --hmd_pose              reports the current hmd pose
 '''
 
     def __init__(
@@ -156,6 +159,10 @@ Options:
             print(f'mode set to {self.multiToggleMode}')
             return
 
+        elif pair[0] == '--hmd_pose' and pair[1]:
+            print (self.poses[0])
+            return
+
         elif pair[0] == '--kill_blob' and pair[1]:
             self.signalKillBlobTrackerLoop = True
             await asyncio.sleep(1 / 50)
@@ -181,6 +188,14 @@ Options:
             await asyncio.sleep(1 / 50)
             self.signalKillSerialLoops = False
             print('serial kill loops signal sent')
+            return
+
+        # a bit of black magic that lets you set the ipd live
+        elif pair[0] == "--ipd" and pair[1]:
+            f = Fraction(pair[1]).limit_denominator(10000000)
+            data = templates.settManager_Message_t.pack(10, int(f.numerator), int(f.denominator), *np.zeros((127,), dtype=np.uint32))
+            resp = await self._send_manager(data)
+            print (resp)
             return
 
         elif pair[0] == '--serial_reboot' and pair[1]:
@@ -311,14 +326,14 @@ Options:
 
         my_dd = np.float64
 
-        axisScale = np.array([1, 1, 1], dtype=my_dd) * [-1, -1, 1]
+        axisScale = np.array([1, 1, 1], dtype=my_dd) * [1, 1, 1]
 
         l_oof = np.array([0, 0, 0.037], dtype=my_dd)
-        r_oof = np.array([0, 0, 0.032], dtype=my_dd)
+        r_oof = np.array([0, 0, 0.037], dtype=my_dd)
 
-        hmd_oof = np.array([-0.035, -0.03, 0.05], dtype=my_dd)
+        hmd_oof = np.array([-0.03, -0.03, 0.05], dtype=my_dd)
 
-        global_oof = u.make_rotmat([-0.6981317007977318, 0, 0])
+        global_oof = u.make_rotmat([0.6981317007977318, 0, 0])
 
         toggleLearning = True
 
@@ -492,8 +507,8 @@ Options:
                                     self._serialResetYaw = True
 
                             if (
-                                    abs(self.temp_pose.trackpad_x) > 0.1
-                                    or abs(self.temp_pose.trackpad_y) > 0.1
+                                    abs(self.temp_pose.trackpad_x) > 0.18
+                                    or abs(self.temp_pose.trackpad_y) > 0.18
                             ):
                                 self.temp_pose.trackpad_touch = 1
 
@@ -647,7 +662,7 @@ Options:
     @templates.PoserTemplate.register_member_thread(1 / 100)
     async def serial_listener(self):
         """Get orientation data from serial."""
-        my_off = Quaternion.from_x_rotation(np.radians(10))
+        my_off = Quaternion.from_x_rotation(np.radians(4))
 
         while self.coro_keep_alive["serial_listener"].is_alive:
             # port = self.serialPaths['headset']
