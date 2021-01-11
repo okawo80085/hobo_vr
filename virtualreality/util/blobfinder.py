@@ -247,15 +247,15 @@ class BlobFinder(object):
             self.last_rad = None
             return None
 
+if __name__ == '__main__':
+    b = BlobFinder(color_range=ColorRange(2, 126, 32, 192, 67, 209, 114))
 
-b = BlobFinder(color_range=ColorRange(2, 126, 32, 192, 67, 209, 114))
-
-d = display(0, size=(9999, 9999))
-for up in d:
-    if up:
-        blob = b.find_blob(up["0"][0])
-        if blob is not None:
-            center, radius = blob
-            print(f"center: {center}, radius: {radius}")
-        else:
-            print("blob not found. :(")
+    d = display(0, size=(9999, 9999))
+    for up in d:
+        if up:
+            blob = b.find_blob(up["0"][0])
+            if blob is not None:
+                center, radius = blob
+                print(f"center: {center}, radius: {radius}")
+            else:
+                print("blob not found. :(")

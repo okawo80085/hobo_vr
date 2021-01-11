@@ -236,6 +236,7 @@ Options:
 
     @templates.PoserTemplate.register_member_thread(1 / 65)
     async def get_location(self):
+        print('pos')
         """Get locations from blob trackers."""
 
         axisScale = np.array([1, 1, 1]) * [-1, 1, 1]
@@ -244,6 +245,8 @@ Options:
         r_oof = np.array([0, 0, 0.032])
 
         hmd_oof = np.array([-0.035, -0.03, 0.05])
+
+        global_oof = u.make_rotmat([0.6981317007977318, 0, 0])
 
         while self.coro_keep_alive["get_location"].is_alive:
             try:
@@ -262,13 +265,17 @@ Options:
                     try:
                         if self.signalKillBlobTrackerLoop:
                             break
+                        t0 = time.time_ns()
                         poses = BlobT.get_poses()
+                        t = time.time_ns() - t0
+                        if t:
+                            print(f'b\t\t\t\tlob time: {t}')
 
-                        u.rotate(poses, offsets)
+                        poses[0] = global_oof.dot(poses[0])
+                        poses[1] = global_oof.dot(poses[1])
+                        poses[2] = global_oof.dot(poses[2])
 
                         poses *= axisScale
-
-                        # print (poses)
 
                         if self.usePos:
                             # origin point correction math
@@ -368,10 +375,8 @@ Options:
                                 continue
                             header = gg[0]
                             data = gg[1:]
-                            #print(f'poses: {self.poses}')
 
                             if header == b'hmd:':
-                                #print('hmd')
                                 if data is not None and len(data[0]) >= 4:
                                     w, x, y, z, *_ = data[0]
                                     my_q = Quaternion([-y, z, -x, w])
@@ -384,9 +389,7 @@ Options:
                                     self.poses[0].r_x = round(my_q[0], 5)
                                     self.poses[0].r_y = round(my_q[1], 5)
                                     self.poses[0].r_z = round(my_q[2], 5)
-                                    #print(self.poses[0])
                             elif header == b'lc:':
-                                #print('lc')
                                 irl_rot_off = Quaternion.from_z_rotation(
                                     np.pi / 2
                                 )
@@ -438,7 +441,6 @@ Options:
 
                                 else:
                                     self.poses[1].trigger_click = 0
-                                #print(self.poses[1])
                             elif header == b'rc:':
                                 irl_rot_off = Quaternion.from_y_rotation(
                                     np.pi

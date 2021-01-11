@@ -449,6 +449,7 @@ def cnt_2_x_y_w(cnt):
         nc[:, 0].max() - nc[:, 0].min(),
     )
 
+from .blobfinder import BlobFinder
 
 class BlobTracker(threading.Thread):
     """
@@ -504,6 +505,7 @@ class BlobTracker(threading.Thread):
         self.cam_index = cam_index
         self._vs: Optional[display] = None
         self.color_masks = color_masks
+        self.blob_finders = [BlobFinder(c) for c in color_masks]
 
         self.camera_focal_length = focal_length_px
         self.BALL_RADIUS_CM = ball_radius_cm
@@ -512,15 +514,7 @@ class BlobTracker(threading.Thread):
         self.last_frame = None
         self.time_of_last_frame = -1
 
-        frame, self.can_track = self._try_get_frame()
-
-        if not self.can_track:
-            # self._vs.release()
-            self._vs.end()
-            self._vs = None
-            raise RuntimeError("invalid video source")
-
-        self.frame_height, self.frame_width, _ = frame.shape
+        self.frame_height, self.frame_width = None, None
         self.markerMasks = np.array([[i.hue_center, i.hue_range, i.sat_center, i.sat_range, i.val_center, i.val_range] for i in color_masks], dtype=np.float64)
 
         self.poses = np.zeros((self.markerMasks.shape[0], 3), dtype=np.float64)
@@ -557,8 +551,9 @@ class BlobTracker(threading.Thread):
                 self.kalmanFilterz2[i].do_learning = do_learning
 
     def _try_get_frame(self):
-        self._vs.update()
         try:
+            self._vs.update()
+
             # view may return empty dicts in between frames and before camera initializes.
             # Wait until we receive a frame.
             t0 = time.time()
@@ -593,8 +588,8 @@ class BlobTracker(threading.Thread):
 
         while self.alive and self.can_track:
             try:
-                self.find_blobs_in_frame()
-                self.solve_blob_poses()
+                frame, self.can_track = self._try_get_frame()
+                self.solve_blob_poses(frame)
                 time.sleep(0)
                 # rotate(self.poses, self.offsets)
 
@@ -612,82 +607,15 @@ class BlobTracker(threading.Thread):
         """Get last poses."""
         return self.poses.copy()
 
-    def find_blobs_in_frame(self):
-        """Get a frame from the camera and find all the blobs in it."""
-        if self.alive:
-            frame, self.can_track = self._try_get_frame()
-
-            for key in range(self.markerMasks.shape[0]):
-                if self.can_track:
-                    blurred = cv2.GaussianBlur(frame, (9, 9), 0)
-
-                    hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
-
-                    color_low = [
-                        int(self.markerMasks[key][0] - self.markerMasks[key][1]),
-                        int(self.markerMasks[key][2] - self.markerMasks[key][3]),
-                        int(self.markerMasks[key][4] - self.markerMasks[key][5]),
-                    ]
-
-                    color_high = [
-                        int(self.markerMasks[key][0] + self.markerMasks[key][1]),
-                        int(self.markerMasks[key][2] + self.markerMasks[key][3]),
-                        int(self.markerMasks[key][4] + self.markerMasks[key][5]),
-                    ]
-
-                    color_low_neg = copy(color_low)
-                    color_high_neg = copy(color_high)
-                    for c in range(3):
-                        if c == 0:
-                            c_max = 180
-                        else:
-                            c_max = 255
-                        if color_low_neg[c] < 0:
-                            color_low_neg[c] = c_max + color_low_neg[c]
-                            color_high_neg[c] = c_max
-                            color_low[c] = 0
-                        elif color_high_neg[c] > c_max:
-                            color_low_neg[c] = 0
-                            color_high_neg[c] = color_high_neg[c] - c_max
-                            color_high[c] = c_max
-                    mask1 = cv2.inRange(hsv, tuple(color_low), tuple(color_high))
-                    mask2 = cv2.inRange(hsv, tuple(color_low_neg), tuple(color_high_neg))
-                    mask = cv2.bitwise_or(mask1, mask2)
-
-                    temp = cv2.findContours(
-                        mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_KCOS
-                    )
-
-                    if len(temp) == 3:
-                        _, cnts, hr = temp
-
-                    else:
-                        cnts, hr = temp
-
-                    if len(cnts) > 0:
-                        c = max(cnts, key=cv2.contourArea)
-                        self.blobs[key] = (
-                            c if len(c) >= 5 and cv2.contourArea(c) > 10 else None
-                        )
-
-    def solve_blob_poses(self):
+    def solve_blob_poses(self, image):
         """Solve for and set the poses of all blobs visible by the camera."""
-        for key, blob in enumerate(self.blobs):
+        for key, b in enumerate(self.blob_finders):
+            blob = b.find_blob(image)
             if blob is not None:
-                elip = cv2.fitEllipseDirect(blob)
-
-                x, y = elip[0]
-                w, h = elip[1]
-                w = (w+h)/2
-                # x, y, w = cnt_2_x_y_w(blob)
-
-                # if self.kalmanFilterz2[key] is None:
-                #     self.kalmanFilterz2[key] = LazyKalman(
-                #         [x, y, w], np.eye(3), np.eye(3)
-                #     )
-
-                # else:
-                #     x, y, w = self.kalmanFilterz2[key].apply(np.array([x, y, w]))
+                center, radius = blob
+                x, y = center
+                w = radius
+                print(x,y,w)
 
                 f_px = self.camera_focal_length
                 x_px = x
@@ -717,8 +645,6 @@ class BlobTracker(threading.Thread):
                 y_cm = l_cm * y_px / l_px
 
                 self.poses[key] = np.array((x_cm / 100, y_cm / 100, z_cm / 100), dtype=np.clongdouble)
-
-                # self._translate()
 
                 if not has_nan_in_pose(self.poses[key]):
                     if self.kalmanFilterz[key] is None:
