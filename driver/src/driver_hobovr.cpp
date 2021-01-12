@@ -48,7 +48,7 @@ namespace hobovr {
   // le version
   static const uint32_t k_nHobovrVersionMajor = 0;
   static const uint32_t k_nHobovrVersionMinor = 6;
-  static const uint32_t k_nHobovrVersionBuild = 2;
+  static const uint32_t k_nHobovrVersionBuild = 3;
   static const std::string k_sHobovrVersionGG = "the hidden world";
 
 } // namespace hobovr
@@ -389,6 +389,13 @@ enum HobovrTrackingRef_Msg_type
   Emsg_setSelfPose = 60,
 };
 
+enum HobovrVendorEvents
+{
+  UduChange = 19998,
+};
+
+std::vector<std::pair<std::string, int>> g_vpUduChangeBuffer;
+
 class HobovrTrackingRef_SettManager: public vr::ITrackedDeviceServerDriver, public SockReceiver::Callback {
 private:
   std::shared_ptr<SockReceiver::DriverReceiver> m_pSocketComm;
@@ -445,7 +452,26 @@ public:
         }
 
         case Emsg_uduString: {
-          DriverLog("tracking reference: it's not implemented yet forehead");
+          int iUduLen = data[1];
+          std::vector<std::pair<std::string, int>> temp;
+          for (int i=0; i<iUduLen*2; i+=2) {
+            int dt = data[2+i];
+            int dp = data[2+i+1];
+            std::pair<std::string, int> p;
+            p.second = dp;
+            if (dt == 0)
+              p.first = "h";
+            else if (dt == 1)
+              p.first = "c";
+            else if (dt == 2)
+              p.first = "t";
+            temp.push_back(p);
+          }
+          g_vpUduChangeBuffer = temp;
+          vr::VREvent_Notification_t data = {20, 0};
+          vr::VRServerDriverHost()->VendorSpecificEvent(m_unObjectId, (vr::EVREventType)HobovrVendorEvents::UduChange, (VREvent_Data_t&)data, 0);
+
+          // DriverLog("tracking reference: it's not implemented yet forehead");
           m_pSocketComm->send2("-200");
           break;
         }
@@ -627,7 +653,6 @@ private:
   std::shared_ptr<SockReceiver::DriverReceiver> m_pSocketComm;
   std::shared_ptr<HobovrTrackingRef_SettManager> m_pSettManTref;
 
-  int m_iCallBack_packet_size;
 
   // slower thread stuff
   bool m_bSlowUpdateThreadIsAlive;
@@ -655,7 +680,6 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
   // udu setting parse is done by SockReceiver
   try{
     m_pSocketComm = std::make_shared<SockReceiver::DriverReceiver>(uduThing);
-    m_iCallBack_packet_size = m_pSocketComm->m_iBuffSize;
     m_pSocketComm->start();
   } catch (...){
     DriverLog("m_pSocketComm broke on create or broke on start, either way you're fucked\n");
@@ -670,7 +694,7 @@ EVRInitError CServerDriver_hobovr::Init(vr::IVRDriverContext *pDriverContext) {
   int controller_hs = 1;
 
   // add new devices based on the udu parse 
-  for (std::string i:m_pSocketComm->device_list) {
+  for (std::string i:m_pSocketComm->m_vsDevice_list) {
     if (i == "h") {
       HeadsetDriver* temp = new HeadsetDriver("h" + std::to_string(counter_hmd));
 
@@ -744,11 +768,11 @@ void CServerDriver_hobovr::Cleanup() {
 }
 
 void CServerDriver_hobovr::OnPacket(char* buff, int len) {
-  if (len == (m_iCallBack_packet_size*4+3))
+  if (len == (m_pSocketComm->m_iExpectedMessageSize*4+3))
   {
     float* temp= (float*)buff;
-    std::vector<float> v(temp, temp+m_iCallBack_packet_size);
-    auto tempPose = SockReceiver::split_pk(v, m_pSocketComm->eps);
+    std::vector<float> v(temp, temp+m_pSocketComm->m_iExpectedMessageSize);
+    auto tempPose = SockReceiver::split_pk(v, m_pSocketComm->m_viEps);
 
     for (int i=0; i<m_vDevices.size(); i++){
 
@@ -757,7 +781,7 @@ void CServerDriver_hobovr::OnPacket(char* buff, int len) {
     }
 
   } else {
-    DriverLog("driver: bad packet, expected %d, got %d. double check your udu settings\n", (m_iCallBack_packet_size*4+3), len);
+    DriverLog("driver: bad packet, expected %d, got %d. double check your udu settings\n", (m_pSocketComm->m_iExpectedMessageSize*4+3), len);
   }
 
 
@@ -769,6 +793,14 @@ void CServerDriver_hobovr::RunFrame() {
     for (auto &i : m_vDevices){
       i->ProcessEvent(vrEvent);
 
+    }
+
+    if (vrEvent.eventType == HobovrVendorEvents::UduChange) {
+      // m_pSocketComm->UpdateParams();
+      DriverLog("udu change event");
+      for (auto i : g_vpUduChangeBuffer) {
+        DriverLog("pair: (%s, %d)", i.first, i.second);
+      }
     }
   }
 }
