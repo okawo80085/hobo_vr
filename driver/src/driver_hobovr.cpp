@@ -796,11 +796,15 @@ void CServerDriver_hobovr::RunFrame() {
     }
 
     if (vrEvent.eventType == HobovrVendorEvents::UduChange) {
-      // m_pSocketComm->UpdateParams();
       DriverLog("udu change event");
+      std::vector<std::string> newD;
+      std::vector<int> newEps;
       for (auto i : g_vpUduChangeBuffer) {
         DriverLog("pair: (%s, %d)", i.first, i.second);
+        newD.push_back(i.first);
+        newEps.push_back(i.second);
       }
+      m_pSocketComm->UpdateParams(newD, newEps);
     }
   }
 }
