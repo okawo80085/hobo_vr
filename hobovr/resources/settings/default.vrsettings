@@ -24,10 +24,10 @@
       "ZoomHeight" : 0.82,
       "EyeGapOffsetPx" : -10,
       "IsDisplayRealDisplay" : true,
-      "FOVleft" : 1.39811385,
-      "FOVright" : 1.24539280,
-      "FOVtop" : 1.47835493,
-      "FOVbottom" : 1.45936251,
+      "FOVleft" : 1.0,
+      "FOVright" : 1.0,
+      "FOVtop" : 1.0,
+      "FOVbottom" : 1.0,
       "IsDisplayOnDesktop" : true
    }
 }
