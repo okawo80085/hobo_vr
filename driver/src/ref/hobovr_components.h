@@ -26,6 +26,10 @@ namespace hobovr {
   static const char *const k_pch_ExtDisplay_DistortionK2_Float = "DistortionK2";
   static const char *const k_pch_ExtDisplay_ZoomWidth_Float = "ZoomWidth";
   static const char *const k_pch_ExtDisplay_ZoomHeight_Float = "ZoomHeight";
+  static const char *const k_pch_ExtDisplay_FOVL_Float = "FOVleft";
+  static const char *const k_pch_ExtDisplay_FOVR_Float = "FOVright";
+  static const char *const k_pch_ExtDisplay_FOVT_Float = "FOVtop";
+  static const char *const k_pch_ExtDisplay_FOVB_Float = "FOVbottom";
 
   // compile time component settings
   static const bool HobovrExtDisplayComp_doLensStuff = true;
@@ -69,6 +73,11 @@ namespace hobovr {
         }
       }
 
+      m_fFovL = vr::VRSettings()->GetFloat(k_pch_ExtDisplay_Section, k_pch_ExtDisplay_FOVL_Float);
+      m_fFovR = vr::VRSettings()->GetFloat(k_pch_ExtDisplay_Section, k_pch_ExtDisplay_FOVR_Float);
+      m_fFovT = vr::VRSettings()->GetFloat(k_pch_ExtDisplay_Section, k_pch_ExtDisplay_FOVT_Float);
+      m_fFovB = vr::VRSettings()->GetFloat(k_pch_ExtDisplay_Section, k_pch_ExtDisplay_FOVB_Float);
+
       m_iEyeGapOff = vr::VRSettings()->GetInt32(k_pch_ExtDisplay_Section,
                                                  k_pch_ExtDisplay_EyeGapOffset_Int);
 
@@ -87,6 +96,7 @@ namespace hobovr {
           DriverLog("Ext_display: distortion coefficient: k1=%f, k2=%f, zw=%f, zh=%f", m_fDistortionK1, m_fDistortionK2, m_fZoomWidth, m_fZoomHeight);
       }
 
+      DriverLog("Ext_display: fov: %f %f %f %f", m_fFovL, m_fFovR, m_fFovT, m_fFovB);
       DriverLog("Ext_display: eye gap offset: %d", m_iEyeGapOff);
       DriverLog("Ext_display: is display real: %d", (int)m_bIsDisplayReal);
       DriverLog("Ext_display: is display on desktop: %d", (int)m_bIsDisplayOnDesktop);
@@ -152,10 +162,10 @@ namespace hobovr {
 
     virtual void GetProjectionRaw(vr::EVREye eEye, float *pfLeft, float *pfRight,
                                   float *pfTop, float *pfBottom) {
-      *pfLeft = -1.0;
-      *pfRight = 1.0;
-      *pfTop = -1.0;
-      *pfBottom = 1.0;
+      *pfLeft = -m_fFovL;
+      *pfRight = m_fFovR;
+      *pfTop = -m_fFovT;
+      *pfBottom = m_fFovB;
     }
 
     virtual DistortionCoordinates_t ComputeDistortion(vr::EVREye eEye, float fU,
@@ -212,6 +222,10 @@ namespace hobovr {
     float m_fDistortionK2;
     float m_fZoomWidth;
     float m_fZoomHeight;
+    float m_fFovL;
+    float m_fFovR;
+    float m_fFovT;
+    float m_fFovB;
   };
 
   // this is a dummy class meant to expand the component handling system, DO NOT USE THIS!
