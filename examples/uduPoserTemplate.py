@@ -72,42 +72,9 @@ Options:
             print (resp)
 
         elif pair[0] == "--udu" and pair[1]:
-            # update own udu
-            newUduString = pair[1]
-            re_s = re.search("([htc][ ])*([htc]$)", newUduString)
-
-            if not newUduString or re_s is None:
-                print ('invalid udu string')
-                return
-
-            if re_s.group() != newUduString:
-                print ('invalid udu string')
-                return
-
-            newPoses = []
-            new_struct = []
-            for i in newUduString.split(' '):
-                if i == "h" or i == "t":
-                    newPoses.append(templates.Pose())
-
-                elif i == "c":
-                    newPoses.append(templates.ControllerState())
-
-                new_struct.append(f"{i}{len(newPoses[-1])}")
-
-
-            self.poses = newPoses
-            new_struct = " ".join(new_struct)
-            print (f"new udu settings: {repr(new_struct)}, {len(self.poses)} device(s) total")
-            # send new udu
-            udu_len = len(self.poses)
-            type_d = {'h' : (0, 13), 'c' : (1, 22), 't' : (2, 13)}
-            packet = np.array([type_d[i] for i in newUduString.split(' ')], dtype=np.uint32)
-            packet = packet.reshape(packet.shape[0]*packet.shape[1])
-
-            data = templates.settManager_Message_t.pack(20, udu_len, *packet, *np.zeros((128-packet.shape[0],), dtype=np.uint32))
-            resp = await self._send_manager(data)
-            print (resp)
+            res = await self._sync_udu(pair[1])
+            if res:
+                print (res)
 
 
     @templates.PoserTemplate.register_member_thread(1 / 100)

@@ -12,4 +12,4 @@ try:
 except Exception as e:
 	print (f'failed to load submodules, reason: {e}')
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"

@@ -8,6 +8,7 @@ from .template_base import *
 from .poses import *
 import re
 import struct
+import numpy as np
 
 
 
@@ -82,6 +83,44 @@ class UduPoserTemplate(PoserTemplateBase):
         print(
             "full device list is now available through self.device_types, all device poses are in self.poses"
         )
+
+    async def _sync_udu(self, new_udu_string):
+        # update own udu
+        newUduString = new_udu_string
+        re_s = re.search("([htc][ ])*([htc]$)", newUduString)
+
+        if not newUduString or re_s is None:
+            print ('invalid udu string')
+            return
+
+        if re_s.group() != newUduString:
+            print ('invalid udu string')
+            return
+
+        newPoses = []
+        new_struct = []
+        for i in newUduString.split(' '):
+            if i == "h" or i == "t":
+                newPoses.append(Pose())
+
+            elif i == "c":
+                newPoses.append(ControllerState())
+
+            new_struct.append(f"{i}{len(newPoses[-1])}")
+
+
+        self.poses = newPoses
+        new_struct = " ".join(new_struct)
+        print (f"new udu settings: {repr(new_struct)}, {len(self.poses)} device(s) total")
+        # send new udu
+        udu_len = len(self.poses)
+        type_d = {'h' : (0, 13), 'c' : (1, 22), 't' : (2, 13)}
+        packet = np.array([type_d[i] for i in newUduString.split(' ')], dtype=np.uint32)
+        packet = packet.reshape(packet.shape[0]*packet.shape[1])
+
+        data = settManager_Message_t.pack(20, udu_len, *packet, *np.zeros((128-packet.shape[0],), dtype=np.uint32))
+        resp = await self._send_manager(data)
+        return resp
 
     async def send(self):
         """Send all poses thread."""

@@ -471,8 +471,8 @@ public:
           vr::VREvent_Notification_t data = {20, 0};
           vr::VRServerDriverHost()->VendorSpecificEvent(m_unObjectId, (vr::EVREventType)HobovrVendorEvents::UduChange, (VREvent_Data_t&)data, 0);
 
-          // DriverLog("tracking reference: it's not implemented yet forehead");
-          m_pSocketComm->send2("-200");
+          DriverLog("tracking reference: udu settings change request processed");
+          m_pSocketComm->send2("2000");
           break;
         }
 
