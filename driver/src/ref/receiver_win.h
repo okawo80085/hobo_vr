@@ -198,32 +198,36 @@ namespace SockReceiver {
       while (m_bThreadKeepAlive){
         m_bThreadReset = false;
         int numbit = 0, msglen;
-        int l_iTempMsgSize = m_iExpectedMessageSize*4*2;
+        int l_iTempMsgSize = m_iExpectedMessageSize*4*10;
         char* l_cpRecvBuffer = new char[l_iTempMsgSize];
-  
+
       #ifdef DRIVERLOG_H
             DriverLog("receiver thread started\n");
       #endif
-  
+
         while (m_bThreadKeepAlive && !m_bThreadReset) {
           try {
             msglen = receive_till_zero(m_pSocketObject, l_cpRecvBuffer, numbit, l_iTempMsgSize);
-  
-            if (msglen == -1) break;
-  
-            m_pCallback->OnPacket(l_cpRecvBuffer, msglen);
-  
+
+            if (msglen == -1 || m_bThreadReset) break;
+
+            if (!m_bThreadReset)
+              m_pCallback->OnPacket(l_cpRecvBuffer, msglen);
+
             remove_message_from_buffer(l_cpRecvBuffer, numbit, msglen);
-  
+
             std::this_thread::sleep_for(std::chrono::microseconds(1));
-  
+
           } catch(...) {
+            #ifdef DRIVERLOG_H
+            DriverLog("receiver thread error");
+            #endif
             break;
           }
         }
         delete[] l_cpRecvBuffer;
-  
-  
+
+
         // log end of recv thread
       #ifdef DRIVERLOG_H
             DriverLog("receiver thread ended\n");

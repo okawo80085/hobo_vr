@@ -139,8 +139,10 @@ Options:
         h = 0
         while self.coro_keep_alive["example_thread2"].is_alive:
             try:
-                self.poses[1].y = 1 + np.cos(h) / 5
-                h += 0.01
+                if len(self.poses) > 1:
+                    for i in range(1, len(self.poses)):
+                        self.poses[i].y = 1 + np.cos(h+i) / 5
+                    h += 0.01
 
                 time.sleep(self.coro_keep_alive["example_thread2"].sleep_delay)
 

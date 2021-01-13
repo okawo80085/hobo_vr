@@ -48,7 +48,7 @@ namespace hobovr {
   // le version
   static const uint32_t k_nHobovrVersionMajor = 0;
   static const uint32_t k_nHobovrVersionMinor = 6;
-  static const uint32_t k_nHobovrVersionBuild = 3;
+  static const uint32_t k_nHobovrVersionBuild = 4;
   static const std::string k_sHobovrVersionGG = "the hidden world";
 
 } // namespace hobovr
@@ -647,11 +647,15 @@ private:
   static void SlowUpdateThreadEnter(CServerDriver_hobovr *ptr) {
     ptr->SlowUpdateThread();
   }
+  void UpdateServerDeviceList();
 
   std::vector<hobovr::HobovrDeviceElement*> m_vDevices;
+  std::vector<hobovr::HobovrDeviceElement*> m_vStandbyDevices;
 
   std::shared_ptr<SockReceiver::DriverReceiver> m_pSocketComm;
   std::shared_ptr<HobovrTrackingRef_SettManager> m_pSettManTref;
+
+  bool m_bDeviceListSyncEvent = false;
 
 
   // slower thread stuff
@@ -759,16 +763,20 @@ void CServerDriver_hobovr::Cleanup() {
   m_ptSlowUpdateThread->join();
 
   for (auto& i : m_vDevices)
-    delete i; 
+    delete i;
+
+  for (auto& i : m_vStandbyDevices)
+    delete i;
 
   m_vDevices.clear();
+  m_vStandbyDevices.clear();
 
   CleanupDriverLog();
   VR_CLEANUP_SERVER_DRIVER_CONTEXT();
 }
 
 void CServerDriver_hobovr::OnPacket(char* buff, int len) {
-  if (len == (m_pSocketComm->m_iExpectedMessageSize*4+3))
+  if (len == (m_pSocketComm->m_iExpectedMessageSize*4+3) && !m_bDeviceListSyncEvent)
   {
     float* temp= (float*)buff;
     std::vector<float> v(temp, temp+m_pSocketComm->m_iExpectedMessageSize);
@@ -799,14 +807,97 @@ void CServerDriver_hobovr::RunFrame() {
       DriverLog("udu change event");
       std::vector<std::string> newD;
       std::vector<int> newEps;
-      for (auto i : g_vpUduChangeBuffer) {
+      auto uduBufferCopy = g_vpUduChangeBuffer;
+      for (auto i : uduBufferCopy) {
         DriverLog("pair: (%s, %d)", i.first, i.second);
         newD.push_back(i.first);
         newEps.push_back(i.second);
       }
+      m_bDeviceListSyncEvent = true;
       m_pSocketComm->UpdateParams(newD, newEps);
+      UpdateServerDeviceList();
+      m_bDeviceListSyncEvent = false;
     }
   }
+}
+
+void CServerDriver_hobovr::UpdateServerDeviceList() {
+  for (auto i : m_vDevices){
+    i->PowerOff();
+    m_vStandbyDevices.push_back(i);
+  }
+
+  m_vDevices.clear();
+
+  auto uduBufferCopy = g_vpUduChangeBuffer;
+
+  int counter_hmd = 0;
+  int counter_cntrlr = 0;
+  int counter_trkr = 0;
+  int controller_hs = 1;
+
+  for (auto i : uduBufferCopy) {
+    if (i.first == "h") {
+      auto target = "h" + std::to_string(counter_hmd);
+      auto key = [target](hobovr::HobovrDeviceElement* d)->bool {return d->GetSerialNumber() == target;};
+
+      auto res = std::find_if(m_vStandbyDevices.begin(), m_vStandbyDevices.end(), key);
+      if (res != m_vStandbyDevices.end()) {
+        (*res)->PowerOn();
+        m_vDevices.push_back(*res);
+        m_vStandbyDevices.erase(res);
+      } else {
+        HeadsetDriver* temp = new HeadsetDriver("h" + std::to_string(counter_hmd));
+
+        m_vDevices.push_back(temp);
+        vr::VRServerDriverHost()->TrackedDeviceAdded(
+                      m_vDevices.back()->GetSerialNumber().c_str(), vr::TrackedDeviceClass_HMD,
+                      temp);
+      }
+
+      counter_hmd++;
+    } else if (i.first == "c") {
+      auto target = "c" + std::to_string(counter_cntrlr);
+      auto key = [target](hobovr::HobovrDeviceElement* d)->bool {return d->GetSerialNumber() == target;};
+
+      auto res = std::find_if(m_vStandbyDevices.begin(), m_vStandbyDevices.end(), key);
+      if (res != m_vStandbyDevices.end()) {
+        (*res)->PowerOn();
+        m_vDevices.push_back(*res);
+        m_vStandbyDevices.erase(res);
+      } else {
+        ControllerDriver* temp = new ControllerDriver(controller_hs, "c" + std::to_string(counter_cntrlr), m_pSocketComm);
+
+        m_vDevices.push_back(temp);
+        vr::VRServerDriverHost()->TrackedDeviceAdded(
+                      m_vDevices.back()->GetSerialNumber().c_str(), vr::TrackedDeviceClass_Controller,
+                      temp);
+
+      }
+
+      controller_hs = (controller_hs) ? 0 : 1;
+      counter_cntrlr++;
+    } else if (i.first == "t") {
+      auto target = "t" + std::to_string(counter_trkr);
+      auto key = [target](hobovr::HobovrDeviceElement* d)->bool {return d->GetSerialNumber() == target;};
+
+      auto res = std::find_if(m_vStandbyDevices.begin(), m_vStandbyDevices.end(), key);
+      if (res != m_vStandbyDevices.end()) {
+        (*res)->PowerOn();
+        m_vDevices.push_back(*res);
+        m_vStandbyDevices.erase(res);
+      } else {
+        TrackerDriver* temp = new TrackerDriver("t" + std::to_string(counter_trkr), m_pSocketComm);
+
+        m_vDevices.push_back(temp);
+        vr::VRServerDriverHost()->TrackedDeviceAdded(
+                      m_vDevices.back()->GetSerialNumber().c_str(), vr::TrackedDeviceClass_GenericTracker,
+                      temp);
+      }
+      counter_trkr++;
+    }
+  }
+  g_vpUduChangeBuffer.clear();
 }
 
 void CServerDriver_hobovr::SlowUpdateThread() {
