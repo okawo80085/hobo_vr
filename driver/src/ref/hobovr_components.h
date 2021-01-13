@@ -162,10 +162,15 @@ namespace hobovr {
 
     virtual void GetProjectionRaw(vr::EVREye eEye, float *pfLeft, float *pfRight,
                                   float *pfTop, float *pfBottom) {
-      *pfLeft = -m_fFovL;
-      *pfRight = m_fFovR;
       *pfTop = -m_fFovT;
       *pfBottom = m_fFovB;
+      if (eEye == vr::Eye_Left) {
+        *pfLeft = -m_fFovL;
+        *pfRight = m_fFovR;
+      } else {
+        *pfLeft = -m_fFovR;
+        *pfRight = m_fFovL;
+      }
     }
 
     virtual DistortionCoordinates_t ComputeDistortion(vr::EVREye eEye, float fU,
