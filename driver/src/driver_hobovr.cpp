@@ -391,7 +391,7 @@ enum HobovrTrackingRef_Msg_type
 
 enum HobovrVendorEvents
 {
-  UduChange = 19998,
+  UduChange = 19998, // in the vendor event range
 };
 
 std::vector<std::pair<std::string, int>> g_vpUduChangeBuffer;

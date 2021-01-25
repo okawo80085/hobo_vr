@@ -8,7 +8,7 @@
    "hobovr_device_hmd": {
       "IPD" : 0.063,
       "secondsFromVsyncToPhotons" : 0.01,
-      "displayFrequency" : 90.0,
+      "displayFrequency" : 100.0,
       "UserHeadToEyeDepthMeters" : 0.16
    },
    "hobovr_comp_extendedDisplay": {
@@ -18,10 +18,10 @@
       "windowHeight" : 1440,
       "renderWidth" : 3840,
       "renderHeight" : 2160,
-      "DistortionK1" : 0.74,
-      "DistortionK2" : 0.70,
-      "ZoomWidth" : 0.82,
-      "ZoomHeight" : 0.82,
+      "DistortionK1" : 0.450,
+      "DistortionK2" : 0.190,
+      "ZoomWidth" : 0.92,
+      "ZoomHeight" : 0.92,
       "EyeGapOffsetPx" : -10,
       "IsDisplayRealDisplay" : true,
       "FOVleft" : 1.0,
