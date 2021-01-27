@@ -48,7 +48,7 @@ namespace hobovr {
   // le version
   static const uint32_t k_nHobovrVersionMajor = 0;
   static const uint32_t k_nHobovrVersionMinor = 6;
-  static const uint32_t k_nHobovrVersionBuild = 4;
+  static const uint32_t k_nHobovrVersionBuild = 5;
   static const std::string k_sHobovrVersionGG = "the hidden world";
 
 } // namespace hobovr
@@ -192,6 +192,8 @@ public:
 
     m_sRenderModelPath = "{hobovr}/rendermodels/hobovr_controller_mc0";
     m_sBindPath = "{hobovr}/input/hobovr_controller_profile.json";
+
+    m_skeletonHandle = vr::k_ulInvalidInputComponentHandle;
   }
 
   virtual EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId) {
@@ -202,10 +204,18 @@ public:
       vr::VRProperties()->SetInt32Property(m_ulPropertyContainer,
                                            Prop_ControllerRoleHint_Int32,
                                            TrackedControllerRole_RightHand);
+      vr::VRDriverInput()->CreateSkeletonComponent(m_ulPropertyContainer, "/input/skeleton/right", 
+                      "/skeleton/hand/right", 
+                      "/pose/raw", vr::VRSkeletalTracking_Partial
+                      , nullptr, 0U, &m_skeletonHandle);
     } else {
       vr::VRProperties()->SetInt32Property(m_ulPropertyContainer,
                                            Prop_ControllerRoleHint_Int32,
                                            TrackedControllerRole_LeftHand);
+      vr::VRDriverInput()->CreateSkeletonComponent(m_ulPropertyContainer, "/input/skeleton/left", 
+                      "/skeleton/hand/left", 
+                      "/pose/raw", vr::VRSkeletalTracking_Partial
+                      , nullptr, 0U, &m_skeletonHandle);
     }
 
     // create all the bool input components
@@ -306,6 +316,8 @@ private:
   vr::VRInputComponentHandle_t m_compTrackpadTouch;
   vr::VRInputComponentHandle_t m_compTriggerClick;
   vr::VRInputComponentHandle_t m_compTrackpadClick;
+
+  vr::VRInputComponentHandle_t m_skeletonHandle;
 
   bool m_bHandSide;
 };
