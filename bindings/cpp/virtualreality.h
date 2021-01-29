@@ -63,7 +63,7 @@ struct Pose
         return ret;
     }
 
-    const char type_id() {return 'a';}
+    const char type_id() {return 'p';}
 };
 
 struct ControllerPose : Pose
@@ -77,7 +77,11 @@ struct ControllerPose : Pose
         return 88; // 22*sizeof(float)
     }
 
-    const char type_id() {return 'b';}
+    const char type_id() {return 'c';}
+};
+
+struct TrackerPose : Pose {
+    const char type_id() {return 't';}
 };
 
 #pragma pack(pop)
@@ -93,13 +97,12 @@ struct KeepAliveTrigger {
 class PoserTemplateBase {
 private:
     std::vector<std::function<void()>> m_vThreads;
-    std::thread m_tCloseThread;
 
 protected:
     int m_iPort;
     std::string m_sAddr;
     std::unordered_map<std::string, KeepAliveTrigger> m_mThreadRegistry;
-    char* m_chpLastReadBuff = "";
+    char m_chpLastReadBuff[4096];
 
 public:
     PoserTemplateBase(
