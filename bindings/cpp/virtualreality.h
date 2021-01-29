@@ -94,7 +94,7 @@ struct KeepAliveTrigger {
 }
 
 // base template class
-class PoserTemplateBase {
+class PoserTemplateBase : public Callback {
 private:
     std::vector<std::function<void()>> m_vThreads;
 
@@ -104,6 +104,9 @@ protected:
     std::unordered_map<std::string, KeepAliveTrigger> m_mThreadRegistry;
     char m_chpLastReadBuff[4096];
 
+    std::shared_prt<SocketObj> m_spSockComm;
+    std::shared_prt<SocketObj> m_spManagerSockComm;
+
 public:
     PoserTemplateBase(
         std::string addr="127.0.0.1",
@@ -112,6 +115,9 @@ public:
 
         register_member_thread(std::bind(&PoserTemplateBase::close, this), "close", 1e+08ns); // register the close thread first
         register_member_thread(std::bind(&PoserTemplateBase::send, this), "close", send_delay);
+
+        m_spSockComm->setCallback(this);
+        m_spManagerSockComm->setCallback(this);
     }
 
     bool Start() {
@@ -121,6 +127,10 @@ public:
     }
 
     virtual void send() = 0; // override this haha
+
+    void OnPacket(char* buff, int len) {
+        m_chpLastReadBuff = buff;
+    }
 
     void close() {
         while (m_mThreadRegistry["close"].is_alive) {
@@ -149,6 +159,7 @@ public:
         }
     }
 
+    // register new threads
     void register_member_thread(std::function<void()> member_func, std::string trigger_name, std::chrono::nanoseconds sleep_delay) {
         if (!m_mThreadRegistry.contains(trigger_name)) {
             m_mThreadRegistry[trigger_name] = KeepAliveTrigger(true, sleep_delay);

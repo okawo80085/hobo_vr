@@ -31,11 +31,11 @@
 namespace vr {
   static bool g_bDriverReceiver_wsastartup_happen = false;
 
-  class DriverReceiver {
+  class SocketObj {
   public:
     std::string m_sIdMessage = "holla\n";
 
-    DriverReceiver(std::wstring addr, int port=6969, recvBuffSize=512): m_iExpectedMessageSize(recvBuffSize) {
+    SocketObj(std::wstring addr, int port=6969, recvBuffSize=512): m_iExpectedMessageSize(recvBuffSize) {
 
       if (!g_bDriverReceiver_wsastartup_happen) {
         // init winsock
@@ -81,7 +81,7 @@ namespace vr {
 
     }
 
-    ~DriverReceiver() {
+    ~SocketObj() {
       this->stop();
     }
 
@@ -131,6 +131,10 @@ namespace vr {
       return send(m_pSocketObject, message, (int)strlen(message), 0);
     }
 
+    int send2(const char* message, int msg_len_bytes) {
+      return send(m_pSocketObject, message, msg_len_bytes, 0);
+    }
+
     void setCallback(Callback* pCb){
       m_pCallback = pCb;
     }
@@ -147,7 +151,7 @@ namespace vr {
     Callback m_NullCallback;
     Callback* m_pCallback = &m_NullCallback;
 
-    static void my_thread_enter(DriverReceiver *ptr) {
+    static void my_thread_enter(SocketObj *ptr) {
       ptr->my_thread();
     }
 
