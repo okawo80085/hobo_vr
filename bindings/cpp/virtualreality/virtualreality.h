@@ -178,6 +178,15 @@ struct KeepAliveTrigger {
     KeepAliveTrigger(bool alive=true, std::chrono::nanoseconds sleep_del= std::chrono::nanoseconds(100000000)) : is_alive(alive), sleep_delay(sleep_del) {}
 };
 
+// get command line arguments from :istream: using the rules provided in :cli_setts:
+template <class CharT, class Traits = std::char_traits<CharT>>
+std::vector<std::pair<std::string, std::string>> get_cli_args(std::basic_istream<CharT, Traits>& istream, const char* cli_setts) {
+    Log("> ");
+    std::string temp;
+    istream >> temp;
+    return { {temp, ""} };
+}
+
 // base template class
 class PoserTemplateBase : public utilz::Callback {
 private:
@@ -191,7 +200,7 @@ protected:
     std::shared_ptr<utilz::SocketObj> m_spSockComm;
     std::shared_ptr<utilz::SocketObj> m_spManagerSockComm;
 
-    static const char CLI_STRING[] = 
+    const char* CLI_STRING = 
 R"(hobo_vr poser
 
 Usage: poser [-h | --help] [options]
@@ -242,9 +251,12 @@ public:
     }
 
     void close() {
+        Log("%s\n", (char*)CLI_STRING);
+
         while (m_mThreadRegistry["close"].is_alive) {
             try {
-                std::vector<std::pair<std::string, std::string>> cli_args= get_cli_args(&std::cin, CLI_STRING); // the oldest trick in the book, TODO: write get_cli_args
+                std::vector<std::pair<std::string, std::string>> cli_args= get_cli_args(std::cin, CLI_STRING); // the oldest trick in the book, TODO: write get_cli_args
+
                 if (std::find(cli_args.begin(), cli_args.end(), std::pair<std::string, std::string>("--quit", "")) != cli_args.end())
                     break;
 
@@ -254,7 +266,7 @@ public:
 
             } catch(...) {
                 Log("failed to parse command, try again\n");
-                Log("%s", (char*)CLI_STRING);
+                Log("%s\n", (char*)CLI_STRING);
             }
 
             std::this_thread::sleep_for(m_mThreadRegistry["close"].sleep_delay); // thread sleep
