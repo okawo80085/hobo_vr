@@ -19,6 +19,12 @@ c++ bindings for hobo_vr posers
 right now includes templates only, no tracking
 */
 
+// version
+static const uint32_t k_nHvrVersionMajor = 0;
+static const uint32_t k_nHvrVersionMinor = 1;
+static const uint32_t k_nHvrVersionBuild = 1;
+static const std::string k_nHvrVersionJoke = "solid snake";
+
 // logging
 
 static vr::ostream s_oLogStream& = NULL;

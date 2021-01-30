@@ -1,4 +1,4 @@
-# virtualreality
+# python bindings for hobo_vr posers
 python side of [hobo_vr](https://github.com/okawo80085/hobo_vr)
 
 mainly used for writing posers
@@ -20,7 +20,7 @@ python -m pip install virtualreality[camera]
 to install the development version, do the following:
 ```
 git clone https://github.com/okawo80085/hobo_vr
-cd ./hobo_vr
+cd ./hobo_vr/bindings/python
 python -m pip install -e .
 ```
 
@@ -113,9 +113,9 @@ asyncio.run(poser.main())
 
 # udu poser client example
 ```
-u - unlimited
-d - devices
-u - upgrade
+u - black
+d - magic
+u - yes
 ```
 buts its more like a mode
 
