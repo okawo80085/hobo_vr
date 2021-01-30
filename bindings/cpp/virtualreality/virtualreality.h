@@ -154,6 +154,21 @@ public:
     const char type_id() { return 't'; }
 };
 
+// the only allowed manager communication type 
+struct ManagerPacket {
+    uint32_t msg_type;
+    uint32_t data[129];
+
+    int len_bytes() {
+        return 520; // 130*sizeof(int)
+    }
+
+    const char* _to_pchar() {
+        char* ret = (char*)this;
+        return ret;
+    }
+};
+
 #pragma pack(pop)
 
 struct KeepAliveTrigger {
@@ -175,6 +190,16 @@ protected:
 
     std::shared_ptr<utilz::SocketObj> m_spSockComm;
     std::shared_ptr<utilz::SocketObj> m_spManagerSockComm;
+
+    static const char CLI_STRING[] = 
+R"(hobo_vr poser
+
+Usage: poser [-h | --help] [options]
+
+Options:
+    -h, --help      shows this message
+    -q, --quit      exits the poser
+)";
 
 public:
     PoserTemplateBase(
@@ -203,6 +228,13 @@ public:
         return false;
     }
 
+    // send a manager message
+    void _send_manager(ManagerPacket msg) {
+        m_spManagerSockComm->send2(msg._to_pchar(), msg.len_bytes());
+    }
+
+    virtual void _cli_arg_map(std::pair<std::string, std::string>) {}
+
     virtual void send() = 0; // lmao, override this
 
     void OnPacket(char* buff, int len) {
@@ -211,11 +243,19 @@ public:
 
     void close() {
         while (m_mThreadRegistry["close"].is_alive) {
-            // cli and close thread logic, i'll add it when i get around to adding docopt
+            try {
+                std::vector<std::pair<std::string, std::string>> cli_args= get_cli_args(&std::cin, CLI_STRING); // the oldest trick in the book, TODO: write get_cli_args
+                if (std::find(cli_args.begin(), cli_args.end(), std::pair<std::string, std::string>("--quit", "")) != cli_args.end())
+                    break;
 
-            Log("for testing purposes this poser will exit in 10 seconds\n");
-            std::this_thread::sleep_for(std::chrono::seconds(10)); // for now just wait and break;
-            break;
+                for (auto& i : cli_args) {
+                    _cli_arg_map(i);
+                }
+
+            } catch(...) {
+                Log("failed to parse command, try again\n");
+                Log("%s", (char*)CLI_STRING);
+            }
 
             std::this_thread::sleep_for(m_mThreadRegistry["close"].sleep_delay); // thread sleep
         }
@@ -308,7 +348,7 @@ public:
                 m_vPoses.push_back(new TrackerPose());
         }
 
-        Log("total of %d new devices were added, ready for start\n", m_vPoses.size());
+        Log("total of %d new device(s) were added, ready for start\n", m_vPoses.size());
     }
 
     ~UduPoserTemplate() {
