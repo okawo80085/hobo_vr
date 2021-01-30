@@ -31,6 +31,7 @@
 #include <locale>
 #include <windows.h>
 
+// this is needed cuz windows
 std::wstring s2w(const std::string& str)
 {
     int len;

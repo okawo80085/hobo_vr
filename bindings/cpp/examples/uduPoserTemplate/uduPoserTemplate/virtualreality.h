@@ -296,11 +296,13 @@ namespace hvr
             std::chrono::nanoseconds send_delay = std::chrono::nanoseconds(10000000)) :PoserTemplateBase(addr, port, send_delay) {
             //temp
             m_vPoses.push_back(new Pose());
-            auto temp = new ControllerPose();
-            Log("%d, %c\n", temp->len_bytes(), temp->type_id());
-            m_vPoses.push_back(temp);
-            Log("%d, %c\n", m_vPoses[1]->len_bytes(), m_vPoses[1]->type_id());
             m_vPoses.push_back(new ControllerPose());
+            m_vPoses.push_back(new ControllerPose());
+        }
+
+        ~UduPoserTemplate() {
+            for (auto& i : m_vPoses)
+                delete i;
         }
 
         void send() {
@@ -308,7 +310,6 @@ namespace hvr
                 try {
                     for (auto i : m_vPoses)
                         m_spSockComm->send2(i->_to_pchar(), i->len_bytes());
-//                        Log("%d, %d, %c\n", , i->len_bytes(), i->type_id());
 
                     m_spSockComm->send2(g_sMessageTerminator.c_str());
 

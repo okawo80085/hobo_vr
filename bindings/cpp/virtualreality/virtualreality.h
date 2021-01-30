@@ -63,7 +63,7 @@ void DebugLog( const char *pMsgFormat, ... )
 
 };
 
-#ifdef WIN32
+#ifdef _WIN32
 #include "receiver_win.h"
 #endif // yes it's only for windows for now
 
@@ -111,30 +111,32 @@ struct Ctrl {
     float trigger_click;
 };
 
-struct Pose
+class Pose
 {
+public:
     Vec3 loc;
     Quat rot;
     Vec3 vel;
     Vec3 ang_vel;
 
-    int len() {
+    virtual int len() {
         return 13;
     }
-    int len_bytes() {
+    virtual int len_bytes() {
         return 52; // 13*sizeof(float)
     }
 
-    const char* _to_pchar() {
+    virtual const char* _to_pchar() {
         char* ret = (char*)this;
         return ret;
     }
 
-    const char type_id() {return 'p';}
+    virtual const char type_id() { return 'p'; }
 };
 
-struct ControllerPose : Pose
+class ControllerPose : public Pose
 {
+public:
     Ctrl inputs;
 
     int len() {
@@ -144,11 +146,12 @@ struct ControllerPose : Pose
         return 88; // 22*sizeof(float)
     }
 
-    const char type_id() {return 'c';}
+    const char type_id() { return 'c'; }
 };
 
-struct TrackerPose : Pose {
-    const char type_id() {return 't';}
+class TrackerPose : public Pose {
+public:
+    const char type_id() { return 't'; }
 };
 
 #pragma pack(pop)
@@ -280,7 +283,7 @@ public:
 // derived posers
 class UduPoserTemplate: public PoserTemplateBase {
 protected:
-    std::vector<Pose> m_vPoses;
+    std::vector<Pose*> m_vPoses;
 
 public:
     UduPoserTemplate( std::string udu_string,
@@ -288,16 +291,21 @@ public:
         int port=6969,
         std::chrono::nanoseconds send_delay=std::chrono::nanoseconds(10000000)):PoserTemplateBase(addr, port, send_delay) {
         //temp
-        m_vPoses.push_back(Pose({0}));
-        m_vPoses.push_back(ControllerPose({0}));
-        m_vPoses.push_back(ControllerPose({0}));
+        m_vPoses.push_back(new Pose());
+        m_vPoses.push_back(new ControllerPose());
+        m_vPoses.push_back(new ControllerPose());
+    }
+
+    ~UduPoserTemplate() {
+        for (auto& i : m_vPoses)
+            delete i;
     }
 
     void send() {
         while (m_mThreadRegistry["send"].is_alive) {
             try {
                 for (auto i : m_vPoses)
-                    m_spSockComm->send2(i._to_pchar(), i.len_bytes());
+                    m_spSockComm->send2(i->_to_pchar(), i->len_bytes());
 
                 m_spSockComm->send2(g_sMessageTerminator.c_str());
 
