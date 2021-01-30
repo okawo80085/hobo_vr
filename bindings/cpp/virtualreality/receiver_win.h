@@ -28,7 +28,7 @@
 
 #include <stdio.h>
 
-namespace vr {
+namespace hvr {
   static bool g_bDriverReceiver_wsastartup_happen = false;
 
   class SocketObj {

@@ -9,7 +9,7 @@
 #include <string>
 #include <sstream>
 
-namespace vr {
+namespace hvr {
   //can receive packets ending with \t\r\n using either winsock2 or unix sockets
   template <typename T>
   int receive_till_zero( T sock, char* buf, int& numbytes, int max_packet_size )
@@ -20,10 +20,11 @@ namespace vr {
     int n=-1;
     do {
       // Check if we have a complete message
-      for( ; i < numbytes-2; i++ ) {
-        if((buf[i] == '\t' && buf[i+1] == '\r' && buf[i+2] == '\n')) {
-          // \0 indicate end of message! so we are done
-          return i + 3; // return length of message
+      // for( ; i < numbytes-2; i++ ) {
+      for( ; i < numbytes; i++ ) {
+        // if((buf[i] == '\t' && buf[i+1] == '\r' && buf[i+2] == '\n')) {
+        if((buf[i] == '\n')) {
+          return i + 1; // return length of message
         }
       }
       if constexpr(std::is_same<T, SOCKET>::value)
