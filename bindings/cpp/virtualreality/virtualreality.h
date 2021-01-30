@@ -8,37 +8,25 @@
 #include <vector>
 #include <functional>
 #include <string>
+#include <iostream>
 
 #include <stdio.h>
 #include <stdarg.h>
 
 namespace hvr {
-/*
-c++ bindings for hobo_vr posers
 
-right now includes templates only, no tracking
-*/
+// hobovr_log.h
 
-// version
-static const uint32_t k_nHvrVersionMajor = 0;
-static const uint32_t k_nHvrVersionMinor = 1;
-static const uint32_t k_nHvrVersionBuild = 1;
-static const std::string k_nHvrVersionJoke = "solid snake";
-
-// logging
-
-static vr::ostream s_oLogStream& = NULL;
+static std::ostream* s_oLogStream = &std::cout;
 
 #if !defined( WIN32)
 #define vsnprintf_s vsnprintf
 #endif
 
-bool ChangeLogStreams(std::ostream& newStream) {
+bool ChangeLogStreams(std::ostream* const newStream) {
     s_oLogStream = newStream;
-    return s_oLogStream != NULL;
+    return s_oLogStream != nullptr;
 }
-
-ChangeLogStreams(std::cout); // use stdout by default
 
 static void LogVarArgs( const char *pMsgFormat, va_list args )
 {
@@ -46,7 +34,7 @@ static void LogVarArgs( const char *pMsgFormat, va_list args )
     vsnprintf_s( buf, sizeof(buf), pMsgFormat, args );
 
     if (s_oLogStream)
-        s_oLogStream << buf;
+        *s_oLogStream << buf;
 }
 
 
@@ -55,7 +43,7 @@ void Log( const char *pMsgFormat, ... )
     va_list args;
     va_start( args, pMsgFormat );
 
-    DriverLogVarArgs( pMsgFormat, args );
+    LogVarArgs( pMsgFormat, args );
 
     va_end(args);
 }
@@ -72,6 +60,26 @@ void DebugLog( const char *pMsgFormat, ... )
     va_end(args);
 #endif
 }
+
+};
+
+#ifdef WIN32
+#include "receiver_win.h"
+#endif // yes it's only for windows for now
+
+namespace hvr 
+{
+/*
+c++ bindings for hobo_vr posers
+
+right now includes templates only, no tracking
+*/
+
+// version
+static const uint32_t k_nHvrVersionMajor = 0;
+static const uint32_t k_nHvrVersionMinor = 1;
+static const uint32_t k_nHvrVersionBuild = 1;
+static const std::string k_nHvrVersionJoke = "solid snake";
 
 // constants
 static const std::string g_sMessageTerminator = "\t\r\n"; // has to be exactly 3 characters
@@ -105,7 +113,7 @@ struct Ctrl {
 
 struct Pose
 {
-    Vec3 pos;
+    Vec3 loc;
     Quat rot;
     Vec3 vel;
     Vec3 ang_vel;
@@ -149,24 +157,11 @@ struct KeepAliveTrigger {
     bool is_alive;
     std::chrono::nanoseconds sleep_delay;
 
-    KeepAliveTrigger(bool alive, std::chrono::nanoseconds sleep_del): is_alive(alive), sleep_delay(sleep_del) {}
-}
-
-#ifdef WIN32
-#include <locale>
-#include <codecvt>
-
-std::wstring s2w(std::string wide_utf16_source_string){
-    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-    std::string narrow = converter.to_bytes(wide_utf16_source_string);
-    std::wstring wide = converter.from_bytes(narrow_utf8_source_string);
-    return wide;
-}
-
-#endif
+    KeepAliveTrigger(bool alive=true, std::chrono::nanoseconds sleep_del= std::chrono::nanoseconds(100000000)) : is_alive(alive), sleep_delay(sleep_del) {}
+};
 
 // base template class
-class PoserTemplateBase : public Callback {
+class PoserTemplateBase : public utilz::Callback {
 private:
     std::vector<std::function<void()>> m_vThreads;
     bool m_bStarted = false;
@@ -175,29 +170,24 @@ protected:
     std::unordered_map<std::string, KeepAliveTrigger> m_mThreadRegistry;
     char m_chpLastReadBuff[4096];
 
-    std::shared_prt<SocketObj> m_spSockComm;
-    std::shared_prt<SocketObj> m_spManagerSockComm;
+    std::shared_ptr<utilz::SocketObj> m_spSockComm;
+    std::shared_ptr<utilz::SocketObj> m_spManagerSockComm;
 
 public:
     PoserTemplateBase(
         std::string addr="127.0.0.1",
         int port=6969,
-        std::chrono::nanoseconds send_delay=1e+07ns,) {
+        std::chrono::nanoseconds send_delay=std::chrono::nanoseconds(10000000)) {
 
-        #ifdef WIN32
-        m_spSockComm = std::make_shared<SocketObj>(s2w(addr), port);
-        m_spManagerSockComm = std::make_shared<SocketObj>(s2w(addr), port);
-        #else
-        m_spSockComm = std::make_shared<SocketObj>(addr, port);
-        m_spManagerSockComm = std::make_shared<SocketObj>(addr, port);
-        #endif
+        m_spSockComm = std::make_shared<utilz::SocketObj>(addr, port);
+        m_spManagerSockComm = std::make_shared<utilz::SocketObj>(addr, port);
 
         m_spSockComm->m_sIdMessage = g_sPoserIdMsg+"\n";
         m_spSockComm->setCallback(this);
         m_spManagerSockComm->m_sIdMessage = g_sManagerIdMsg+"\n";        
         // m_spManagerSockComm->setCallback(this);
 
-        register_member_thread(std::bind(&PoserTemplateBase::close, this), "close", 1e+08ns); // register the close thread first
+        register_member_thread(std::bind(&PoserTemplateBase::close, this), "close", std::chrono::nanoseconds(100000000)); // register the close thread first
         register_member_thread(std::bind(&PoserTemplateBase::send, this), "send", send_delay); // provides a trigger for the send thread in derived classes
     }
 
@@ -213,7 +203,7 @@ public:
     virtual void send() = 0; // lmao, override this
 
     void OnPacket(char* buff, int len) {
-        m_chpLastReadBuff = buff; // just store the received buffer
+        strncpy_s(m_chpLastReadBuff, buff, 4096); // just store the received buffer
     }
 
     void close() {
@@ -240,7 +230,7 @@ public:
         Log("finished\n");
     }
 
-    void main() {
+    void Main() {
         if (!m_bStarted) {
             // log, throw
             Log("startup error: main() called before Start()\n");
@@ -255,7 +245,7 @@ public:
         l_vRunning[0].join(); // wait for the close thread to finish
 
         // join the threads
-        for (int i=1; i<l_vRunning.length(); i++) {
+        for (int i=1; i<l_vRunning.size(); i++) {
             if (l_vRunning[i].joinable()) {
                 l_vRunning[i].join();
             }
@@ -276,7 +266,7 @@ public:
 
     // register new threads
     void register_member_thread(std::function<void()> member_func, std::string trigger_name, std::chrono::nanoseconds sleep_delay) {
-        if (!m_mThreadRegistry.contains(trigger_name)) {
+        if (!m_mThreadRegistry.count(trigger_name)) {
             m_mThreadRegistry[trigger_name] = KeepAliveTrigger(true, sleep_delay);
             m_vThreads.push_back(member_func);
         } else {
@@ -296,11 +286,11 @@ public:
     UduPoserTemplate( std::string udu_string,
         std::string addr="127.0.0.1",
         int port=6969,
-        std::chrono::nanoseconds send_delay=1e+07ns,):PoserTemplateBase(addr, port, send_delay) {
+        std::chrono::nanoseconds send_delay=std::chrono::nanoseconds(10000000)):PoserTemplateBase(addr, port, send_delay) {
         //temp
-        m_vPoses.push_back(Pose);
-        m_vPoses.push_back(ControllerPose);
-        m_vPoses.push_back(ControllerPose);
+        m_vPoses.push_back(Pose({0}));
+        m_vPoses.push_back(ControllerPose({0}));
+        m_vPoses.push_back(ControllerPose({0}));
     }
 
     void send() {
@@ -309,7 +299,7 @@ public:
                 for (auto i : m_vPoses)
                     m_spSockComm->send2(i._to_pchar(), i.len_bytes());
 
-                m_spSockComm->send2(g_sMessageTerminator);
+                m_spSockComm->send2(g_sMessageTerminator.c_str());
 
                 std::this_thread::sleep_for(m_mThreadRegistry["send"].sleep_delay);
             } catch (...) {
@@ -319,7 +309,7 @@ public:
 
         }
     }
-}
+};
 
 }; // namespace vr
 

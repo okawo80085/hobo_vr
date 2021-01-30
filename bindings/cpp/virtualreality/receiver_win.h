@@ -28,14 +28,28 @@
 
 #include <stdio.h>
 
-namespace hvr {
+#include <locale>
+#include <windows.h>
+
+std::wstring s2w(const std::string& str)
+{
+    int len;
+    int slength = (int)str.length() + 1;
+    len = MultiByteToWideChar(CP_ACP, 0, str.c_str(), slength, 0, 0);
+    wchar_t* buf = new wchar_t[len];
+    MultiByteToWideChar(CP_ACP, 0, str.c_str(), slength, buf, len);
+    std::wstring result(buf);
+    return buf;
+}
+
+namespace utilz {
   static bool g_bDriverReceiver_wsastartup_happen = false;
 
   class SocketObj {
   public:
     std::string m_sIdMessage = "holla\n";
 
-    SocketObj(std::wstring addr, int port=6969, recvBuffSize=512): m_iExpectedMessageSize(recvBuffSize) {
+    SocketObj(std::string addr, int port=6969, int recvBuffSize=512): m_iExpectedMessageSize(recvBuffSize) {
 
       if (!g_bDriverReceiver_wsastartup_happen) {
         // init winsock
@@ -63,7 +77,7 @@ namespace hvr {
       // addr details
       sockaddr_in addrDetails;
       addrDetails.sin_family = AF_INET;
-      InetPton(AF_INET, addr, &addrDetails.sin_addr.s_addr);
+      InetPton(AF_INET, s2w(addr).c_str(), &addrDetails.sin_addr.s_addr);
       addrDetails.sin_port = htons(port);
 
       // connect socket
@@ -118,7 +132,10 @@ namespace hvr {
           // log closesocket error
           // printf("closesocket error: %d\n", WSAGetLastError());
           WSACleanup();
-          throw std::runtime_error("failed to closesocket");
+          #ifdef __HOBO_VR_LOG
+          hvr::Log("failed to close socket");
+          #endif
+          //throw std::runtime_error("failed to closesocket");
         }
         else
           WSACleanup();
@@ -193,6 +210,6 @@ namespace hvr {
     }
   };
 
-};
+}; // namespace utilz
 
 #endif // RECEIVER_H
