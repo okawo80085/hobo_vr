@@ -20,13 +20,13 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="receiver_win.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="util.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="virtualreality.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="virtualreality_receiver_win.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="virtualreality_util.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

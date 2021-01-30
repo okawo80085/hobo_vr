@@ -13,7 +13,7 @@
 #pragma comment (lib, "Mswsock.lib")
 #pragma comment (lib, "AdvApi32.lib")
 
-#include "util.h"
+#include "virtualreality_util.h"
 
 #include <vector>
 #include <string>
@@ -31,19 +31,20 @@
 #include <locale>
 #include <windows.h>
 
-// this is needed cuz windows
-std::wstring s2w(const std::string& str)
-{
-    int len;
-    int slength = (int)str.length() + 1;
-    len = MultiByteToWideChar(CP_ACP, 0, str.c_str(), slength, 0, 0);
-    wchar_t* buf = new wchar_t[len];
-    MultiByteToWideChar(CP_ACP, 0, str.c_str(), slength, buf, len);
-    std::wstring result(buf);
-    return buf;
-}
-
 namespace utilz {
+
+  // this is needed cuz windows
+  std::wstring s2w(const std::string& str)
+  {
+      int len;
+      int slength = (int)str.length() + 1;
+      len = MultiByteToWideChar(CP_ACP, 0, str.c_str(), slength, 0, 0);
+      wchar_t* buf = new wchar_t[len];
+      MultiByteToWideChar(CP_ACP, 0, str.c_str(), slength, buf, len);
+      std::wstring result(buf);
+      return buf;
+  }
+
   static bool g_bDriverReceiver_wsastartup_happen = false;
 
   class SocketObj {

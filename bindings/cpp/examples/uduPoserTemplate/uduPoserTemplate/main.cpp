@@ -17,19 +17,19 @@ public:
 	}
 
 	void my_thread() {
-		hvr::Log("my_thread started");
+		hvr::Log("my_thread started\n");
 		while (m_mThreadRegistry["my_thread"].is_alive) {
 			m_vPoses[0]->loc.x += 0.01;
 
 			std::this_thread::sleep_for(m_mThreadRegistry["my_thread"].sleep_delay); // thread sleep
 		}
 		m_mThreadRegistry["my_thread"].is_alive = false; // signal death
-		hvr::Log("my_thread ended");
+		hvr::Log("my_thread ended\n");
 	}
 };
 
 int main() {
-	MyPoser pp("lmao");
+	MyPoser pp("h c c");
 	if (pp.Start());
 		pp.Main();
 

@@ -148,6 +148,6 @@ namespace utilz {
   public:
     virtual void OnPacket(char* buff, int len) {};
   };
-}
+} // namespace utilz
 
 #endif // UTIL_H

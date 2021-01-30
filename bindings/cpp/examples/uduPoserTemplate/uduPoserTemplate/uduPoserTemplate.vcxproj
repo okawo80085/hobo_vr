@@ -144,9 +144,9 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="receiver_win.h" />
-    <ClInclude Include="util.h" />
     <ClInclude Include="virtualreality.h" />
+    <ClInclude Include="virtualreality_receiver_win.h" />
+    <ClInclude Include="virtualreality_util.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -64,7 +64,7 @@ void DebugLog( const char *pMsgFormat, ... )
 };
 
 #ifdef _WIN32
-#include "receiver_win.h"
+#include "virtualreality_receiver_win.h"
 #endif // yes it's only for windows for now
 
 namespace hvr 
@@ -283,17 +283,32 @@ public:
 // derived posers
 class UduPoserTemplate: public PoserTemplateBase {
 protected:
-    std::vector<Pose*> m_vPoses;
+    std::vector<Pose*> m_vPoses; // NEVER modify it yourself
 
 public:
     UduPoserTemplate( std::string udu_string,
         std::string addr="127.0.0.1",
         int port=6969,
         std::chrono::nanoseconds send_delay=std::chrono::nanoseconds(10000000)):PoserTemplateBase(addr, port, send_delay) {
-        //temp
-        m_vPoses.push_back(new Pose());
-        m_vPoses.push_back(new ControllerPose());
-        m_vPoses.push_back(new ControllerPose());
+        std::regex rgx2("([htc][ ])*([htc]$)");
+        if (utilz::first_rgx_match(udu_string, rgx2) != udu_string){
+            Log("invalid udu string\n");
+            throw std::runtime_error("invalid udu string");
+        }
+
+        std::regex rgx("[htc]");
+        auto udu_vector = utilz::get_rgx_vector(udu_string, rgx);
+
+        for (auto i : udu_vector) {
+            if (i == "h")
+                m_vPoses.push_back(new Pose());
+            else if (i == "c")
+                m_vPoses.push_back(new ControllerPose());
+            else if (i == "t")
+                m_vPoses.push_back(new TrackerPose());
+        }
+
+        Log("total of %d new devices were added, ready for start\n", m_vPoses.size());
     }
 
     ~UduPoserTemplate() {
@@ -319,6 +334,6 @@ public:
     }
 };
 
-}; // namespace vr
+}; // namespace hvr
 
 #endif // __HOBO_VR_LIB
