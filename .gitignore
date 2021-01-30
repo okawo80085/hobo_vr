@@ -49,3 +49,4 @@ Vector3.hpp
 Quaternion.hpp
 boost/
 venv/
+bindings/cpp/examples/uduPoserTemplate/*.h
