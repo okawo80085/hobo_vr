@@ -10,6 +10,8 @@
 #include <winsock2.h>
 
 #pragma comment(lib, "Ws2_32.lib")
+#pragma comment (lib, "Mswsock.lib")
+#pragma comment (lib, "AdvApi32.lib")
 
 #include "util.h"
 
@@ -27,38 +29,42 @@
 #include <stdio.h>
 
 namespace SockReceiver {
+  static bool g_bDriverReceiver_wsastartup_happen = false;
 
   class DriverReceiver {
   public:
-    std::vector<std::string> device_list;
-    std::vector<int> eps;
-    int m_iBuffSize;
+    std::vector<std::string> m_vsDevice_list;
+    std::vector<int> m_viEps;
+    int m_iExpectedMessageSize;
+    std::string m_sIdMessage = "hello\n";
 
     DriverReceiver(std::string expected_pose_struct, int port=6969) {
       std::regex rgx("[htc]");
       std::regex rgx2("[0-9]+");
 
-      this->eps = split_to_number<int>(get_rgx_vector(expected_pose_struct, rgx2));
-      this->device_list = get_rgx_vector(expected_pose_struct, rgx);
-      this->threadKeepAlive = false;
-      m_iBuffSize = std::accumulate(this->eps.begin(), this->eps.end(), 0);
+      m_viEps = split_to_number<int>(get_rgx_vector(expected_pose_struct, rgx2));
+      m_vsDevice_list = get_rgx_vector(expected_pose_struct, rgx);
+      m_iExpectedMessageSize = std::accumulate(m_viEps.begin(), m_viEps.end(), 0);
 
-      // init winsock
-      WSADATA wsaData;
-      int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
-      if (iResult != NO_ERROR) {
-        // log init error
-        // printf("init error: %d\n", iResult);
-#ifdef DRIVERLOG_H
-        DriverLog("receiver init error: %d\n", WSAGetLastError());
-#endif
-        throw std::runtime_error("failed to init winsock");
+      if (!g_bDriverReceiver_wsastartup_happen) {
+        // init winsock
+        WSADATA wsaData;
+        int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+        if (iResult != NO_ERROR) {
+          // log init error
+          // printf("init error: %d\n", iResult);
+  #ifdef DRIVERLOG_H
+          DriverLog("receiver init error: %d\n", WSAGetLastError());
+  #endif
+          throw std::runtime_error("failed to init winsock");
+        }
+        g_bDriverReceiver_wsastartup_happen = true;
       }
 
       // create socket
-      this->mySoc = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+      m_pSocketObject = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
-      if (this->mySoc == INVALID_SOCKET) {
+      if (m_pSocketObject == INVALID_SOCKET) {
         // log create error
         // printf("create error\n");
 #ifdef DRIVERLOG_H
@@ -75,15 +81,15 @@ namespace SockReceiver {
       addrDetails.sin_port = htons(port);
 
       // connect socket
-      iResult = connect(this->mySoc, (SOCKADDR *) & addrDetails, sizeof (addrDetails));
-      if (iResult == SOCKET_ERROR) {
+      int iResult2 = connect(m_pSocketObject, (SOCKADDR *) & addrDetails, sizeof (addrDetails));
+      if (iResult2 == SOCKET_ERROR) {
         // log connect error
         // printf("cennect error: %d\n", iResult);
 #ifdef DRIVERLOG_H
         DriverLog("receiver connect error: %d\n", WSAGetLastError());
 #endif
-        iResult = closesocket(this->mySoc);
-        if (iResult == SOCKET_ERROR)
+        int iResult3 = closesocket(m_pSocketObject);
+        if (iResult3 == SOCKET_ERROR)
           // log closesocket error
           // printf("closesocket error: %d\n", iResult);
 #ifdef DRIVERLOG_H
@@ -92,6 +98,7 @@ namespace SockReceiver {
         WSACleanup();
         throw std::runtime_error("failed to connect");
       }
+
     }
 
     ~DriverReceiver() {
@@ -99,15 +106,15 @@ namespace SockReceiver {
     }
 
     void start() {
-      this->threadKeepAlive = true;
-      this->send2("hello\n");
+      m_bThreadKeepAlive = true;
+      this->send2(m_sIdMessage.c_str());
 
-      this->m_pMyTread = new std::thread(this->my_thread_enter, this);
+      m_pMyTread = new std::thread(my_thread_enter, this);
 
-      if (!this->m_pMyTread || !this->threadKeepAlive) {
+      if (!m_pMyTread || !m_bThreadKeepAlive) {
         // log failed to create recv thread
         // printf("thread start error\n");
-        this->close();
+        close();
 #ifdef DRIVERLOG_H
         DriverLog("receiver thread start error\n");
 #endif
@@ -118,18 +125,18 @@ namespace SockReceiver {
     void stop() {
       this->close();
       m_pCallback = &m_NullCallback;
-      this->threadKeepAlive = false;
-      if (this->m_pMyTread) {
-        this->m_pMyTread->join();
-        delete this->m_pMyTread;
-        this->m_pMyTread = nullptr;
+      m_bThreadKeepAlive = false;
+      if (m_pMyTread) {
+        m_pMyTread->join();
+        delete m_pMyTread;
+        m_pMyTread = nullptr;
       }
     }
 
     void close() {
-      if (this->mySoc != NULL) {
-        int res = this->send2("CLOSE\n");
-        int iResult = closesocket(this->mySoc);
+      if (m_pSocketObject != NULL) {
+        int res = send2("CLOSE\n");
+        int iResult = closesocket(m_pSocketObject);
         if (iResult == SOCKET_ERROR) {
           // log closesocket error
           // printf("closesocket error: %d\n", WSAGetLastError());
@@ -143,23 +150,42 @@ namespace SockReceiver {
           WSACleanup();
       }
 
-      this->mySoc = NULL;
+      m_pSocketObject = NULL;
     }
 
     int send2(const char* message) {
-      return send(this->mySoc, message, (int)strlen(message), 0);
+      return send(m_pSocketObject, message, (int)strlen(message), 0);
     }
 
     void setCallback(Callback* pCb){
       m_pCallback = pCb;
     }
 
+    void UpdateParams(std::string new_udu_string) {
+      std::regex rgx("[htc]");
+      std::regex rgx2("[0-9]+");
+
+      m_viEps = split_to_number<int>(get_rgx_vector(new_udu_string, rgx2));
+      m_vsDevice_list = get_rgx_vector(new_udu_string, rgx);
+      m_iExpectedMessageSize = std::accumulate(m_viEps.begin(), m_viEps.end(), 0);
+
+      m_bThreadReset = true;
+    }
+
+    void UpdateParams(std::vector<std::string> newDeviceList, std::vector<int> newEps) {
+      m_viEps = newEps;
+      m_vsDevice_list = newDeviceList;
+      m_iExpectedMessageSize = std::accumulate(m_viEps.begin(), m_viEps.end(), 0);
+
+      m_bThreadReset = true;
+    }
+
   private:
+    bool m_bThreadKeepAlive = false;
+    std::thread *m_pMyTread = nullptr;
+    bool m_bThreadReset = false;
 
-    bool threadKeepAlive;
-    std::thread *m_pMyTread;
-
-    SOCKET mySoc;
+    SOCKET m_pSocketObject;
 
     Callback m_NullCallback;
     Callback* m_pCallback = &m_NullCallback;
@@ -169,52 +195,47 @@ namespace SockReceiver {
     }
 
     void my_thread() {
-      int numbit = 0, msglen;
-      int tempSize = m_iBuffSize*4*2;
-      char* mybuff = new char[tempSize];
+      while (m_bThreadKeepAlive){
+        m_bThreadReset = false;
+        int numbit = 0, msglen;
+        int l_iTempMsgSize = m_iExpectedMessageSize*4*10;
+        char* l_cpRecvBuffer = new char[l_iTempMsgSize];
 
-#ifdef DRIVERLOG_H
-      DriverLog("receiver thread started\n");
-#endif
+      #ifdef DRIVERLOG_H
+            DriverLog("receiver thread started\n");
+      #endif
 
-      while (this->threadKeepAlive) {
-        try {
-          msglen = receive_till_zero(this->mySoc, mybuff, numbit, tempSize);
+        while (m_bThreadKeepAlive && !m_bThreadReset) {
+          try {
+            msglen = receive_till_zero(m_pSocketObject, l_cpRecvBuffer, numbit, l_iTempMsgSize);
 
-          if (msglen == -1) break;
+            if (msglen == -1 || m_bThreadReset) break;
 
-          m_pCallback->OnPacket(mybuff, msglen);
+            if (!m_bThreadReset)
+              m_pCallback->OnPacket(l_cpRecvBuffer, msglen);
 
-          remove_message_from_buffer(mybuff, numbit, msglen);
+            remove_message_from_buffer(l_cpRecvBuffer, numbit, msglen);
 
-          std::this_thread::sleep_for(std::chrono::microseconds(1));
+            std::this_thread::sleep_for(std::chrono::microseconds(1));
 
-        } catch(...) {
-          break;
+          } catch(...) {
+            #ifdef DRIVERLOG_H
+            DriverLog("receiver thread error");
+            #endif
+            break;
+          }
         }
-      }
-      delete[] mybuff;
+        delete[] l_cpRecvBuffer;
 
-      this->threadKeepAlive = false;
 
-      // log end of recv thread
-#ifdef DRIVERLOG_H
-      DriverLog("receiver thread ended\n");
-#endif
+        // log end of recv thread
+      #ifdef DRIVERLOG_H
+            DriverLog("receiver thread ended\n");
+      #endif
+    }
+    m_bThreadKeepAlive = false;
 
     }
-
-    // int _handle(std::string packet) {
-    //   auto temp = split_pk(split_to_number<double>(split_string(packet)), this->eps);
-
-    //   if (get_poses_shape(temp) == this->eps) {
-    //     this->newPose = temp;
-    //     return -1;
-    //   }
-
-    //   else
-    //     return temp.size();
-    // }
   };
 
 };

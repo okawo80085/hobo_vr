@@ -65,6 +65,9 @@ namespace hobovr {
     virtual std::string GetSerialNumber() const {return "";};
     virtual void UpdateDeviceBatteryCharge() {};
     virtual void CheckForUpdates() {};
+    virtual void PowerOff() {};
+    virtual void PowerOn() {};
+    virtual void UpdateSectionSettings() {};
 
     virtual void RunFrame(std::vector<float> &trackingPacket) {} // override this
   };
@@ -134,16 +137,21 @@ namespace hobovr {
           m_ulPropertyContainer, Prop_InputProfilePath_String,
           m_sBindPath.c_str());
 
+      vr::VRProperties()->SetBoolProperty(
+          m_ulPropertyContainer, vr::Prop_DeviceCanPowerOff_Bool, true);
+
       DriverLog("device: activated\n");
       DriverLog("device: serial: %s\n", m_sSerialNumber.c_str());
-      DriverLog("device: render model: \"%s\"\n", m_sRenderModelPath.c_str());
-      DriverLog("device: input binding: \"%s\"\n", m_sBindPath.c_str());
+      DriverLog("device: render model path: \"%s\"\n", m_sRenderModelPath.c_str());
+      DriverLog("device: input binding path: \"%s\"\n", m_sBindPath.c_str());
 
       if constexpr(UseHaptics) {
         DriverLog("device: haptics added\n");
         vr::VRDriverInput()->CreateHapticComponent(m_ulPropertyContainer,
                                                        "/output/haptic", &m_compHaptic);
       }
+      vr::VRProperties()->SetBoolProperty(
+          m_ulPropertyContainer, vr::Prop_Identifiable_Bool, UseHaptics);
 
 
       vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
@@ -157,9 +165,6 @@ namespace hobovr {
                                          m_fDeviceCharge);
         DriverLog("device: has battery, current charge: %.3f", m_fDeviceCharge*100);
       }
-
-      vr::VRProperties()->SetBoolProperty(
-          m_ulPropertyContainer, vr::Prop_Identifiable_Bool, UseHaptics);
 
       vr::VRProperties()->SetStringProperty(
         m_ulPropertyContainer, Prop_Firmware_ManualUpdateURL_String,
@@ -175,20 +180,40 @@ namespace hobovr {
       vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
                                           Prop_Firmware_ManualUpdate_Bool, shouldUpdate);
 
-
       return VRInitError_None;
+    }
+
+    virtual void PowerOff() {
+      // signal device is "aliven't"
+      m_Pose.poseIsValid = false;
+      m_Pose.deviceIsConnected = false;
+      if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
+        vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
+            m_unObjectId, m_Pose, sizeof(DriverPose_t));
+      }
+      DriverLog("device: '%s' disconnected", m_sSerialNumber.c_str());
+    }
+
+    virtual void PowerOn() {
+      // signal device is "alive"
+      m_Pose.poseIsValid = true;
+      m_Pose.deviceIsConnected = true;
+      if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
+        vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
+            m_unObjectId, m_Pose, sizeof(DriverPose_t));
+      }
+      DriverLog("device: '%s' connected", m_sSerialNumber.c_str());
     }
 
     virtual void Deactivate() {
       DriverLog("device: \"%s\" deactivated\n", m_sSerialNumber.c_str());
+      PowerOff();
       m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
     }
 
     virtual void EnterStandby() {}
 
-    virtual void PowerOff() {}
-
-    /** debug request from a client, TODO: uh... actually implement this? */
+    /* debug request from a client, TODO: uh... actually implement this? */
     virtual void DebugRequest(const char *pchRequest, char *pchResponseBuffer,
                               uint32_t unResponseBufferSize) {
       DriverLog("device: \"%s\" got a debug request: \"%s\"", m_sSerialNumber.c_str(), pchRequest);
@@ -229,18 +254,43 @@ namespace hobovr {
     void ProcessEvent(const vr::VREvent_t &vrEvent) {
       if constexpr(UseHaptics)
       {
-        switch (vrEvent.eventType) {
-          case vr::VREvent_Input_HapticVibration: {
-            if (vrEvent.data.hapticVibration.componentHandle == m_compHaptic) {
-                // haptic!
-                m_pBrodcastSocket->send2((m_sSerialNumber + ',' +
-                std::to_string(vrEvent.data.hapticVibration.fDurationSeconds) + ',' +
-                std::to_string(vrEvent.data.hapticVibration.fFrequency) + ',' +
-                std::to_string(vrEvent.data.hapticVibration.fAmplitude) + "\n").c_str());
-            }
-          } break;
-
+        if (vrEvent.eventType == vr::VREvent_Input_HapticVibration) {
+          if (vrEvent.data.hapticVibration.componentHandle == m_compHaptic) {
+              // haptic!
+              m_pBrodcastSocket->send2((m_sSerialNumber + ',' +
+              std::to_string(vrEvent.data.hapticVibration.fDurationSeconds) + ',' +
+              std::to_string(vrEvent.data.hapticVibration.fFrequency) + ',' +
+              std::to_string(vrEvent.data.hapticVibration.fAmplitude) + "\n").c_str());
+          }
         }
+      }
+      switch (vrEvent.eventType) {
+        case vr::VREvent_OtherSectionSettingChanged: {
+          // handle component settings update
+          for (auto &i : m_vComponents) {
+            switch(i.compType){
+              case EHobovrCompType::EHobovrComp_ExtendedDisplay:
+                std::get<std::shared_ptr<HobovrExtendedDisplayComponent>>(i.compHandle)->ReloadSectionSettings();
+                break;
+
+              case EHobovrCompType::EHobovrComp_DriverDirectMode:
+                std::get<std::shared_ptr<HobovrDriverDirectModeComponent>>(i.compHandle)->ReloadSectionSettings();
+                break;
+
+              case EHobovrCompType::EHobovrComp_Camera:
+                std::get<std::shared_ptr<HobovrCameraComponent>>(i.compHandle)->ReloadSectionSettings();
+                break;
+
+              case EHobovrCompType::EHobovrComp_VirtualDisplay:
+                std::get<std::shared_ptr<HobovrVirtualDisplayComponent>>(i.compHandle)->ReloadSectionSettings();
+                break;
+
+            }
+          }
+          // handle device settings update
+          UpdateSectionSettings();
+          // DriverLog("device '%s': section settings changed", m_sSerialNumber.c_str());
+        } break;
       }
     }
 

@@ -17,7 +17,7 @@ Debug view:
 
 Some Beat Saber gameplay(done using color_tracker):
 
-[![beat saber vod](https://img.youtube.com/vi/-S1NfMNwfwY/0.jpg)](https://www.youtube.com/watch?v=-S1NfMNwfwY)
+[![beat saber vod](https://img.youtube.com/vi/l3oi863h9Ow/0.jpg)](https://youtu.be/l3oi863h9Ow)
 
 # Usage
 

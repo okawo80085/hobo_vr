@@ -63,9 +63,9 @@ class PoserTemplate(PoserTemplateBase):
         while self.coro_keep_alive["send"].is_alive:
             try:
                 msg = b"".join(
-                        [struct.pack('f'*len(self.pose), *self.pose.get_vals()),
-                        struct.pack('f'*len(self.pose_controller_r), *self.pose_controller_r.get_vals()),
-                        struct.pack('f'*len(self.pose_controller_l), *self.pose_controller_l.get_vals())]
+                        [struct.pack(f"{len(self.pose)}f", *self.pose.get_vals()),
+                        struct.pack(f"{len(self.pose_controller_r)}f", *self.pose_controller_r.get_vals()),
+                        struct.pack(f"{len(self.pose_controller_l)}f", *self.pose_controller_l.get_vals())]
                     ) + self._terminator
 
                 self.writer.write(msg)

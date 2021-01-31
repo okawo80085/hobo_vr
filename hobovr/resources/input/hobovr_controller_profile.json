@@ -44,18 +44,6 @@
         "binding_image_point" : [ 67, 81 ],
         "order" : 5
     },
-    "/input/skeleton/right" : {
-        "type" : "skeleton",
-        "skeleton": "/skeleton/hand/right",
-        "side" : "right",
-        "binding_image_point" : [ 62, 16 ]
-    },
-    "/input/skeleton/left" : {
-        "type" : "skeleton",
-        "skeleton": "/skeleton/hand/left",
-        "side" : "left",
-        "binding_image_point" : [ 62, 16 ]
-    },
     "/pose/raw" : {
         "type" : "pose",
         "binding_image_point" : [ 62, 16 ]
@@ -83,6 +71,24 @@
     "/output/haptic" : {
         "type" : "vibration",
         "binding_image_point" : [ 66, 59 ]
+    },
+    "/input/skeleton/right" : {
+        "type" : "skeleton",
+        "skeleton": "/skeleton/hand/right",
+        "side" : "right",
+        "binding_image_point" : [ 62, 16 ]
+    },
+    "/input/skeleton/left" : {
+        "type" : "skeleton",
+        "skeleton": "/skeleton/hand/left",
+        "side" : "left",
+        "binding_image_point" : [ 62, 16 ]
     }
-  }
+  },
+  "default_bindings" :[
+   {
+        "app_key" : "steam.app.546560",
+        "binding_url" : "default_hla_bindings_hobovr_controller.json"
+   }
+  ]
 }
