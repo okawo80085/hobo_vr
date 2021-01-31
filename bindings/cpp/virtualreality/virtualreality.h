@@ -9,6 +9,7 @@
 #include <functional>
 #include <string>
 #include <iostream>
+#include <cmath>
 
 #include <stdio.h>
 #include <stdarg.h>
@@ -55,7 +56,7 @@ void DebugLog( const char *pMsgFormat, ... )
     va_list args;
     va_start( args, pMsgFormat );
 
-    DriverLogVarArgs( pMsgFormat, args );
+    LogVarArgs( pMsgFormat, args );
 
     va_end(args);
 #endif
@@ -180,11 +181,39 @@ struct KeepAliveTrigger {
 
 // get command line arguments from :istream: using the rules provided in :cli_setts:
 template <class CharT, class Traits = std::char_traits<CharT>>
-std::vector<std::pair<std::string, std::string>> get_cli_args(std::basic_istream<CharT, Traits>& istream, const char* cli_setts) {
+std::vector<std::pair<std::string, std::string>> get_cli_args(std::basic_istream<CharT, Traits>& istream, const std::string cli_setts) {
     Log("> ");
-    std::string temp;
-    istream >> temp;
-    return { {temp, ""} };
+    char buff[2048];
+    istream.getline(buff, 2048);
+    std::string text(buff);
+    std::regex rgx("-{1,2}[a-z]+");
+    std::regex rgx2("-{1,2}[a-z]+[ ]*");
+    auto keys = utilz::get_rgx_vector(text, rgx);
+    auto vals = utilz::split_by_rgx(text, rgx2);
+    std::vector<std::pair<std::string, std::string>> out;
+    for (int i=0; i< (keys.size() == 1 ? 1 : min(keys.size(), vals.size()-1)); i++){
+        std::pair<std::string, std::string> temp;
+        if (vals.size() > 1)
+            temp = {keys[i], vals[i+1]};
+        else
+            temp = {keys[i], ""};
+
+        out.push_back(temp);
+    }
+    #ifdef _DEBUG
+    for (auto i : out)
+        DebugLog("('%s', '%s')\n", i.first.c_str(), i.second.c_str());
+    DebugLog("%d, %d\n", keys.size(), vals.size());
+    #endif
+
+    std::regex rgx3("Options:[ ]*\n");
+    auto temp = utilz::split_by_rgx(cli_setts, rgx3)[1];
+    for (auto i : out) {
+        if (utilz::first_rgx_match(temp, std::regex(i.first)) == "")
+            throw std::runtime_error("unknown key");
+    }
+
+    return out;
 }
 
 // base template class
@@ -200,7 +229,7 @@ protected:
     std::shared_ptr<utilz::SocketObj> m_spSockComm;
     std::shared_ptr<utilz::SocketObj> m_spManagerSockComm;
 
-    const char* CLI_STRING = 
+    const std::string CLI_STRING = 
 R"(hobo_vr poser
 
 Usage: poser [-h | --help] [options]
@@ -251,14 +280,23 @@ public:
     }
 
     void close() {
-        Log("%s\n", (char*)CLI_STRING);
+        Log("%s\n", CLI_STRING.c_str());
 
         while (m_mThreadRegistry["close"].is_alive) {
             try {
                 std::vector<std::pair<std::string, std::string>> cli_args= get_cli_args(std::cin, CLI_STRING); // the oldest trick in the book, TODO: write get_cli_args
 
-                if (std::find(cli_args.begin(), cli_args.end(), std::pair<std::string, std::string>("--quit", "")) != cli_args.end())
+                if (std::find_if(cli_args.begin(), cli_args.end(), [](std::pair<std::string, std::string> x)->bool{return x.first == "--quit";}) != cli_args.end() ||
+                    std::find_if(cli_args.begin(), cli_args.end(), [](std::pair<std::string, std::string> x)->bool{return x.first == "-q";}) != cli_args.end())
                     break;
+
+                if (std::find_if(cli_args.begin(), cli_args.end(), [](std::pair<std::string, std::string> x)->bool{return x.first == "--help";}) != cli_args.end() ||
+                    std::find_if(cli_args.begin(), cli_args.end(), [](std::pair<std::string, std::string> x)->bool{return x.first == "-h";}) != cli_args.end())
+                    Log("%s\n", CLI_STRING.c_str());
+
+                // im not sure what im surprised more about
+                // the fact that i didn't have an aneurysm writing those 2 if statements
+                // or that they work
 
                 for (auto& i : cli_args) {
                     _cli_arg_map(i);
@@ -266,7 +304,7 @@ public:
 
             } catch(...) {
                 Log("failed to parse command, try again\n");
-                Log("%s\n", (char*)CLI_STRING);
+                Log("%s\n", CLI_STRING.c_str());
             }
 
             std::this_thread::sleep_for(m_mThreadRegistry["close"].sleep_delay); // thread sleep
