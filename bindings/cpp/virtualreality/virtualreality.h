@@ -112,13 +112,13 @@ struct Ctrl {
     float trigger_click;
 };
 
-class Pose
+struct Pose
 {
 public:
-    Vec3 loc;
-    Quat rot;
-    Vec3 vel;
-    Vec3 ang_vel;
+    Vec3 loc = {0, 0, 0};
+    Quat rot = {1, 0, 0, 0};
+    Vec3 vel = {0, 0, 0};
+    Vec3 ang_vel = {0, 0, 0};
 
     virtual int len() {
         return 13;
@@ -127,18 +127,33 @@ public:
         return 52; // 13*sizeof(float)
     }
 
+    virtual int __get_garbage_size() {
+        return sizeof(Pose) - len_bytes();
+    }
+
     virtual const char* _to_pchar() {
         char* ret = (char*)this;
-        return ret;
+        return ret + __get_garbage_size();
     }
 
     virtual const char type_id() { return 'p'; }
+
+    // cuz fuck you, only use these methods on controllers
+    virtual Ctrl& updateInputs() { Ctrl res({ 0 });  return res; }
+    virtual void updateInputs(Ctrl ni) {}
 };
 
-class ControllerPose : public Pose
+struct ControllerPose: Pose
 {
-public:
     Ctrl inputs;
+
+    Ctrl& updateInputs() {
+        return inputs;
+    }
+
+    void updateInputs(Ctrl ni) {
+        inputs = ni;
+    }
 
     int len() {
         return 22;
@@ -147,11 +162,14 @@ public:
         return 88; // 22*sizeof(float)
     }
 
+    int __get_garbage_size() {
+        return sizeof(ControllerPose) - len_bytes();
+    }
+
     const char type_id() { return 'c'; }
 };
 
-class TrackerPose : public Pose {
-public:
+struct TrackerPose: Pose {
     const char type_id() { return 't'; }
 };
 
