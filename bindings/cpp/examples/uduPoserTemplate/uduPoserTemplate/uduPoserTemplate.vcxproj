@@ -144,6 +144,10 @@
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Matrix3x3.hpp" />
+    <ClInclude Include="Quaternion.hpp" />
+    <ClInclude Include="Vector2.hpp" />
+    <ClInclude Include="Vector3.hpp" />
     <ClInclude Include="virtualreality.h" />
     <ClInclude Include="virtualreality_receiver_win.h" />
     <ClInclude Include="virtualreality_util.h" />
