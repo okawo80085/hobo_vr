@@ -173,9 +173,20 @@ struct TrackerPose: Pose {
     const char type_id() { return 't'; }
 };
 
+enum HobovrTrackingRef_Msg_type
+{
+  Emsg_invalid = 0,
+  Emsg_ipd = 10,
+  Emsg_uduString = 20,
+  Emsg_poseTimeOffset = 30,
+  Emsg_distortion = 40,
+  Emsg_eyeGap = 50,
+  Emsg_setSelfPose = 60,
+};
+
 // the only allowed manager communication type 
 struct ManagerPacket {
-    uint32_t msg_type;
+    uint32_t msg_type; // has to be one of HobovrTrackingRef_Msg_type
     uint32_t data[129];
 
     int len_bytes() {
@@ -189,6 +200,7 @@ struct ManagerPacket {
 };
 
 #pragma pack(pop)
+
 
 struct KeepAliveTrigger {
     bool is_alive;
@@ -247,7 +259,7 @@ protected:
     std::shared_ptr<utilz::SocketObj> m_spSockComm;
     std::shared_ptr<utilz::SocketObj> m_spManagerSockComm;
 
-    const std::string CLI_STRING = 
+    std::string CLI_STRING = 
 R"(hobo_vr poser
 
 Usage: poser [-h | --help] [options]
@@ -287,6 +299,7 @@ public:
     // send a manager message
     void _send_manager(ManagerPacket msg) {
         m_spManagerSockComm->send2(msg._to_pchar(), msg.len_bytes());
+        m_spManagerSockComm->send2(g_sMessageTerminator.c_str());
     }
 
     virtual void _cli_arg_map(std::pair<std::string, std::string>) {}
@@ -390,6 +403,8 @@ public:
 
 // derived posers
 class UduPoserTemplate: public PoserTemplateBase {
+private:
+    bool m_bAbout2ChangePoses = false;
 protected:
     std::vector<Pose*> m_vPoses; // NEVER modify it yourself
 
@@ -398,6 +413,20 @@ public:
         std::string addr="127.0.0.1",
         int port=6969,
         std::chrono::nanoseconds send_delay=std::chrono::nanoseconds(10000000)):PoserTemplateBase(addr, port, send_delay) {
+
+        std::string newCli_settings = R"(hobo_vr poser
+
+Usage: poser [-h | --help] [options]
+
+Options:
+    -h, --help          shows this message
+    -q, --quit          exits the poser
+    -i, --ipd <m>       change the ipd, units=meters
+    -u, --udu <udu>     new udu settings, has to match this regex: ^"([htc][ ])*([htc]"[ ]{0,1})$
+)";
+        CLI_STRING = newCli_settings; // make parent use new cli settings
+
+
         std::regex rgx2("([htc][ ])*([htc]$)");
         if (utilz::first_rgx_match(udu_string, rgx2) != udu_string){
             Log("invalid udu string\n");
@@ -424,13 +453,78 @@ public:
             delete i;
     }
 
+    virtual void _cli_arg_map(std::pair<std::string, std::string> val) {
+        if (val.first == "--udu" || val.first == "-u") {
+            std::regex rgx2("^\"([htc][ ])*([htc]\"[ ]{0,1})$");
+            if (utilz::first_rgx_match(val.second, rgx2) != val.second) {
+                Log("invalid udu string\n");
+                return;
+            }
+
+            m_bAbout2ChangePoses = true;
+
+            std::regex rgx("[htc]");
+            auto udu_vector = utilz::get_rgx_vector(val.second, rgx);
+
+            // construct new udu
+            std::vector<Pose*> temp;
+            for (auto i : udu_vector) {
+                if (i == "h")
+                    temp.push_back(new Pose());
+                else if (i == "c")
+                    temp.push_back(new ControllerPose());
+                else if (i == "t")
+                    temp.push_back(new TrackerPose());
+            }
+
+            for (auto i : temp) {
+                i->loc = {0, 0, 0};
+                i->rot = {1, 0, 0, 0}; // init proper quaternions
+                i->vel = {0, 0, 0};
+                i->ang_vel = {0, 0, 0};
+            }
+
+            std::vector<Pose*> lastPoses = m_vPoses; // make a copy to delete dangling pointers later
+            ManagerPacket msg = { HobovrTrackingRef_Msg_type::Emsg_uduString };
+            int h = 1;
+            for (auto i : temp) {
+                if (i->type_id() == 'p') {
+                    msg.data[h] = 0;
+                    msg.data[h + 1] = i->len();
+                }
+                else if (i->type_id() == 'c') {
+                    msg.data[h] = 1;
+                    msg.data[h + 1] = i->len();
+                }
+                else if (i->type_id() == 't') {
+                    msg.data[h] = 2;
+                    msg.data[h + 1] = i->len();
+                }
+                
+                h += 2;
+            }
+            msg.data[0] = temp.size();
+            m_vPoses = temp;
+            m_bAbout2ChangePoses = false;
+
+            for (auto i : lastPoses)
+                delete i;
+
+            _send_manager(msg); // tell the driver device list have been changed
+
+            Log("new device list consists of %d device, driver notice has been sent\n", m_vPoses.size());
+        }
+    }
+
     void send() {
         while (m_mThreadRegistry["send"].is_alive) {
             try {
-                for (auto i : m_vPoses)
-                    m_spSockComm->send2(i->_to_pchar(), i->len_bytes());
+                if (!m_bAbout2ChangePoses) {
+                    for (auto i : m_vPoses)
+                        m_spSockComm->send2(i->_to_pchar(), i->len_bytes());
 
-                m_spSockComm->send2(g_sMessageTerminator.c_str());
+                    m_spSockComm->send2(g_sMessageTerminator.c_str());
+                }
 
                 std::this_thread::sleep_for(m_mThreadRegistry["send"].sleep_delay);
             } catch (...) {
