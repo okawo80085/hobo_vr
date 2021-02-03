@@ -72,12 +72,12 @@ class Poser(templates.UduPoserTemplate):
 
     _CLI_SETTS = '''hobo_vr poser
 
-Usage: poser [-h | --help] [-q | --quit] [options] [-m | --ctrl_inpt_mode]...
+Usage: poser [-h | --help] [-q | --quit] [options] [-m | --ctrl_inpt_mode...]
 
 Options:
     -h, --help                  shows this message
     -q, --quit                  exits the poser
-    -m, --ctrl_inpt_mode        decides how
+    -m, --ctrl_inpt_mode        decides how inputs are mirrored
     -b, --kill_blob             send a kill loop signal to get_location
     -B, --blob_reboot           toggle get_location reboot on kill
     -s, --kill_serial           send a kill loop to serial threads
@@ -266,7 +266,7 @@ Options:
                         self.poses[2].menu = self.temp_pose.menu
                         self.poses[2].grip = self.temp_pose.grip
 
-                    elif self.multiToggleMode == 3:
+                    elif self.multiToggleMode == 2:
                         self.poses[2].trackpad_touch = 0
                         self.poses[2].trackpad_x = 0
                         self.poses[2].trackpad_y = 0
@@ -284,7 +284,7 @@ Options:
                         self.poses[1].menu = self.temp_pose.menu
                         self.poses[1].grip = self.temp_pose.grip
 
-                    elif self.multiToggleMode == 5:
+                    elif self.multiToggleMode == 3:
                         self.poses[1].trackpad_touch = (
                             self.temp_pose.trackpad_touch
                         )
@@ -313,7 +313,7 @@ Options:
                         self.poses[2].menu = self.temp_pose.menu
                         self.poses[2].grip = self.temp_pose.grip
 
-                    elif self.multiToggleMode == 7:
+                    elif self.multiToggleMode == 4:
                         self.poses[1].trackpad_touch = (
                             self.temp_pose.trackpad_touch
                         )
@@ -326,7 +326,9 @@ Options:
                         self.poses[1].trigger_click = self.temp_pose.trigger_click
                         self.poses[1].system = self.temp_pose.system
                         self.poses[1].menu = self.temp_pose.menu
-                        self.poses[1].grip = self.temp_pose.grip
+                        if self.temp_pose.grip:
+                            self.poses[1].grip = self.temp_pose.grip
+                            self.poses[2].grip = self.temp_pose.trigger_click
 
                         self.poses[2].trackpad_touch = (
                             self.temp_pose.trackpad_touch
@@ -340,7 +342,6 @@ Options:
                         self.poses[2].trigger_click = self.temp_pose.trigger_click
                         self.poses[2].system = self.temp_pose.system
                         self.poses[2].menu = self.temp_pose.menu
-                        self.poses[2].grip = self.temp_pose.grip
 
                 await asyncio.sleep(self.coro_keep_alive["mode_switcher"].sleep_delay)
 
@@ -360,7 +361,7 @@ Options:
         l_oof = np.array([0, 0, -0.04], dtype=my_dd)
         r_oof = np.array([0, 0, -0.04], dtype=my_dd)
 
-        hmd_oof = np.array([-0.03, -0.03, 0.05], dtype=my_dd)
+        hmd_oof = np.array([-0.02, -0.01, 0.05], dtype=my_dd)
 
         global_oof = u.make_rotmat([0.6981317007977318, 0, 0])
 
@@ -485,8 +486,9 @@ Options:
                 else:
                     return
 
+            aa_last = np.zeros((100, 3,))
             with serial.Serial(port, 115200, timeout=10) as ser:
-                with serial.threaded.ReaderThread(ser, u.SerialReaderBinary) as protocol:
+                with serial.threaded.ReaderThread(ser, u.SerialReaderBinary(struct_len=19)) as protocol:
                     protocol.write_line("nut")
                     await asyncio.sleep(1)
 
@@ -498,8 +500,8 @@ Options:
                             gg = protocol.last_read
                             # print(f"cont_l: {gg}")
 
-                            if gg is not None and len(gg) >= 4:
-                                w, x, y, z, trgr, padX, padY, padClk, trgr_clk, sys, menu, grp, util = gg
+                            if gg is not None and len(gg) >= 19:
+                                w, x, y, z, ax, ay, az, gx, gy, gz, trgr, padX, padY, padClk, trgr_clk, sys, menu, grp, util, *_ = gg
 
                                 my_q = Quaternion([-y, z, -x, w])
 
@@ -509,6 +511,29 @@ Options:
                                     self.poses[2].r_x = my_q[0]
                                     self.poses[2].r_y = my_q[1]
                                     self.poses[2].r_z = my_q[2]
+
+                                mm = pyrr.matrix33.create_from_quaternion(my_off * irl_rot_off)
+                                aa = np.array([ay, az, ax])
+                                ge = np.array([gy, gz, gx])
+                                aa = mm.dot(aa)
+                                ge = mm.dot(ge) / 250 * np.pi
+
+                                cont_l_acc_tresh = np.linalg.norm(aa-aa_last[-1])
+                                if cont_l_acc_tresh > 0.055:
+                                    vel = np.sum(aa_last/100, axis=0)
+                                else:
+                                    vel = np.zeros((3,))
+
+                                aa_last = np.delete(aa_last, 0, 0)
+                                aa_last = np.concatenate((aa_last, [aa]), axis=0)
+
+                                if len(self.poses) >= 3:
+                                    self.poses[2].vel_x = vel[0]
+                                    self.poses[2].vel_y = vel[1]
+                                    self.poses[2].vel_z = vel[2]
+                                    self.poses[2].ang_vel_x = ge[0]
+                                    self.poses[2].ang_vel_y = ge[1]
+                                    self.poses[2].ang_vel_z = ge[2]
 
                                 self.temp_pose.trigger_value = trgr
                                 self.temp_pose.grip = grp
@@ -576,11 +601,6 @@ Options:
 
         my_off = Quaternion()
 
-        aa_last = np.zeros((3,))
-        aa_last2 = np.zeros((3,))
-        vel = np.zeros((3,))
-        grav_v = np.array((0, 1, 0))*9.8
-
         while self.coro_keep_alive["serial_listener3"].is_alive:
             # port = self.serialPaths['right_controller']
             loop = asyncio.get_running_loop()
@@ -606,7 +626,7 @@ Options:
                 else:
                     return
 
-            h = 0
+            aa_last = np.zeros((100, 3,))
             with serial.Serial(port, 115200, timeout=10) as ser2:
                 with serial.threaded.ReaderThread(ser2, u.SerialReaderBinary(struct_len=19)) as protocol:
                     protocol.write_line("nut")
@@ -619,7 +639,7 @@ Options:
                             gg = protocol.last_read
                             # print(f"cont_r: {gg}")
 
-                            if gg is not None and len(gg) >= 4:
+                            if gg is not None and len(gg) >= 19:
                                 w, x, y, z, ax, ay, az, gx, gy, gz, *_ = gg
 
                                 my_q = Quaternion([-y, z, -x, w])
@@ -637,16 +657,14 @@ Options:
                                 aa = mm.dot(aa)
                                 ge = mm.dot(ge) / 250 * np.pi
 
-                                self.cont_l_acc_tresh = np.linalg.norm(aa-aa_last2)
-                                if self.cont_l_acc_tresh > 0.045:
-                                    vel += aa/100
-
-                                if h%80 == 0:
+                                cont_l_acc_tresh = np.linalg.norm(aa-aa_last[-1])
+                                if cont_l_acc_tresh > 0.055:
+                                    vel = np.sum(aa_last/100, axis=0)
+                                else:
                                     vel = np.zeros((3,))
-                                    h = 1
 
-                                aa_last2 = aa_last
-                                aa_last = aa
+                                aa_last = np.delete(aa_last, 0, 0)
+                                aa_last = np.concatenate((aa_last, [aa]), axis=0)
 
                                 if len(self.poses) >= 2:
                                     self.poses[1].vel_x = vel[0]
@@ -655,8 +673,6 @@ Options:
                                     self.poses[1].ang_vel_x = ge[0]
                                     self.poses[1].ang_vel_y = ge[1]
                                     self.poses[1].ang_vel_z = ge[2]
-
-                                h+=1
 
                                 # self.temp_pose.trigger_value = trgr
                                 # self.temp_pose.grip = grp
@@ -679,7 +695,7 @@ Options:
                             )
 
                         except Exception as e:
-                            print(f"{self.serial_listener.__name__}: {e}")
+                            print(f"serial_listener3: {e}")
                             break
 
             if not self.toggleRetrySerials:
@@ -692,7 +708,8 @@ Options:
     @templates.PoserTemplate.register_member_thread(1 / 100)
     async def serial_listener(self):
         """Get orientation data from serial."""
-        my_off = Quaternion.from_x_rotation(np.radians(4))
+        my_off = Quaternion.from_x_rotation(0)
+        irl_rot_off = Quaternion.from_x_rotation(np.radians(3))
 
         while self.coro_keep_alive["serial_listener"].is_alive:
             # port = self.serialPaths['headset']
@@ -719,8 +736,9 @@ Options:
                 else:
                     return
 
+            aa_last = np.zeros((100, 3,))
             with serial.Serial(port, 115200, timeout=10) as ser2:
-                with serial.threaded.ReaderThread(ser2, u.SerialReaderBinary) as protocol:
+                with serial.threaded.ReaderThread(ser2, u.SerialReaderBinary(struct_len=19)) as protocol:
                     protocol.write_line("nut")
                     await asyncio.sleep(1)
 
@@ -731,18 +749,41 @@ Options:
                             gg = protocol.last_read
                             # print(f"hmd: {gg}")
 
-                            if gg is not None and len(gg) >= 4:
-                                w, x, y, z, *_ = gg
+                            if gg is not None and len(gg) >= 19:
+                                w, x, y, z, ax, ay, az, gx, gy, gz, *_ = gg
                                 my_q = Quaternion([-y, z, -x, w])
 
                                 if self._serialResetYaw:
                                     my_off = Quaternion([0, z, 0, w]).inverse.normalised
 
-                                my_q = Quaternion(my_off * my_q).normalised
+                                my_q = Quaternion(my_off * my_q * irl_rot_off).normalised
                                 self.poses[0].r_w = round(my_q[3], 5)
                                 self.poses[0].r_x = round(my_q[0], 5)
                                 self.poses[0].r_y = round(my_q[1], 5)
                                 self.poses[0].r_z = round(my_q[2], 5)
+
+                                mm = pyrr.matrix33.create_from_quaternion(my_off * irl_rot_off)
+                                aa = np.array([ay, az, ax])
+                                ge = np.array([gy, gz, gx])
+                                aa = mm.dot(aa)
+                                ge = mm.dot(ge) / 250 * np.pi
+
+                                cont_l_acc_tresh = np.linalg.norm(aa-aa_last[-1])
+                                if cont_l_acc_tresh > 0.055:
+                                    vel = np.sum(aa_last/100, axis=0)
+                                else:
+                                    vel = np.zeros((3,))
+
+                                aa_last = np.delete(aa_last, 0, 0)
+                                aa_last = np.concatenate((aa_last, [aa]), axis=0)
+
+                                self.poses[0].vel_x = vel[0]
+                                self.poses[0].vel_y = vel[1]
+                                self.poses[0].vel_z = vel[2]
+                                self.poses[0].ang_vel_x = ge[0]
+                                self.poses[0].ang_vel_y = ge[1]
+                                self.poses[0].ang_vel_z = ge[2]
+
 
                             await asyncio.sleep(
                                 self.coro_keep_alive["serial_listener"].sleep_delay
@@ -780,12 +821,12 @@ Options:
                     # print (my_qq)
                     temp = Quaternion(my_off*Quaternion([*my_qq[1:], my_qq[0]])*my_off2).normalised
                     self.poses[3].r_w = temp[3]
-                    self.poses[3].r_z = -temp[0]
-                    self.poses[3].r_x = -temp[1]
-                    self.poses[3].r_y = temp[2]
+                    self.poses[3].r_y = temp[0]
+                    self.poses[3].r_z = temp[1]
+                    self.poses[3].r_x = temp[2]
 
                     if self._serialResetYaw:
-                        my_off = Quaternion([0, temp[2], 0, temp[3]]).inverse.normalised
+                        my_off = (Quaternion([*my_qq[1:], my_qq[0]])*my_off2).inverse.normalised
                         mig = ahrs.filters.Madgwick(frequency=100.0)
 
             except Exception as e:

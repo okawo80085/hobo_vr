@@ -553,7 +553,7 @@ class BlobTracker(threading.Thread):
     all tracking is done in a separate thread, so use this class in context manager
 
     self.start() - starts tracking thread
-    self.close() - stops tracking thread
+    self.stop() - stops tracking thread
 
     self.get_poses() - gets latest tracker poses
     """
@@ -686,23 +686,19 @@ class BlobTracker(threading.Thread):
 
     def stop(self):
         """Stop the blob tracking thread."""
-        self.alive = False
-        self.join(4)
-
-    def close(self):
-        """Close the blob tracker thread."""
         with self._lock:
-            self.stop()
+            self.alive = False
+            self.join(4)
 
     def __enter__(self):
         del self._vs
         self._vs = FramePuller(self.cam_index)
         self.start()
         if not self.alive:
-            self.close()
+            self.stop()
             raise RuntimeError("video source already expired")
 
         return self
 
     def __exit__(self, *exc):
-        self.close()
+        self.stop()
