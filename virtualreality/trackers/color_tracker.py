@@ -10,7 +10,6 @@ Options:
    -r, --resolution <res>                   (in progress) Input resolution in width and height [default: -1x-1]
    -l, --load_calibration <file>            (optional) Load color mask calibration settings
    -i, --ip_address <ip_address>            IP Address of the server to connect to [default: 127.0.0.1]
-   -s, --standalone                         Run the server alongside the tracker.
    -b, --bash_pre_start <path>              (optional) bash script to be ran before the poser starts
    -S, --serial2ignore <val>                serial paths to ignore in device search
 """
@@ -43,6 +42,7 @@ from ..server import server
 from ..templates import ControllerState
 import serial.tools.list_ports
 from typing import Optional
+from fractions import Fraction
 
 import concurrent.futures
 
@@ -71,18 +71,20 @@ class Poser(templates.UduPoserTemplate):
 
     _CLI_SETTS = '''hobo_vr poser
 
-Usage: poser [-h | --help] [-q | --quit] [options] [-m | --ctrl_inpt_mode]...
+Usage: poser [-h | --help] [-q | --quit] [options] [-m | --ctrl_inpt_mode...]
 
 Options:
     -h, --help                  shows this message
     -q, --quit                  exits the poser
-    -m, --ctrl_inpt_mode        decides how
+    -m, --ctrl_inpt_mode        decides how inputs are mirrored
     -b, --kill_blob             send a kill loop signal to get_location
     -B, --blob_reboot           toggle get_location reboot on kill
     -s, --kill_serial           send a kill loop to serial threads
     -S, --serial_reboot         toggle reboot on kill for serial threads
     -f, --camera_focal <val>    focal point of the camera in pixels[default: 554.2563]
-    -k, --kalman_learning       toggle learning for BlobTracke's kalman filters
+    -e, --ipd <ipd>             ipd in meters, float
+    -r, --hmd_pose              reports the current hmd pose
+    -u, --udu <string>          new udu string
 '''
 
     def __init__(
@@ -129,7 +131,6 @@ Options:
         # self.toggle
         # self.signal
 
-        self.toggleKalmanLearning = True
 
         self.toggleRetryBlobTracker = False
         self.signalKillBlobTrackerLoop = False
@@ -154,6 +155,10 @@ Options:
         if pair[0] == '--ctrl_inpt_mode' and pair[1]:
             self.multiToggleMode = int(pair[1])
             print(f'mode set to {self.multiToggleMode}')
+            return
+
+        elif pair[0] == '--hmd_pose' and pair[1]:
+            print (self.poses[0])
             return
 
         elif pair[0] == '--kill_blob' and pair[1]:
@@ -183,16 +188,24 @@ Options:
             print('serial kill loops signal sent')
             return
 
+        # a bit of black magic that lets you set the ipd live
+        elif pair[0] == "--ipd" and pair[1]:
+            f = Fraction(pair[1]).limit_denominator(10000000)
+            data = templates.settManager_Message_t.pack(10, int(f.numerator), int(f.denominator), *np.zeros((127,), dtype=np.uint32))
+            resp = await self._send_manager(data)
+            print (resp)
+            return
+
         elif pair[0] == '--serial_reboot' and pair[1]:
             self.toggleRetrySerials = True if not self.toggleRetrySerials else False
             print(f'serial reboot loops set to {"on" if self.toggleRetrySerials else "off"}')
             return
 
-        elif pair[0] == '--kalman_learning' and pair[1]:
-            self.toggleKalmanLearning = True if not self.toggleKalmanLearning else False
-            print(f'kalman learning is set to {"on" if self.toggleKalmanLearning else "off"}')
+        elif pair[0] == "--udu" and pair[1]:
+            res = await self._sync_udu(pair[1])
+            if res:
+                print (res)
             return
-
 
     # im lazy, so its here now
     def _get_serial_for_device(self, device_name: str, timeout: int = 10) -> Optional[str]:
@@ -233,70 +246,101 @@ Options:
         """Check to switch between left and right controllers."""
         while self.coro_keep_alive["mode_switcher"].is_alive:
             try:
-                if self.multiToggleMode == 1:
-                    self.poses[1].trackpad_touch = 0
-                    self.poses[1].trackpad_x = 0
-                    self.poses[1].trackpad_y = 0
-                    self.poses[2].trackpad_touch = (
-                        self.temp_pose.trackpad_touch
-                    )
-                    self.poses[2].trackpad_click = (
-                        self.temp_pose.trackpad_click
-                    )
-                    self.poses[2].trackpad_x = self.temp_pose.trackpad_x
-                    self.poses[2].trackpad_y = self.temp_pose.trackpad_y
-                    self.poses[2].trigger_value = self.temp_pose.trigger_value
-                    self.poses[2].trigger_click = self.temp_pose.trigger_click
-                    self.poses[2].system = self.temp_pose.system
-                    self.poses[2].menu = self.temp_pose.menu
-                    self.poses[2].grip = self.temp_pose.grip
+                if len(self.poses) >= 3:
+                    if self.multiToggleMode == 1:
+                        self.poses[1].trackpad_touch = 0
+                        self.poses[1].trackpad_x = 0
+                        self.poses[1].trackpad_y = 0
+                        self.poses[2].trackpad_touch = (
+                            self.temp_pose.trackpad_touch
+                        )
+                        self.poses[2].trackpad_click = (
+                            self.temp_pose.trackpad_click
+                        )
+                        self.poses[2].trackpad_x = self.temp_pose.trackpad_x
+                        self.poses[2].trackpad_y = self.temp_pose.trackpad_y
+                        self.poses[2].trigger_value = self.temp_pose.trigger_value
+                        self.poses[2].trigger_click = self.temp_pose.trigger_click
+                        self.poses[2].system = self.temp_pose.system
+                        self.poses[2].menu = self.temp_pose.menu
+                        self.poses[2].grip = self.temp_pose.grip
 
-                elif self.multiToggleMode == 3:
-                    self.poses[2].trackpad_touch = 0
-                    self.poses[2].trackpad_x = 0
-                    self.poses[2].trackpad_y = 0
-                    self.poses[1].trackpad_touch = (
-                        self.temp_pose.trackpad_touch
-                    )
-                    self.poses[1].trackpad_click = (
-                        self.temp_pose.trackpad_click
-                    )
-                    self.poses[1].trackpad_x = self.temp_pose.trackpad_x
-                    self.poses[1].trackpad_y = self.temp_pose.trackpad_y
-                    self.poses[1].trigger_value = self.temp_pose.trigger_value
-                    self.poses[1].trigger_click = self.temp_pose.trigger_click
-                    self.poses[1].system = self.temp_pose.system
-                    self.poses[1].menu = self.temp_pose.menu
-                    self.poses[1].grip = self.temp_pose.grip
+                    elif self.multiToggleMode == 2:
+                        self.poses[2].trackpad_touch = 0
+                        self.poses[2].trackpad_x = 0
+                        self.poses[2].trackpad_y = 0
+                        self.poses[1].trackpad_touch = (
+                            self.temp_pose.trackpad_touch
+                        )
+                        self.poses[1].trackpad_click = (
+                            self.temp_pose.trackpad_click
+                        )
+                        self.poses[1].trackpad_x = self.temp_pose.trackpad_x
+                        self.poses[1].trackpad_y = self.temp_pose.trackpad_y
+                        self.poses[1].trigger_value = self.temp_pose.trigger_value
+                        self.poses[1].trigger_click = self.temp_pose.trigger_click
+                        self.poses[1].system = self.temp_pose.system
+                        self.poses[1].menu = self.temp_pose.menu
+                        self.poses[1].grip = self.temp_pose.grip
 
-                elif self.multiToggleMode == 5:
-                    self.poses[1].trackpad_touch = (
-                        self.temp_pose.trackpad_touch
-                    )
-                    self.poses[1].trackpad_click = (
-                        self.temp_pose.trackpad_click
-                    )
-                    self.poses[1].trackpad_x = -self.temp_pose.trackpad_x
-                    self.poses[1].trackpad_y = self.temp_pose.trackpad_y
-                    self.poses[1].trigger_value = self.temp_pose.trigger_value
-                    self.poses[1].trigger_click = self.temp_pose.trigger_click
-                    self.poses[1].system = self.temp_pose.system
-                    self.poses[1].menu = self.temp_pose.menu
-                    self.poses[1].grip = self.temp_pose.grip
+                    elif self.multiToggleMode == 3:
+                        self.poses[1].trackpad_touch = (
+                            self.temp_pose.trackpad_touch
+                        )
+                        self.poses[1].trackpad_click = (
+                            self.temp_pose.trackpad_click
+                        )
+                        self.poses[1].trackpad_x = -self.temp_pose.trackpad_x
+                        self.poses[1].trackpad_y = self.temp_pose.trackpad_y
+                        self.poses[1].trigger_value = self.temp_pose.trigger_value
+                        self.poses[1].trigger_click = self.temp_pose.trigger_click
+                        self.poses[1].system = self.temp_pose.system
+                        self.poses[1].menu = self.temp_pose.menu
+                        self.poses[1].grip = self.temp_pose.grip
 
-                    self.poses[2].trackpad_touch = (
-                        self.temp_pose.trackpad_touch
-                    )
-                    self.poses[2].trackpad_click = (
-                        self.temp_pose.trackpad_click
-                    )
-                    self.poses[2].trackpad_x = self.temp_pose.trackpad_x
-                    self.poses[2].trackpad_y = self.temp_pose.trackpad_y
-                    self.poses[2].trigger_value = self.temp_pose.trigger_value
-                    self.poses[2].trigger_click = self.temp_pose.trigger_click
-                    self.poses[2].system = self.temp_pose.system
-                    self.poses[2].menu = self.temp_pose.menu
-                    self.poses[2].grip = self.temp_pose.grip
+                        self.poses[2].trackpad_touch = (
+                            self.temp_pose.trackpad_touch
+                        )
+                        self.poses[2].trackpad_click = (
+                            self.temp_pose.trackpad_click
+                        )
+                        self.poses[2].trackpad_x = self.temp_pose.trackpad_x
+                        self.poses[2].trackpad_y = self.temp_pose.trackpad_y
+                        self.poses[2].trigger_value = self.temp_pose.trigger_value
+                        self.poses[2].trigger_click = self.temp_pose.trigger_click
+                        self.poses[2].system = self.temp_pose.system
+                        self.poses[2].menu = self.temp_pose.menu
+                        self.poses[2].grip = self.temp_pose.grip
+
+                    elif self.multiToggleMode == 4:
+                        self.poses[1].trackpad_touch = (
+                            self.temp_pose.trackpad_touch
+                        )
+                        self.poses[1].trackpad_click = (
+                            self.temp_pose.trackpad_click
+                        )
+                        self.poses[1].trackpad_x = self.temp_pose.trackpad_x
+                        self.poses[1].trackpad_y = self.temp_pose.trackpad_y
+                        self.poses[1].trigger_value = self.temp_pose.trigger_value
+                        self.poses[1].trigger_click = self.temp_pose.trigger_click
+                        self.poses[1].system = self.temp_pose.system
+                        self.poses[1].menu = self.temp_pose.menu
+                        if self.temp_pose.grip:
+                            self.poses[1].grip = self.temp_pose.grip
+                            self.poses[2].grip = self.temp_pose.trigger_click
+
+                        self.poses[2].trackpad_touch = (
+                            self.temp_pose.trackpad_touch
+                        )
+                        self.poses[2].trackpad_click = (
+                            self.temp_pose.trackpad_click
+                        )
+                        self.poses[2].trackpad_x = self.temp_pose.trackpad_x
+                        self.poses[2].trackpad_y = self.temp_pose.trackpad_y
+                        self.poses[2].trigger_value = self.temp_pose.trigger_value
+                        self.poses[2].trigger_click = self.temp_pose.trigger_click
+                        self.poses[2].system = self.temp_pose.system
+                        self.poses[2].menu = self.temp_pose.menu
 
                 await asyncio.sleep(self.coro_keep_alive["mode_switcher"].sleep_delay)
 
@@ -311,16 +355,14 @@ Options:
 
         my_dd = np.float64
 
-        axisScale = np.array([1, 1, 1], dtype=my_dd) * [-1, -1, 1]
+        axisScale = np.array([1, 1, 1], dtype=my_dd) * [1, 1, 1]
 
-        l_oof = np.array([0, 0, 0.037], dtype=my_dd)
-        r_oof = np.array([0, 0, 0.032], dtype=my_dd)
+        l_oof = np.array([0, 0, -0.04], dtype=my_dd)
+        r_oof = np.array([0, 0, -0.04], dtype=my_dd)
 
-        hmd_oof = np.array([-0.035, -0.03, 0.05], dtype=my_dd)
+        hmd_oof = np.array([-0.02, -0.01, 0.05], dtype=my_dd)
 
-        global_oof = u.make_rotmat([-0.6981317007977318, 0, 0])
-
-        toggleLearning = True
+        global_oof = u.make_rotmat([0.6981317007977318, 0, 0])
 
         while self.coro_keep_alive["get_location"].is_alive:
             try:
@@ -339,10 +381,6 @@ Options:
                         if self.signalKillBlobTrackerLoop:
                             break
 
-                        if toggleLearning != self.toggleKalmanLearning:
-                            BlobT.set_kalman_learning(self.toggleKalmanLearning)
-                            toggleLearning = self.toggleKalmanLearning
-
                         poses = BlobT.get_poses()
 
                         # for i in [0, 1, 2]:
@@ -356,14 +394,16 @@ Options:
 
                         if self.usePos:
                             # origin point correction math
-                            m33_r = pyrr.matrix33.create_from_quaternion(
-                                [self.poses[2].r_x, self.poses[2].r_y, self.poses[2].r_z,
-                                 self.poses[2].r_w], dtype=my_dd)
-                            m33_l = pyrr.matrix33.create_from_quaternion(
-                                [self.poses[1].r_x, self.poses[1].r_y, self.poses[1].r_z,
-                                 self.poses[1].r_w], dtype=my_dd)
                             m33_hmd = pyrr.matrix33.create_from_quaternion(
                                 [self.poses[0].r_x, self.poses[0].r_y, self.poses[0].r_z, self.poses[0].r_w], dtype=my_dd)
+                            if len(self.poses) >= 3:
+                                m33_l = pyrr.matrix33.create_from_quaternion(
+                                    [self.poses[2].r_x, self.poses[2].r_y, self.poses[2].r_z,
+                                     self.poses[2].r_w], dtype=my_dd)
+                            if len(self.poses) >= 2:
+                                m33_r = pyrr.matrix33.create_from_quaternion(
+                                    [self.poses[1].r_x, self.poses[1].r_y, self.poses[1].r_z,
+                                     self.poses[1].r_w], dtype=my_dd)
 
                             r_oof2 = m33_r.dot(r_oof)
                             l_oof2 = m33_l.dot(l_oof)
@@ -377,14 +417,16 @@ Options:
                             self.poses[0].y = poses[0][1]
                             self.poses[0].z = poses[0][2]
 
-                            self.poses[2].x = poses[1][0]
-                            self.poses[2].y = poses[1][1]
-                            self.poses[2].z = poses[1][2]
+                            if len(self.poses) >= 2:
+                                # if self.cont_l_acc_tresh > 0.045:
+                                self.poses[1].x = poses[2][0]
+                                self.poses[1].y = poses[2][1]
+                                self.poses[1].z = poses[2][2]
 
-                            # if self.cont_l_acc_tresh > 0.045:
-                            self.poses[1].x = poses[2][0]
-                            self.poses[1].y = poses[2][1]
-                            self.poses[1].z = poses[2][2]
+                            if len(self.poses) >= 3:
+                                self.poses[2].x = poses[1][0]
+                                self.poses[2].y = poses[1][1]
+                                self.poses[2].z = poses[1][2]
 
                             if poses.shape[0] > 3 and len(self.poses) > 3:
                                 for i in range(3, len(self.poses)):
@@ -443,8 +485,9 @@ Options:
                 else:
                     return
 
+            aa_last = np.zeros((100, 3,))
             with serial.Serial(port, 115200, timeout=10) as ser:
-                with serial.threaded.ReaderThread(ser, u.SerialReaderBinary) as protocol:
+                with serial.threaded.ReaderThread(ser, u.SerialReaderBinary(struct_len=19)) as protocol:
                     protocol.write_line("nut")
                     await asyncio.sleep(1)
 
@@ -456,16 +499,40 @@ Options:
                             gg = protocol.last_read
                             # print(f"cont_l: {gg}")
 
-                            if gg is not None and len(gg) >= 4:
-                                w, x, y, z, trgr, padX, padY, padClk, trgr_clk, sys, menu, grp, util = gg
+                            if gg is not None and len(gg) >= 19:
+                                w, x, y, z, ax, ay, az, gx, gy, gz, trgr, padX, padY, padClk, trgr_clk, sys, menu, grp, util, *_ = gg
 
                                 my_q = Quaternion([-y, z, -x, w])
 
                                 my_q = Quaternion(my_off * my_q * irl_rot_off).normalised
-                                self.poses[2].r_w = my_q[3]
-                                self.poses[2].r_x = my_q[0]
-                                self.poses[2].r_y = my_q[1]
-                                self.poses[2].r_z = my_q[2]
+                                if len(self.poses) >= 3:
+                                    self.poses[2].r_w = my_q[3]
+                                    self.poses[2].r_x = my_q[0]
+                                    self.poses[2].r_y = my_q[1]
+                                    self.poses[2].r_z = my_q[2]
+
+                                mm = pyrr.matrix33.create_from_quaternion(my_off * irl_rot_off)
+                                aa = np.array([ay, az, ax])
+                                ge = np.array([gy, gz, gx])
+                                aa = mm.dot(aa)
+                                ge = mm.dot(ge) / 250 * np.pi
+
+                                cont_l_acc_tresh = np.linalg.norm(aa-aa_last[-1])
+                                if cont_l_acc_tresh > 0.055:
+                                    vel = np.sum(aa_last/100, axis=0)
+                                else:
+                                    vel = np.zeros((3,))
+
+                                aa_last = np.delete(aa_last, 0, 0)
+                                aa_last = np.concatenate((aa_last, [aa]), axis=0)
+
+                                if len(self.poses) >= 3:
+                                    self.poses[2].vel_x = vel[0]
+                                    self.poses[2].vel_y = vel[1]
+                                    self.poses[2].vel_z = vel[2]
+                                    self.poses[2].ang_vel_x = ge[0]
+                                    self.poses[2].ang_vel_y = ge[1]
+                                    self.poses[2].ang_vel_z = ge[2]
 
                                 self.temp_pose.trigger_value = trgr
                                 self.temp_pose.grip = grp
@@ -492,8 +559,8 @@ Options:
                                     self._serialResetYaw = True
 
                             if (
-                                    abs(self.temp_pose.trackpad_x) > 0.1
-                                    or abs(self.temp_pose.trackpad_y) > 0.1
+                                    abs(self.temp_pose.trackpad_x) > 0.18
+                                    or abs(self.temp_pose.trackpad_y) > 0.18
                             ):
                                 self.temp_pose.trackpad_touch = 1
 
@@ -533,11 +600,6 @@ Options:
 
         my_off = Quaternion()
 
-        aa_last = np.zeros((3,))
-        aa_last2 = np.zeros((3,))
-        vel = np.zeros((3,))
-        grav_v = np.array((0, 1, 0))*9.8
-
         while self.coro_keep_alive["serial_listener3"].is_alive:
             # port = self.serialPaths['right_controller']
             loop = asyncio.get_running_loop()
@@ -563,7 +625,7 @@ Options:
                 else:
                     return
 
-            h = 0
+            aa_last = np.zeros((100, 3,))
             with serial.Serial(port, 115200, timeout=10) as ser2:
                 with serial.threaded.ReaderThread(ser2, u.SerialReaderBinary(struct_len=19)) as protocol:
                     protocol.write_line("nut")
@@ -576,16 +638,17 @@ Options:
                             gg = protocol.last_read
                             # print(f"cont_r: {gg}")
 
-                            if gg is not None and len(gg) >= 4:
+                            if gg is not None and len(gg) >= 19:
                                 w, x, y, z, ax, ay, az, gx, gy, gz, *_ = gg
 
                                 my_q = Quaternion([-y, z, -x, w])
 
                                 my_q = Quaternion(my_off * irl_rot_off2 * my_q * irl_rot_off).normalised
-                                self.poses[1].r_w = my_q[3]
-                                self.poses[1].r_x = my_q[0]
-                                self.poses[1].r_y = my_q[1]
-                                self.poses[1].r_z = my_q[2]
+                                if len(self.poses) >= 2:
+                                    self.poses[1].r_w = my_q[3]
+                                    self.poses[1].r_x = my_q[0]
+                                    self.poses[1].r_y = my_q[1]
+                                    self.poses[1].r_z = my_q[2]
 
                                 mm = pyrr.matrix33.create_from_quaternion(my_off * irl_rot_off2 * irl_rot_off)
                                 aa = np.array([ay, az, ax])
@@ -593,25 +656,22 @@ Options:
                                 aa = mm.dot(aa)
                                 ge = mm.dot(ge) / 250 * np.pi
 
-                                self.cont_l_acc_tresh = np.linalg.norm(aa-aa_last2)
-                                if self.cont_l_acc_tresh > 0.045:
-                                    vel += aa/100
-
-                                if h%80 == 0:
+                                cont_l_acc_tresh = np.linalg.norm(aa-aa_last[-1])
+                                if cont_l_acc_tresh > 0.055:
+                                    vel = np.sum(aa_last/100, axis=0)
+                                else:
                                     vel = np.zeros((3,))
-                                    h = 1
 
-                                aa_last2 = aa_last
-                                aa_last = aa
+                                aa_last = np.delete(aa_last, 0, 0)
+                                aa_last = np.concatenate((aa_last, [aa]), axis=0)
 
-                                self.poses[1].vel_x = vel[0]
-                                self.poses[1].vel_y = vel[1]
-                                self.poses[1].vel_z = vel[2]
-                                self.poses[1].ang_vel_x = ge[0]
-                                self.poses[1].ang_vel_y = ge[1]
-                                self.poses[1].ang_vel_z = ge[2]
-
-                                h+=1
+                                if len(self.poses) >= 2:
+                                    self.poses[1].vel_x = vel[0]
+                                    self.poses[1].vel_y = vel[1]
+                                    self.poses[1].vel_z = vel[2]
+                                    self.poses[1].ang_vel_x = ge[0]
+                                    self.poses[1].ang_vel_y = ge[1]
+                                    self.poses[1].ang_vel_z = ge[2]
 
                                 # self.temp_pose.trigger_value = trgr
                                 # self.temp_pose.grip = grp
@@ -634,7 +694,7 @@ Options:
                             )
 
                         except Exception as e:
-                            print(f"{self.serial_listener.__name__}: {e}")
+                            print(f"serial_listener3: {e}")
                             break
 
             if not self.toggleRetrySerials:
@@ -647,7 +707,8 @@ Options:
     @templates.PoserTemplate.register_member_thread(1 / 100)
     async def serial_listener(self):
         """Get orientation data from serial."""
-        my_off = Quaternion.from_x_rotation(np.radians(10))
+        my_off = Quaternion.from_x_rotation(0)
+        irl_rot_off = Quaternion.from_x_rotation(np.radians(3))
 
         while self.coro_keep_alive["serial_listener"].is_alive:
             # port = self.serialPaths['headset']
@@ -674,8 +735,9 @@ Options:
                 else:
                     return
 
+            aa_last = np.zeros((100, 3,))
             with serial.Serial(port, 115200, timeout=10) as ser2:
-                with serial.threaded.ReaderThread(ser2, u.SerialReaderBinary) as protocol:
+                with serial.threaded.ReaderThread(ser2, u.SerialReaderBinary(struct_len=19)) as protocol:
                     protocol.write_line("nut")
                     await asyncio.sleep(1)
 
@@ -686,18 +748,41 @@ Options:
                             gg = protocol.last_read
                             # print(f"hmd: {gg}")
 
-                            if gg is not None and len(gg) >= 4:
-                                w, x, y, z, *_ = gg
+                            if gg is not None and len(gg) >= 19:
+                                w, x, y, z, ax, ay, az, gx, gy, gz, *_ = gg
                                 my_q = Quaternion([-y, z, -x, w])
 
                                 if self._serialResetYaw:
                                     my_off = Quaternion([0, z, 0, w]).inverse.normalised
 
-                                my_q = Quaternion(my_off * my_q).normalised
+                                my_q = Quaternion(my_off * my_q * irl_rot_off).normalised
                                 self.poses[0].r_w = round(my_q[3], 5)
                                 self.poses[0].r_x = round(my_q[0], 5)
                                 self.poses[0].r_y = round(my_q[1], 5)
                                 self.poses[0].r_z = round(my_q[2], 5)
+
+                                mm = pyrr.matrix33.create_from_quaternion(my_off * irl_rot_off)
+                                aa = np.array([ay, az, ax])
+                                ge = np.array([gy, gz, gx])
+                                aa = mm.dot(aa)
+                                ge = mm.dot(ge) / 250 * np.pi
+
+                                cont_l_acc_tresh = np.linalg.norm(aa-aa_last[-1])
+                                if cont_l_acc_tresh > 0.055:
+                                    vel = np.sum(aa_last/100, axis=0)
+                                else:
+                                    vel = np.zeros((3,))
+
+                                aa_last = np.delete(aa_last, 0, 0)
+                                aa_last = np.concatenate((aa_last, [aa]), axis=0)
+
+                                self.poses[0].vel_x = vel[0]
+                                self.poses[0].vel_y = vel[1]
+                                self.poses[0].vel_z = vel[2]
+                                self.poses[0].ang_vel_x = ge[0]
+                                self.poses[0].ang_vel_y = ge[1]
+                                self.poses[0].ang_vel_z = ge[2]
+
 
                             await asyncio.sleep(
                                 self.coro_keep_alive["serial_listener"].sleep_delay
@@ -715,38 +800,39 @@ Options:
         self.coro_keep_alive["serial_listener"].is_alive = False
 
 
-    # @templates.PoserTemplate.register_member_thread(1 / 100)
-    # async def nut(self):
-    #     my_qq = np.array([1, 0, 0, 0], dtype=np.float64)
-    #     my_off = Quaternion()
-    #     my_off2 = Quaternion.from_x_rotation(np.pi/2)
+    @templates.PoserTemplate.register_member_thread(1 / 100)
+    async def nut(self):
+        my_qq = np.array([1, 0, 0, 0], dtype=np.float64)
+        my_off = Quaternion()
+        my_off2 = Quaternion.from_x_rotation(np.pi/2)*Quaternion.from_y_rotation(np.pi/2)
 
-    #     mig = ahrs.filters.Madgwick(frequency=100.0)
-    #     gg = []
-    #     while self.coro_keep_alive['nut'].is_alive:
-    #         try:
-    #             if self.last_read:
-    #                 gg = u.get_numbers_from_text(self.last_read.decode().strip('\r'), ',')
-    #                 self.last_read = b''
+        mig = ahrs.filters.Madgwick(frequency=100.0)
+        gg = []
+        while self.coro_keep_alive['nut'].is_alive:
+            try:
+                if self.last_read:
+                    gg = u.get_numbers_from_text(self.last_read.decode().strip('\r'), ',')
+                    self.last_read = b''
 
-    #             if len(gg) == 6 and len(self.poses) > 3:
-    #                 my_qq = mig.updateIMU(my_qq, gg[:3], gg[3:])
-    #                 # print (my_qq)
-    #                 temp = Quaternion(my_off*Quaternion([*my_qq[1:], my_qq[0]])*my_off2).normalised
-    #                 self.poses[3].r_w = temp[3]
-    #                 self.poses[3].r_x = temp[0]
-    #                 self.poses[3].r_z = -temp[1]
-    #                 self.poses[3].r_y = temp[2]
+                if len(gg) == 9 and len(self.poses) > 3:
+                    # my_qq = mig.updateIMU(my_qq, gg[3:6], gg[6:])
+                    my_qq = mig.updateMARG(my_qq, gg[3:6], gg[6:], gg[:3])
+                    # print (my_qq)
+                    temp = Quaternion(my_off*Quaternion([*my_qq[1:], my_qq[0]])*my_off2).normalised
+                    self.poses[3].r_w = temp[3]
+                    self.poses[3].r_y = temp[0]
+                    self.poses[3].r_z = temp[1]
+                    self.poses[3].r_x = temp[2]
 
-    #                 if self._serialResetYaw:
-    #                     my_off = Quaternion([0, temp[2], 0, temp[3]]).inverse.normalised
-    #                     mig = ahrs.filters.Madgwick(frequency=100.0)
+                    if self._serialResetYaw:
+                        my_off = (Quaternion([*my_qq[1:], my_qq[0]])*my_off2).inverse.normalised
+                        mig = ahrs.filters.Madgwick(frequency=100.0)
 
-    #         except Exception as e:
-    #             print (f'nut: dead, reason: {e}')
-    #             # break
+            except Exception as e:
+                print (f'nut: dead, reason: {e}')
+                # break
 
-    #         await asyncio.sleep(self.coro_keep_alive['nut'].sleep_delay)
+            await asyncio.sleep(self.coro_keep_alive['nut'].sleep_delay)
 
 def run_poser_only(addr="127.0.0.1", cam=4, colordata=None, serz=[]):
     """Run the poser only. The server must be started in another program."""
@@ -754,15 +840,6 @@ def run_poser_only(addr="127.0.0.1", cam=4, colordata=None, serz=[]):
               addr=addr, camera=cam, calibration_file=colordata, bad_serials=serz
               )
     asyncio.run(t.main())
-
-
-def run_poser_and_server(addr="127.0.0.1", cam=4, colordata=None, serz=[]):
-    """Run the poser and server in one program."""
-    t = Poser('h c c',
-              addr=addr, camera=cam, calibration_file=colordata, bad_serials=serz
-              )
-    server.run_til_dead(t)
-
 
 def main():
     """Run color tracker entry point."""
@@ -785,20 +862,12 @@ def main():
     else:
         cam = args["--camera"]
 
-    if args["--standalone"]:
-        run_poser_and_server(
-            args["--ip_address"],
-            cam,
-            args["--load_calibration"],
-            args["--serial2ignore"]
-        )
-    else:
-        run_poser_only(
-            args["--ip_address"],
-            cam,
-            args["--load_calibration"],
-            args["--serial2ignore"]
-        )
+    run_poser_only(
+        args["--ip_address"],
+        cam,
+        args["--load_calibration"],
+        args["--serial2ignore"]
+    )
 
 
 if __name__ == "__main__":

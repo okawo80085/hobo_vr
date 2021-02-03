@@ -188,12 +188,12 @@ def fit_focal_cone_to_sphere(points2D, points2D_count, sphere_radius, camera_foc
     A = np.zeros((points2D_count, 3), dtype=np.float64)
     for i in range(points2D_count):
         p = points2D[i]
-        norm_A = np.sqrt(p[0]**2 + p[1]**2 + zz)
+        norm_A = np.linalg.norm([p[0], p[1], camera_focal_length])
         A[i][0] = p[0]
         A[i][1] = p[1]
         A[i][2] = -norm_A
 
-    b = np.zeros((points2D_count,))
+    b = np.zeros((points2D_count,), dtype=np.float64)
     b.fill(-zz)
 
     # print (A.shape)
@@ -480,6 +480,71 @@ def cnt_2_x_y_w(cnt):
         nc[:, 0].max() - nc[:, 0].min(),
     )
 
+class FramePuller(threading.Thread):
+    def __init__(self, cam_index):
+        super().__init__()
+        if not HAVE_VOD:
+            raise RuntimeError(
+                "displayarray is not installed, no camera based tracking methods are available"
+            )
+        self._cam_index = cam_index
+        self.frame_ready = False
+        self._vs = None
+        self._last_frame = None
+
+        # -------------------threading related------------------------
+
+        self.alive = True
+        self._lock = threading.Lock()
+        self.daemon = False
+
+    def get_frame(self):
+        self.frame_ready = False
+        return self._last_frame
+
+    def run(self):
+        if not self._vs:
+            RuntimeError("wtf, it's null!")
+
+        while self.alive:
+            # t_s = time.time()
+            ret, self._last_frame = self._vs.read()
+            self.frame_ready = True
+
+            if not ret:
+                break
+
+            # t_e = time.time()
+            # print (f'{t_e-t_s}/{1/60}')
+
+        if self._vs:
+            self._vs.release()
+            self._vs = None
+
+    def stop(self):
+        with self._lock:
+            self.alive = False
+            self.join(3)
+            self.frame_ready = False
+
+            if self._vs:
+                self._vs.release()
+                self._vs = None
+
+    def __enter__(self):
+        self._vs = cv2.VideoCapture(self._cam_index)
+        # time.sleep(1/5)
+        self.start()
+        time.sleep(1/5)
+        if not self.alive:
+            RuntimeError("oh no, i died")
+        return self
+
+    def __exit__(self, *exc):
+        self.stop()
+
+
+# import timeit
 
 class BlobTracker(threading.Thread):
     """
@@ -488,7 +553,7 @@ class BlobTracker(threading.Thread):
     all tracking is done in a separate thread, so use this class in context manager
 
     self.start() - starts tracking thread
-    self.close() - stops tracking thread
+    self.stop() - stops tracking thread
 
     self.get_poses() - gets latest tracker poses
     """
@@ -532,25 +597,21 @@ class BlobTracker(threading.Thread):
             )
 
         super().__init__()
+        self._vs = FramePuller(cam_index)
         self.cam_index = cam_index
-        self._vs = cv2.VideoCapture(cam_index)
         self.color_masks = color_masks
 
         self.camera_focal_length = focal_length_px
         self.BALL_RADIUS_CM = ball_radius_cm
-        self.cam_index = cam_index
 
         self.last_frame = None
         self.time_of_last_frame = -1
         self._try_ret_bool = True
 
-        frame, self.can_track = self._try_get_frame()
-
-        if not self.can_track:
-            self._vs.release()
-            # self._vs.end()
-            self._vs = None
-            raise RuntimeError("invalid video source")
+        with self._vs:
+            while not self._vs.frame_ready:
+                pass
+            frame = self._vs.get_frame()
 
         self.frame_height, self.frame_width, _ = frame.shape
         markerMasks = np.array([[i.hue_center, i.hue_range, i.sat_center, i.sat_range, i.val_center, i.val_range] for i in color_masks], dtype=np.float64)
@@ -564,84 +625,27 @@ class BlobTracker(threading.Thread):
         self._lock = threading.Lock()
         self.daemon = False
 
-    def at_start(self) -> None:
-        # self._vs = read_updates(self.cam_index)
-
-        frame, self.can_track = self._try_get_frame()
-
-        if not self.can_track:
-            self._vs.release()
-            # self._vs.end()
-            self._vs = None
-            raise RuntimeError("invalid video source")
-
-        self.frame_height, self.frame_width, _ = frame.shape
-
-    def set_kalman_learning(self, do_learning):
-        for i in range(self.markerMasks.shape[0]):
-            if self.kalmanFilterz[i] is not None:
-                self.kalmanFilterz[i].do_learning = do_learning
-            if self.kalmanFilterz2[i] is not None:
-                self.kalmanFilterz2[i].do_learning = do_learning
-
-    def _try_get_frame(self):
-        # try:
-        #     self._vs.update()
-        #     # view may return empty dicts in between frames and before camera initializes.
-        #     # Wait until we receive a frame.
-        #     # if self._try_ret_bool:
-        #     t0 = time.time()
-        #     while not self._vs.frames and time.time() - t0 < 3.0:
-        #         self._vs.update()
-
-        #         # self._try_ret_bool = False
-
-        #     frame = self._vs.frames[str(self.cam_index)][0]
-        #     can_track = True
-        #     # if frame is not self.last_frame:
-        #     #     self.time_of_last_frame = time.time()
-        # except Exception as e:
-        #     print("_try_get_frame() failed with:", repr(e), self._vs.frames)
-        #     frame = None
-        #     can_track = False
-        can_track, frame = self._vs.read()
-
-        return frame, can_track
-
     def run(self):
         """Run the main blob tracking thread."""
-        self.at_start()
+        with self._vs:
+            while self.alive and self._vs.alive:
+                try:
+                    # t_s = timeit.default_timer()
+                    self.find_blobs_and_solve()
+                    time.sleep(0)
 
-        try:
-            _, self.can_track = self._try_get_frame()
+                    if not self._vs.alive:
+                        break
 
-            if not self.can_track:
-                raise RuntimeError("video source already expired")
+                    # t_e = timeit.default_timer()
 
-        except Exception as e:
-            print(f"failed to start thread, video source expired?: {repr(e)}")
-            self.alive = False
-            return
+                    # print (f'{t_e-t_s}/{1/60}')
 
-        while self.alive and self.can_track:
-            try:
-                # t_s = time.time()
-                self.find_blobs_and_solve()
-                # time.sleep(0)
-
-                if not self.can_track:
+                except Exception as e:
+                    print(f"tracking failed: {repr(e)}")
                     break
 
-                # t_e = time.time()
-
-                # print (f'{t_e-t_s}/{1/60}')
-
-            except Exception as e:
-                print(f"tracking failed: {repr(e)}")
-                break
-
         self.alive = False
-        self.can_track = False
 
     def get_poses(self):
         """Get last poses."""
@@ -649,8 +653,8 @@ class BlobTracker(threading.Thread):
 
     def find_blobs_and_solve(self):
         """Get a frame from the camera and find all the blobs in it."""
-        frame, self.can_track = self._try_get_frame()
-        if self.can_track:
+        if self._vs.frame_ready:
+            frame = self._vs.get_frame()
             # frame = cv2.resize(frame, (0, 0), fx=1.5, fy=1.5)
             blurred = cv2.blur(frame, (9,9))
 
@@ -674,34 +678,27 @@ class BlobTracker(threading.Thread):
                 if len(cnts) > 0:
                     c = max(cnts, key=cv2.contourArea)
                     c = c.reshape((c.shape[0], 2))
-                    c -= np.array((self.frame_width / 2, self.frame_height / 2), dtype=np.int32)
+                    c -= np.array((self.frame_width / 2, 0), dtype=np.int32)
+                    c = np.array((0, self.frame_height / 2), dtype=np.int32) - c
+
                     self.poses[key] = fit_focal_cone_to_sphere(c, len(c), self.BALL_RADIUS_CM, self.camera_focal_length)/100
 
 
     def stop(self):
         """Stop the blob tracking thread."""
-        self.alive = False
-        self.can_track = False
-        self.join(4)
-
-    def close(self):
-        """Close the blob tracker thread."""
         with self._lock:
-            self.stop()
-
-            if self._vs is not None:
-                self._vs.release()
-                # self._vs.end()
-                del self._vs
-                self._vs = None
+            self.alive = False
+            self.join(4)
 
     def __enter__(self):
+        del self._vs
+        self._vs = FramePuller(self.cam_index)
         self.start()
         if not self.alive:
-            self.close()
+            self.stop()
             raise RuntimeError("video source already expired")
 
         return self
 
     def __exit__(self, *exc):
-        self.close()
+        self.stop()
