@@ -10,7 +10,6 @@ Options:
    -r, --resolution <res>                   (in progress) Input resolution in width and height [default: -1x-1]
    -l, --load_calibration <file>            (optional) Load color mask calibration settings
    -i, --ip_address <ip_address>            IP Address of the server to connect to [default: 127.0.0.1]
-   -s, --standalone                         Run the server alongside the tracker.
    -b, --bash_pre_start <path>              (optional) bash script to be ran before the poser starts
    -S, --serial2ignore <val>                serial paths to ignore in device search
 """
@@ -842,15 +841,6 @@ def run_poser_only(addr="127.0.0.1", cam=4, colordata=None, serz=[]):
               )
     asyncio.run(t.main())
 
-
-def run_poser_and_server(addr="127.0.0.1", cam=4, colordata=None, serz=[]):
-    """Run the poser and server in one program."""
-    t = Poser('h c c',
-              addr=addr, camera=cam, calibration_file=colordata, bad_serials=serz
-              )
-    server.run_til_dead(t)
-
-
 def main():
     """Run color tracker entry point."""
     # allow calling from both python -m and from pyvr:
@@ -872,20 +862,12 @@ def main():
     else:
         cam = args["--camera"]
 
-    if args["--standalone"]:
-        run_poser_and_server(
-            args["--ip_address"],
-            cam,
-            args["--load_calibration"],
-            args["--serial2ignore"]
-        )
-    else:
-        run_poser_only(
-            args["--ip_address"],
-            cam,
-            args["--load_calibration"],
-            args["--serial2ignore"]
-        )
+    run_poser_only(
+        args["--ip_address"],
+        cam,
+        args["--load_calibration"],
+        args["--serial2ignore"]
+    )
 
 
 if __name__ == "__main__":
