@@ -232,9 +232,10 @@ nsisunz::Unzip "$TEMP\hobovr_master.zip" "$INSTDIR"
 # Tell Steam where the VR DLLs are
 IfFileExists "C:\Program Files (x86)\Steam\steamapps\common\SteamVR\bin\win32\vrpathreg.exe" PathGood
 	MessageBox MB_OK|MB_ICONEXCLAMATION "Steam vr path register exe doesn't exist. has steam and steamvr been installed?"
-	Abort
+	Quit
 PathGood:
-	ExecDos::exec /DETAILED 'cmd /c "break|"$INSTDIR\hobo_vr-master\driver_register_win.bat""' $EXIT_CODE install_log.txt
+	ExecDos::exec /DETAILED '"C:\Program Files (x86)\Steam\steamapps\common\SteamVR\bin\win32\vrpathreg.exe" adddriver "$INSTDIR\hobo_vr-master\hobovr"' $EXIT_CODE install_log.txt
+	ExecDos::exec /DETAILED '"C:\Program Files (x86)\Steam\steamapps\common\SteamVR\bin\win32\vrpathreg.exe" show' $EXIT_CODE install_log.txt
 
 # Install hobovr virtualreality python bindings
 ExecDos::exec /DETAILED '$pythonExe -m pip install -e "$INSTDIR\hobo_vr-master\bindings\python"' $EXIT_CODE install_log.txt
@@ -243,7 +244,7 @@ goto end
 # Handle errors
 hobo_download_failed:
 	MessageBox MB_OK|MB_ICONEXCLAMATION "Unable to download hobo_vr: $HobovrZipDownloaded."
-	 Abort
+	 Quit
 end:
 
 SectionEnd
