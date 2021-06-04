@@ -201,7 +201,7 @@ XPStyle on
 Var EXIT_CODE
 Var HobovrZipDownloaded
 
-!insertmacro MUI_PAGE_LICENSE "LICENSE"
+!insertmacro MUI_PAGE_LICENSE "..\LICENSE"
 #Page custom preExpressCustom 
 Page directory
 Page instfiles
@@ -234,10 +234,10 @@ IfFileExists "C:\Program Files (x86)\Steam\steamapps\common\SteamVR\bin\win32\vr
 	MessageBox MB_OK|MB_ICONEXCLAMATION "Steam vr path register exe doesn't exist. has steam and steamvr been installed?"
 	Abort
 PathGood:
-	ExecDos::exec '"$INSTDIR\hobo_vr\driver_register_win.bat"' $EXIT_CODE install_log.txt
+	ExecDos::exec /DETAILED 'cmd /c "break|"$INSTDIR\hobo_vr-master\driver_register_win.bat""' $EXIT_CODE install_log.txt
 
 # Install hobovr virtualreality python bindings
-ExecDos::exec '$pythonExe -m pip install -e "$INSTDIR\hobo_vr-master\bindings\python"' $EXIT_CODE install_log.txt
+ExecDos::exec /DETAILED '$pythonExe -m pip install -e "$INSTDIR\hobo_vr-master\bindings\python"' $EXIT_CODE install_log.txt
 goto end
 	
 # Handle errors
