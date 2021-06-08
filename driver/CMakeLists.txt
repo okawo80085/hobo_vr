@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(driver_sample)
+project(hobovr_driver)
 
 IF (WIN32)
   # Replace this with your vcpkg location

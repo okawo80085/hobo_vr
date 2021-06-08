@@ -1,0 +1,11 @@
+namespace fbs;
+
+include "byte_dict.fbs"
+include "pose.fbs"
+
+table Controller {
+    pose:Pose;
+    buttons:ByteDict;
+}
+
+root_type ByteDict;
