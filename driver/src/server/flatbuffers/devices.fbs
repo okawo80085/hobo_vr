@@ -1,0 +1,15 @@
+namespace fbs;
+
+table DeviceList {
+    devices:[Device];
+}
+
+enum Type : byte { Invalid = 0, HMD, Controller, GenericTracker, TrackingReference, DisplayRedirect }
+
+table Device {
+    type:Type; // Should match the enum number in openvr_driver.h/ETrackedDeviceClass
+    left_hand:bool = false;
+    uid:string;
+}
+
+root_type DeviceList;

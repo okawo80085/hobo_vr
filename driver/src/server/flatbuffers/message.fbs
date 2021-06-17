@@ -1,0 +1,23 @@
+include "controller.fbs";
+include "devices.fbs";
+
+namespace fbs;
+
+enum RequestType:uint32 {
+	ControllerRequest = 0,
+	DeviceListRequest,
+}
+
+table Request{
+	type:RequestType;
+}
+
+union Msg {
+	Controller,
+	DeviceList,
+	Request
+}
+
+table Message {
+	message:Msg;
+}

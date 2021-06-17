@@ -189,9 +189,8 @@ namespace hobovr {
 	}
 
 	bool ZmqClient::send(const char* msg) {
-		zmq::send_result_t r1 = publisher.send(zmq::str_buffer("DriverReceiver"), zmq::send_flags::sndmore);
 		zmq::send_result_t r2 = publisher.send(zmq::buffer(std::string_view(msg)));
-		return r1 && r2;
+		return r2&&true;
 	}
 
 	void ZmqClient::internal_thread() {
@@ -209,21 +208,14 @@ namespace hobovr {
 				std::cout << "polled in c++ inner thread" << std::endl;
 				try {
 					std::cout << "polled data" << std::endl;
-					bool got_topic = subscriber.recv(&topic, ZMQ_RCVMORE);  // Works fine
-					bool got_data = subscriber.recv(&receiveMessage) && got_topic;
-					std::cout << "got_topic:" << got_topic << ", got_data: " << got_data << std::endl;
-					std::cout << "topic:" << topic.str() << ", receiveMessage: " << receiveMessage.str() << std::endl;
+					bool got_data = req.recv(&receiveMessage);
+					std::cout << "got_data: " << got_data << std::endl;
+					std::cout << "receiveMessage: " << receiveMessage.str() << std::endl;
 
 
 					if (got_data) {
 						if (!thread_reset)
-							this->on_packet(controller);
-							/*						
-							const fbs::Controller* controller = fbs::GetController(receiveMessage.data());
-							//todo: add quit command to controller message
-							std::cout << "got data" << std::endl;
-							std::cout << controller->pose()->pos()->x() << std::endl;
-							*/
+							this->on_packet(receiveMessage.to_string());
 					}
 
 					std::this_thread::sleep_for(std::chrono::microseconds(1));

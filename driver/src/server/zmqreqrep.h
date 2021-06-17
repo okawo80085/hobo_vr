@@ -49,7 +49,7 @@ namespace hobovr {
 		/// </summary>
 		void stop();
 	protected:
-		virtual bool on_packet(char* buf, int len) {};
+		virtual bool on_packet(std::string& msg) {};
 
 	private:
 		void close();
@@ -65,6 +65,9 @@ namespace hobovr {
 		std::string address;
 		zmq::socket_t rep;
 		zmq::context_t& ctx;
+
+		std::condition_variable cv;
+		std::mutex cv_m;
 	};
 
 
@@ -98,7 +101,6 @@ namespace hobovr {
 		void close();
 		void internal_thread();
 		void open();
-
 
 		bool thread_reset = false;
 		bool thread_keep_alive = false;
