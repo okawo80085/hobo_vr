@@ -89,7 +89,18 @@ void start_python() {
 #endif
 
 bool on_packet(std::string& msg) {
+	auto vrmsg = VRProto::VRMessage();
+	if (vrmsg.ParseFromString(msg)) {
+		if (vrmsg.has_device_list()) {
+			auto devlist = vrmsg.device_list();
+			for (int i = 0; i < devlist.devices_size(); i++) {
 
+			}
+		}
+	}
+	else {
+		DriverLog("Failed to parse message: %s", msg.substr(0, 960).c_str());
+	}
 }
 
 

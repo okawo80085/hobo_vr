@@ -1,12 +1,5 @@
 
-namespace hobovr {
-    // le version
-    static const uint32_t k_nHobovrVersionMajor = 1;
-    static const uint32_t k_nHobovrVersionMinor = 0;
-    static const uint32_t k_nHobovrVersionBuild = 0;
-    static const std::string k_sHobovrVersionGG = "Multi Hobo Drifting";
 
-} // namespace hobovr
 
 namespace hobovr {
 
