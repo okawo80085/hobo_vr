@@ -1,5 +1,28 @@
 
 namespace hobovr {
+    // le version
+    static const uint32_t k_nHobovrVersionMajor = 1;
+    static const uint32_t k_nHobovrVersionMinor = 0;
+    static const uint32_t k_nHobovrVersionBuild = 0;
+    static const std::string k_sHobovrVersionGG = "Multi Hobo Drifting";
+
+} // namespace hobovr
+
+namespace hobovr {
+
+    // done for simple device management in vectors
+    class HobovrDeviceElement : public vr::ITrackedDeviceServerDriver {
+    public:
+        virtual void ProcessEvent(const vr::VREvent_t& vrEvent) {};
+        virtual std::string GetSerialNumber() const { return ""; };
+        virtual void UpdateDeviceBatteryCharge() {};
+        virtual void CheckForUpdates() {};
+        virtual void PowerOff() {};
+        virtual void PowerOn() {};
+        virtual void UpdateSectionSettings() {};
+
+        virtual void RunFrame(std::vector<float>& trackingPacket) {} // override this
+    };
 
 // should be publicly inherited
 class HobovrDevice : public HobovrDeviceElement {

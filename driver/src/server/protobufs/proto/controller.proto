@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package VRProto;
+
+import "byte_dict.proto";
+import "pose.proto";
+
+message Controller {
+    Pose pose = 1;
+    ByteDict buttons = 2;
+}

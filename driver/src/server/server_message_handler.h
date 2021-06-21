@@ -1,47 +1,89 @@
 #ifndef SERVER_MESSAGE_HANDLER_H
 #define SERVER_MESSAGE_HANDLER_H
 
-#include "flatbuffers/message_generated.h"
+#include "protobufs/message.pb.h"
 
-class ServerMessageHandler{
+class ServerMessageHandler {
 public:
 	ServerMessageHandler() {};
 	~ServerMessageHandler() {};
 
-	void handle_message(fbs::Message& msg) {
-		switch (msg.message_type()) {
+	void handle_message(VRProto::VRMessage& msg) {
+		switch (msg.VRUnion_case()) {
 
-		case fbs::Msg::Msg_Request:
-			fbs::Request* req = msg.message_as_Request();
+		case VRProto::VRMessage::kRequest:
+		{
+			std::cout << "VRProto::VRMessage::kRequest\n";
+			VRProto::Request req = msg.request();
+			std::cout << "created request\n";
 
 			switch (req.type()) {
-			case fbs::RequestType::RequestType_DeviceListRequest:
-				reply = current_device_list; // todo: won't work. Have to build the message back up and add the right type.
+			case VRProto::RequestTypeDeviceList:
+			{
+				std::cout << "VRProto::RequestTypeDeviceList\n";
+				reply = VRProto::VRMessage();
+				std::cout << "created reply\n";
+
+				VRProto::DeviceList current_device_list_copy = *(current_device_list.get());
+				reply.set_allocated_device_list(current_device_list.release());
+				current_device_list = std::make_unique<VRProto::DeviceList>(current_device_list_copy);
+
+				std::cout << "set_allocated_device_list\n";
 				break;
-			case fbs::RequestType::RequestType_ControllerRequest:
-				reply = current_controller; // todo: won't work. Have to build the message back up and add the right type.
+			}
+			case VRProto::RequestTypeController:
+			{
+				std::cout << "VRProto::RequestTypeController\n";
+				reply = VRProto::VRMessage();
+				std::cout << "created reply\n";
+
+				VRProto::Controller current_controller_copy = *(current_controller.get());
+				reply.set_allocated_controller(current_controller.release());
+				current_controller = std::make_unique<VRProto::Controller>(current_controller_copy);
+
+				std::cout << "set_allocated_controller\n";
 				break;
+			}
 			}
 
 			break;
-		case fbs::Msg::Msg_DeviceList:
-			fbs::Msg_DeviceList* dev = msg.message_as_DeviceList();
-			current_device_list = dev;
-			reply = nullptr;
+		}
+		case VRProto::VRMessage::kDeviceList:
+		{
+			std::cout << "VRProto::VRMessage::kDeviceList\n";
+			const VRProto::DeviceList& dev = msg.device_list();
+			std::cout << "created device list\n";
+			current_device_list = std::make_unique<VRProto::DeviceList>(dev);
+			std::cout << "copied device list\n";
+			reply = VRProto::VRMessage();
+			std::cout << "created reply\n";
+			reply.set_ack(true);
+			std::cout << "set ack\n";
 			break;
-		case fbs::Msg::Msg_Controller:
-			fbs::Msg_DeviceList* con = msg.message_as_DeviceList();
-			current_controller = con;
-			reply = nullptr;
+		}
+		case VRProto::VRMessage::kController:
+		{
+			std::cout << "VRProto::VRMessage::kController\n";
+			const VRProto::Controller& con = msg.controller();
+			std::cout << "created controller\n";
+			current_controller = std::make_unique<VRProto::Controller>(con);
+			std::cout << "copied controller\n";
+			reply = VRProto::VRMessage();
+			std::cout << "created reply\n";
+			reply.set_ack(true);
+			std::cout << "set ack\n";
+			break;
+		}
 		default:
 			break;
 		}
 	}
 
-	fbs::Message* reply;
+	//const pointers are used to say these will not change and to not copy data, speeding up stuff a lot
+	VRProto::VRMessage reply;
 
-	fbs::Msg_DeviceList* current_device_list;
-	fbs::Msg_Controller* current_controller;
+	std::unique_ptr<VRProto::DeviceList> current_device_list;
+	std::unique_ptr <VRProto::Controller> current_controller;
 private:
 
 

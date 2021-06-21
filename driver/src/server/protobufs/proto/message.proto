@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package VRProto;
+
+import "controller.proto";
+import "devices.proto";
+
+enum RequestType {
+	RequestTypeController = 0;
+	RequestTypeDeviceList = 1;
+}
+
+message Request {
+	RequestType type = 1;
+}
+
+message VRMessage {
+	oneof VRUnion {
+		Controller controller = 1;
+		DeviceList device_list = 2;
+		Request request = 3;
+		bool ack = 4;
+	}
+}

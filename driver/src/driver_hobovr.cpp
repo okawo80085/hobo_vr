@@ -39,7 +39,7 @@ using namespace vr;
 	#error "Unsupported Platform."
 #endif
 
-#include "networking/zmqreqrep.h"
+#include "server/zmqreqrep.h"
 
 namespace hobovr {
 	// le version
@@ -50,7 +50,7 @@ namespace hobovr {
 
 } // namespace hobovr
 
-ServerDriverHoboVR global_hobovr_driver;
+/*ServerDriverHoboVR global_hobovr_driver;
 
 //-----------------------------------------------------------------------------
 // Purpose: driverFactory
@@ -65,4 +65,4 @@ HMD_DLL_EXPORT void* HmdDriverFactory(const char* pInterfaceName,
 		*pReturnCode = VRInitError_Init_InterfaceNotFound;
 
 	return NULL;
-}
+}*/

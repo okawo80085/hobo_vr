@@ -1,4 +1,4 @@
-#include "zmqpubsub.h"
+#include "zmqreqrep.h"
 #include<iostream>
 
 namespace hobovr {
@@ -58,7 +58,7 @@ namespace hobovr {
 		is_open = false;
 	}
 
-	ZmqServer::open() {
+	void ZmqServer::open() {
 		rep = zmq::socket_t(ctx, zmq::socket_type::rep);
 		rep.bind(address);
 		is_open = true;
@@ -163,7 +163,6 @@ namespace hobovr {
 	void ZmqClient::stop() {
 		this->close();
 		thread_keep_alive = false;
-		m_pCallback = &m_NullCallback;
 		if (this->thread_pointer) {
 			this->thread_pointer->join();
 			delete this->thread_pointer;
@@ -174,22 +173,20 @@ namespace hobovr {
 	void ZmqClient::close() {
 		if (is_open) {
 			bool res = this->send("CLOSE\n");
-			publisher.setsockopt(ZMQ_LINGER, 0);
-			subscriber.setsockopt(ZMQ_LINGER, 0);
-			publisher.close();
-			subscriber.close();
+			req.setsockopt(ZMQ_LINGER, 0);
+			req.close();
 		}
 		is_open = false;
 	}
 
 	void ZmqClient::open() {
 		req = zmq::socket_t(ctx, zmq::socket_type::req);
-		req.connect(ss.str());
+		req.connect(address);
 		is_open = true;
 	}
 
 	bool ZmqClient::send(const char* msg) {
-		zmq::send_result_t r2 = publisher.send(zmq::buffer(std::string_view(msg)));
+		zmq::send_result_t r2 = req.send(zmq::buffer(std::string_view(msg)));
 		return r2&&true;
 	}
 

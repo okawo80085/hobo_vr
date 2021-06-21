@@ -11,7 +11,7 @@ add_library(${TARGET_NAME} SHARED
   driverlog.cpp
   driverlog.h
   driver_hobovr.cpp
-  "networking/zmqreqrep.cpp" "device/hobovr_device_base.h" "server/hobovr_server.cpp")
+  "server/zmqreqrep.cpp" "device/hobovr_device_base.h" "server/hobovr_server.cpp" "server/hobovr_server.h")
 
 add_definitions(-DDRIVER_HOBOVR_EXPORTS)
 

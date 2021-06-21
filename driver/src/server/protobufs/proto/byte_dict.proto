@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package VRProto;
+
+message ByteDict {
+    map<uint32, float> entries = 1;
+}

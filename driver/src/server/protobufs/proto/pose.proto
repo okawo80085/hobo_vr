@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package VRProto;
+
+message Vec3 {
+  float x = 1;
+  float y = 2;
+  float z = 3;
+}
+
+message Vec4 {
+  float x = 1;
+  float y = 2;
+  float z = 3;
+  float w = 4;
+}
+
+message Pose {
+    Vec3 pos = 1;
+    Vec4 quat = 2;
+}

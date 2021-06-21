@@ -8,12 +8,13 @@
 #include <sstream>
 #include <thread>
 
-#include "flatbuffers/controller_generated.h"
+#include "protobufs/controller.pb.h"
 #include <string_view>
 #include <algorithm>
 
 #include "zmq.hpp"
 #include "zmq_addon.hpp"
+#include <condition_variable>
 
 namespace hobovr {
 
@@ -49,7 +50,10 @@ namespace hobovr {
 		/// </summary>
 		void stop();
 	protected:
-		virtual bool on_packet(std::string& msg) {};
+		virtual bool on_packet(std::string& msg) { return false; };
+
+		std::condition_variable cv;
+		std::mutex cv_m;
 
 	private:
 		void close();
@@ -65,9 +69,6 @@ namespace hobovr {
 		std::string address;
 		zmq::socket_t rep;
 		zmq::context_t& ctx;
-
-		std::condition_variable cv;
-		std::mutex cv_m;
 	};
 
 
@@ -94,7 +95,7 @@ namespace hobovr {
 		bool send(const char* msg);
 
 	protected:
-		virtual bool on_packet(char* buf, int len) {};
+		virtual bool on_packet(std::string& packet) { return false; };
 
 	private:
 		static void internal_thread_enter(ZmqClient* ptr);

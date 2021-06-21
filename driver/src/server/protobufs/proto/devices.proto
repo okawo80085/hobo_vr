@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package VRProto;
+
+message DeviceList {
+   repeated Device devices = 1;
+}
+
+enum DeviceType { 
+    DeviceTypeInvalid = 0;
+    DeviceTypeHMD = 1;
+    DeviceTypeController = 2;
+    DeviceTypeGenericTracker = 3; 
+    DeviceTypeTrackingReference = 4;
+    DeviceTypeDisplayRedirect = 5;
+}
+
+message Device {
+    DeviceType type = 1; // Should match the enum number in openvr_driver.h/ETrackedDeviceClass
+    bool left_hand = 2;
+    string uid = 3;
+}

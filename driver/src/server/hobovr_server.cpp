@@ -1,52 +1,20 @@
 
+#include "hobovr_server.h"
+
 #include "zmqreqrep.h"
-#include "openvr_driver.h"
+#include <openvr_driver.h>
 #include <string>
 #include <chrono>
 
-class ServerDriverHoboVR : public IServerTrackedDeviceProvider, public hobovr::ZmqServer {
-public:
-	ServerDriverHoboVR() {}
+#include "../device/hobovr_device_base.h"
+#include "../driverlog.h"
 
-	/*******************************
-	* IServerTrackedDeviceProvider *
-	*******************************/
+#if defined(_WINDOWS)
+#include <windows.h>
+#endif
 
-	virtual EVRInitError Init(vr::IVRDriverContext* pDriverContext);
-	virtual void Cleanup();
-	virtual const char* const* GetInterfaceVersions() {
-		return vr::k_InterfaceVersions;
-	} // IServerTrackedDeviceProvider
-	virtual bool ShouldBlockStandbyMode() { return false; }
-	virtual void EnterStandby() {}
-	virtual void LeaveStandby() {}
-	virtual void RunFrame();
+#include "protobufs/message.pb.h"
 
-	/********************
-	* hobovr::ZmqServer *
-	********************/
-	void on_packet(std::string& msg);
-
-private:
-	void SlowUpdateThread();
-	static void SlowUpdateThreadEnter(CServerDriver_hobovr* ptr) {
-		ptr->SlowUpdateThread();
-	}
-	void UpdateServerDeviceList();
-
-	std::vector<hobovr::HobovrDeviceElement*> m_vDevices;
-	std::vector<hobovr::HobovrDeviceElement*> m_vStandbyDevices;
-
-	std::shared_ptr<SockReceiver::DriverReceiver> m_pSocketComm;
-	std::shared_ptr<HobovrTrackingRef_SettManager> m_pSettManTref;
-
-	bool m_bDeviceListSyncEvent = false;
-
-
-	// slower thread stuff
-	bool m_bSlowUpdateThreadIsAlive;
-	std::thread* m_ptSlowUpdateThread;
-};
 
 /************************
 * Python Initialization *
@@ -115,13 +83,17 @@ void start_python() {
 	// the system command is blocking, so windows specific stuff is needed:
 	STARTUPINFO info = { sizeof(info) };
 	PROCESS_INFORMATION processInfo;
-	CreateProcessA(NULL, (LPSTR)str.c_str(), NULL, NULL, TRUE, 0, NULL, NULL, &info, &processInfo))
+	CreateProcessA(NULL, (LPSTR)str.c_str(), NULL, NULL, true, 0, NULL, NULL, &info, &processInfo);
 }
 
 #endif
 
+bool on_packet(std::string& msg) {
 
-EVRInitError ServerDriverHoboVR::Init(vr::IVRDriverContext* pDriverContext) {
+}
+
+
+vr::EVRInitError ServerDriverHoboVR::Init(vr::IVRDriverContext* pDriverContext) {
 	VR_INIT_SERVER_DRIVER_CONTEXT(pDriverContext);  //mock/comment out for testing
 	InitDriverLog(vr::VRDriverLog()); // todo: make both stdout and steamvrout
 
@@ -130,6 +102,7 @@ EVRInitError ServerDriverHoboVR::Init(vr::IVRDriverContext* pDriverContext) {
 		hobovr::k_nHobovrVersionBuild,
 		hobovr::k_sHobovrVersionGG.c_str());
 
+	//non vr stuff:
 	this->start();
 	DriverLog("started ZMQ rep server.");
 
