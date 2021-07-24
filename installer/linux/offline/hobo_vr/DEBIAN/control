@@ -1,0 +1,6 @@
+Package: hobovr
+Version: 0.6.5
+Maintainer: Okawo, SimLeek
+Architecture: all
+Description: steamvr driver backend for hobo_vr
+Homepage: https://github.com/okawo80085/hobo_vr
