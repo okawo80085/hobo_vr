@@ -1,0 +1,7 @@
+Package: hobovr
+Version: 0.6.5
+Maintainer: Okawo <okawo.198@gmail.com>
+Architecture: all
+Depends: libopenvr-api1 (>= 1.8.0), libopenvr-dev (>= 1.8.0), git
+Description: steamvr driver backend for hobo_vr
+Homepage: https://github.com/okawo80085/hobo_vr
