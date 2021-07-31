@@ -19,4 +19,4 @@ head="${vr_reg_loc%/$tail}"
 usr="${head#*/*/}"
 
 sudo -H -u $usr bash -c "${vr_reg_loc} removedriver /usr/local/share/hobovr"
-# sudo -H -u $usr bash -c "${vr_reg_loc} show"
+sudo -H -u $usr bash -c "${vr_reg_loc} show"
