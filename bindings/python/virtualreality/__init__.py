@@ -1,3 +1,6 @@
+# (c) 2021 Okawo
+# This code is licensed under MIT license (see LICENSE for details)
+
 """Virtual reality tools and drivers for python."""
 try:
 	from . import util

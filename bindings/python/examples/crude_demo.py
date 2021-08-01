@@ -1,3 +1,6 @@
+# (c) 2021 Okawo
+# This code is licensed under MIT license (see LICENSE for details)
+
 import moderngl
 import numpy as np
 from pyrr import Vector3, Matrix44

@@ -1,3 +1,6 @@
+# (c) 2021 Okawo
+# This code is licensed under MIT license (see LICENSE for details)
+
 """Server loop that communicates between the driver and posers."""
 import asyncio
 

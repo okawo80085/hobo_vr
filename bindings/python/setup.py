@@ -1,3 +1,6 @@
+# (c) 2021 Okawo
+# This code is licensed under MIT license (see LICENSE for details)
+
 from setuptools import setup, find_packages
 from virtualreality import __version__
 
