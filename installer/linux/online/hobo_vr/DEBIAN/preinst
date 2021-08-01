@@ -9,3 +9,5 @@ rm -rf ./hobovr_repo
 git clone https://github.com/okawo80085/hobo_vr.git ./hobovr_repo
 
 cp -r ./hobovr_repo/hobovr /usr/local/share/
+
+rm -rf ./hobovr_repo
