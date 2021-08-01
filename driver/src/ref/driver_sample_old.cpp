@@ -1,5 +1,5 @@
-//============ Copyright (c) Valve Corporation, All rights reserved.
-//============
+// (c) 2021 Okawo
+// This code is licensed under MIT license (see LICENSE for details)
 
 //#include "openvr.h"
 #include "openvr_driver.h"

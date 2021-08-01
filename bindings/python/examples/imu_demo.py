@@ -1,3 +1,6 @@
+# (c) 2021 SimLeek
+# This code is licensed under MIT license (see LICENSE for details)
+
 import time
 import traceback
 

@@ -1,3 +1,6 @@
+// (c) 2021 Okawo
+// This code is licensed under MIT license (see LICENSE for details)
+
 // linux only dummy test driver
 // compile instructions are the same as for the real driver
 

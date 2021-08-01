@@ -1,3 +1,6 @@
+// (c) 2021 Okawo
+// This code is licensed under MIT license (see LICENSE for details)
+
 #ifndef COM_RECV_WIN_H
 #define COM_RECV_WIN_H
 #endif
