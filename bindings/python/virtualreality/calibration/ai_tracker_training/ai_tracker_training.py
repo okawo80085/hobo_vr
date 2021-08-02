@@ -1,4 +1,4 @@
-# (c) 2021 Okawo
+# (c) 2021 Simleek
 # This code is licensed under MIT license (see LICENSE for details)
 
 import math as m

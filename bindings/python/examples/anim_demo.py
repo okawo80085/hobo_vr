@@ -1,3 +1,6 @@
+# (c) 2021 Simleek
+# This code is licensed under MIT license (see LICENSE for details)
+
 import numpy as np
 from mayavi import mlab
 
