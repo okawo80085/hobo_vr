@@ -130,7 +130,7 @@ namespace SockReceiver {
           });
     }
     catch (...) {
-      out = { (T)0,(T) 0 };
+      out = { (T)0, (T)0 };
     }
 
     return out;
