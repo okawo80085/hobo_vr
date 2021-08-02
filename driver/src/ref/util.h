@@ -126,7 +126,7 @@ namespace SockReceiver {
     try {
       std::transform(split.begin(), split.end(), out.begin(), [](const std::string& val)
           {
-            return std::stod(val);
+            return (T)std::stod(val);
           });
     }
     catch (...) {
