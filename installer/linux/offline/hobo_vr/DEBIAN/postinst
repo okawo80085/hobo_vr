@@ -1,0 +1,22 @@
+#!/bin/bash
+
+vr_reg_loc=$(find /home/ -iname vrpathreg)
+
+if [ ! -f "${vr_reg_loc}" ]; then
+    echo "vrpathreg not found! make sure steamvr is installed!"
+    exit 1
+fi
+
+echo "post install hobovr..."
+echo "vrpathred: '${vr_reg_loc}'"
+echo ===============================
+
+# this is a complete and utter stupid hack! fuck vrpathreg
+
+tail="${vr_reg_loc#/*/*/}"
+head="${vr_reg_loc%/$tail}"
+
+usr="${head#*/*/}"
+
+sudo -H -u $usr bash -c "${vr_reg_loc} adddriver /usr/local/share/hobovr"
+sudo -H -u $usr bash -c "${vr_reg_loc} show"
