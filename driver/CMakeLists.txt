@@ -1,16 +1,22 @@
 cmake_minimum_required(VERSION 3.16)
-project(driver_sample)
 
-IF (WIN32)
-  # Replace this with your vcpkg location
-  include(D:/code/vcpkg/scripts/buildsystems/vcpkg.cmake)
-  find_path(SYSTEM_INCLUDE_DIR openvr_driver.h)
-  include_directories(${SYSTEM_INCLUDE_DIR})
-endif()
+set(TARGET_NAME driver_hobovr)
+set(CMAKE_CXX_STANDARD 17)
 
-add_subdirectory (src)
+file(GLOB driver_hobovr_src
+  "src/*.cpp"
+  "src/*.cc"
+  "src/*.h"
+  "src/*.hpp"
+)
 
-add_subdirectory (example)
+add_library(${TARGET_NAME} SHARED
+  ${driver_hobovr_src}
+)
 
-enable_testing ()
-add_subdirectory (test)
+add_definitions(-DDRIVER_HOBOVR_EXPORTS)
+
+target_link_libraries(${TARGET_NAME}
+  ${OPENVR_LIBRARIES}
+  ${CMAKE_DL_LIBS}
+)
