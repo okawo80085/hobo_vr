@@ -6,6 +6,12 @@ project(hobo_vr)
 set(TARGET_NAME driver_hobovr)
 set(CMAKE_CXX_STANDARD 17)
 
+IF (EXISTS $ENV{USERPROFILE}/vcpkg)
+  include($ENV{USERPROFILE}/vcpkg/scripts/buildsystems/vcpkg.cmake)
+  find_path(SYSTEM_INCLUDE_DIR openvr_driver.h)
+  include_directories(${SYSTEM_INCLUDE_DIR})
+endif()
+
 # Set a default build type if none was specified
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   message("Setting build type to 'RelWithDebInfo' as none was specified.")
