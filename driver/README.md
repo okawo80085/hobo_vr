@@ -1,4 +1,7 @@
 # building
+## pre build
+clone [openvr](https://github.com/ValveSoftware/openvr) and copy `openvr/headers/openvr_driver.h` to `src/`
+
 ## windows
 building the driver really comes down to 2 steps, setting up cmake and relocating the compiled binaries to their appropriate locations. [cmake](https://cmake.org/) can be found [here](https://cmake.org/download/), set it up for your system and add it to path if you didn't already, also setup visual studio or any other c++ compiler(if you didn't already)
 
@@ -18,7 +21,7 @@ cmake --build build64 --config Release
 
 now after the build is done move the 32 bit binary into `hobovr/bin/win32` and the 64 bit binary into `hobovr/bin/win64`
 
-and you're done, now when you start steamvr it'll load your build version of `hobo_vr`
+congrats, you're done, now when you start steamvr it'll load your build version of `hobo_vr`
 
 ## linux
 coming soon:tm:
