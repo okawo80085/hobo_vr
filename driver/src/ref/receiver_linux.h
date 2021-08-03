@@ -41,7 +41,7 @@ namespace SockReceiver {
     int m_iExpectedMessageSize;
     std::string m_sIdMessage = "hello\n";
 
-    DriverReceiver(std::string expected_pose_struct, int port=6969, char* addr="127.0.01") {
+    DriverReceiver(std::string expected_pose_struct, int port=6969, std::string addr="127.0.01") {
       std::regex rgx("[htc]");
       std::regex rgx2("[0-9]+");
 
@@ -54,7 +54,7 @@ namespace SockReceiver {
       struct sockaddr_in serv_addr;
       struct hostent *server;
 
-      server = gethostbyname(addr); // oh and did i mention that this is also convoluted as shit in winsock?
+      server = gethostbyname(addr.c_str()); // oh and did i mention that this is also convoluted as shit in winsock?
       portno = port;
 
       m_pSocketObject = socket(AF_INET, SOCK_STREAM, 0); // create socket, surprisingly winsock didn't fuck this up
@@ -64,7 +64,6 @@ namespace SockReceiver {
 #ifdef DRIVERLOG_H
           DriverLog("receiver opening socket error");
 #endif
-          m_pSocketObject = NULL;
           throw std::runtime_error("failed to open socket");
       }
 
@@ -73,7 +72,6 @@ namespace SockReceiver {
 #ifdef DRIVERLOG_H
           DriverLog("receiver bad host");
 #endif
-          m_pSocketObject = NULL;
           throw std::runtime_error("bad host addr");
       }
 
@@ -91,7 +89,6 @@ namespace SockReceiver {
 #ifdef DRIVERLOG_H
           DriverLog("receiver failed to connect to host");
 #endif
-          m_pSocketObject = NULL;
           throw std::runtime_error("connection error");
       }
     }
@@ -129,13 +126,13 @@ namespace SockReceiver {
     }
 
     void close_me() {
-      if (m_pSocketObject != NULL) {
+      if (m_pSocketObject) {
         int res = this->send2("CLOSE\n");
         close(m_pSocketObject);
 
       }
 
-      m_pSocketObject = NULL;
+      m_pSocketObject = 0;
     }
 
     int send2(const char* message) {

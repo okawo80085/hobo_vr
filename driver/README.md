@@ -21,9 +21,27 @@ cmake --build build64 --config Release
 
 now after the build is done move the 32 bit binary into `hobovr/bin/win32` and the 64 bit binary into `hobovr/bin/win64`
 
-congrats, you're done, now when you start steamvr it'll load your build version of `hobo_vr`
+congrats, you're done, now when you start steamvr it'll load your build of `hobo_vr`
 
 ## linux
-coming soon:tm:
+technically steamvr requires 2 binaries, a 32 bit one(for light tasks like watchdog, etc.) and a 64 bit one(the actual driver), but
+```
+since I'm lazy and its a pain to set it up to work with both linux and windows here is a work around
+            - Okawo, famous last words
+```
+build it like normal with cmake
+```bash
+# make a directory for the build
+mkdir build
 
-it'll be similar to the windows steps, but need to be tested first
+# init cmake
+cmake ..
+
+# build
+
+cmake --build .
+```
+
+then rename `libdriver_hobovr.so` to `driver_hobovr.so` and copy it to both `hobovr/bin/linux32` *and* `hobovr/bin/linux64`
+
+congrats, you're done, now when you start steamvr it'll load your build of `hobo_vr`
