@@ -33,6 +33,7 @@ build it like normal with cmake
 ```bash
 # make a directory for the build
 mkdir build
+cd build
 
 # init cmake
 cmake ..
