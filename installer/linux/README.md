@@ -8,7 +8,7 @@ both installers have their own `build_deb.sh` scripts, those are the installer b
 # usage
 to install the deb package, either use your package manager or run this command
 ```bash
-sudo dpkg -i hobo_vr.deb
+sudo apt install ./hobo_vr.deb
 
 # if you have any missing dependencies also run this:
 sudo apt --fix-broken install
@@ -17,5 +17,5 @@ sudo apt --fix-broken install
 
 to uninstall the deb package, either again use your package manager or run this command
 ```bash
-sudo dpkg -r hobovr
+sudo apt remove hobovr
 ```
