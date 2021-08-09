@@ -3,6 +3,8 @@ only 2 requirements: format your commit messages and format your PR messages
 
 see the details below
 
+*enforcement will not be strict, but it is encouraged to follow these guidelines*
+
 ## commit message format
 your commit messages should follow this format
 
