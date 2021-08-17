@@ -201,7 +201,7 @@ XPStyle on
 Var EXIT_CODE
 Var HobovrZipDownloaded
 
-!insertmacro MUI_PAGE_LICENSE "..\LICENSE"
+!insertmacro MUI_PAGE_LICENSE "..\..\LICENSE"
 #Page custom preExpressCustom 
 Page directory
 Page instfiles
