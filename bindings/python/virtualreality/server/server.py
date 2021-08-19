@@ -36,7 +36,7 @@ class Server:
 
     def __repr__(self):
         """do i need to explain this?"""
-        return f"<{self.__class__.__module__}.{self.__class__.__name__} debug={self.debug} active_conz={len(self.conz)} object at {hex(id(self))}>"
+        return f"<{self.__class__.__module__}.{self.__class__.__name__} debug={self.debug} active_conz={len(self.conz)} object at {hex(id(self))}>" # noqa E501
 
     async def send_to_all(self, msg, me):
         """send a message to all registered connections that are not self"""
@@ -88,7 +88,7 @@ class Server:
             first_msg = await reader.read(50)
 
         except Exception as e:
-            print (f'pipe {addr} broke on id, reason: {e}')
+            print(f'pipe {addr} broke on id, reason: {e}')
             return
 
         if self._terminator in first_msg:
@@ -143,7 +143,7 @@ class Server:
                     if not data or self._close_msg in data:
                         break
 
-                    await self.send_to_all_driver(data, me) # send to all posers
+                    await self.send_to_all_driver(data, me)  # to all posers
 
                     if self.debug:
                         print(f"{repr(data)} from {addr}")
@@ -160,7 +160,7 @@ class Server:
                     if not data or self._close_msg in data:
                         break
 
-                    await self.send_to_all_poser(data, me) # send to all drivers
+                    await self.send_to_all_poser(data, me)  # to all drivers
 
                     if self.debug:
                         print(f"{repr(data)} from {addr}")
@@ -177,8 +177,8 @@ class Server:
                     if not data or self._close_msg in data:
                         break
 
-                    await self.send_to_all_driver(data, me) # send to posers too, prioritize posers tho
-                    await self.send_to_all(data, me) # send to all not identified connections
+                    await self.send_to_all_driver(data, me)  # to posers too
+                    await self.send_to_all(data, me)  # to all not identified
 
                     if self.debug:
                         print(f"{repr(data)} from {addr}")
@@ -195,7 +195,7 @@ class Server:
                     if not data or self._close_msg in data:
                         break
 
-                    await self.send_to_all_manager(data, me) # send to all managers
+                    await self.send_to_all_manager(data, me)  # to all managers
 
                     if self.debug:
                         print(f"{repr(data)} from {addr}")
@@ -225,17 +225,17 @@ class Server:
         print(f"connection to {addr} closed")
 
 
-def run_til_dead(poser = None, conn_handle=Server()):
+def run_til_dead(poser=None, conn_handle=Server()):
     """Run the server until it dies."""
     loop = asyncio.get_event_loop()
     coro = asyncio.start_server(conn_handle, *DOMAIN, loop=loop)
     server = loop.run_until_complete(coro)
 
     if poser is not None:
-        poser_result = asyncio.run_coroutine_threadsafe(poser.main(), loop)
+        asyncio.run_coroutine_threadsafe(poser.main(), loop)
 
     # Serve requests until Ctrl+C is pressed
-    print (f"server version: {repr(__version__)}")
+    print(f"server version: {repr(__version__)}")
     print("Serving on {}".format(server.sockets[0].getsockname()))
     try:
         loop.run_forever()

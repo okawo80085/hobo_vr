@@ -2,6 +2,7 @@
 # This code is licensed under MIT license (see LICENSE for details)
 
 """pose objects"""
+import numbers
 
 
 class PoseEuler(object):
@@ -258,7 +259,6 @@ class ControllerState(Pose):
         self.trackpad_touch: int = trackpad_touch  # 0 or 1
         self.trigger_click: int = trigger_click  # 0 or 1
 
-
     def get_vals(self):  # its faster this way
         return [self.x,
                 self.y,
@@ -294,4 +294,6 @@ class ControllerState(Pose):
 def get_slot_values(slotted_instance):
     """Get all slot values in a class with slots."""
     # thanks: https://stackoverflow.com/a/6720815/782170
-    return [getattr(slotted_instance, slot) for slot in slotted_instance.__slots__]
+    return [
+        getattr(slotted_instance, slot) for slot in slotted_instance.__slots__
+    ]
