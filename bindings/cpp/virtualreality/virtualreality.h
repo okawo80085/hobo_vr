@@ -142,7 +142,7 @@ public:
     virtual const char type_id() { return 'p'; }
 
     // cuz fuck you, only use these methods on controllers
-    virtual Ctrl& updateInputs() { Ctrl res({ 0 });  return res; }
+    virtual Ctrl* const updateInputs() { return nullptr; }
     virtual void updateInputs(Ctrl ni) {}
 };
 
@@ -150,8 +150,8 @@ struct ControllerPose: Pose
 {
     Ctrl inputs;
 
-    Ctrl& updateInputs() {
-        return inputs;
+    Ctrl* const updateInputs() {
+        return &inputs;
     }
 
     void updateInputs(Ctrl ni) {
