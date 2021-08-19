@@ -43,5 +43,10 @@ Most extensive poser examples can be found in `bindings/python/examples/`. C++ p
 # Why?
 Because the alternatives suck and prototyping with openvr_driver API is a huge pain.
 
+# Contributing
+Is always welcomed. Join the discussion over at Discord [here](https://discord.gg/PrfUEkC), but pull requests are welcome here too. Please explain the motivation for a given change and examples of its effect.
+
+> Also it is strongly encouraged to follow these [contribution guidelines](https://github.com/okawo80085/hobo_vr/blob/master/CONTRIBUTING.md)
+
 # License
 This project falls under the MIT license.
