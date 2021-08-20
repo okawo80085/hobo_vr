@@ -1,3 +1,6 @@
+# driver
+this is only the source and building instruction for the `hobovr` driver, the built driver itself is located in `../hobovr/`.
+
 # building
 ## pre build
 clone [openvr](https://github.com/ValveSoftware/openvr) and copy `openvr/headers/openvr_driver.h` to `src/`
@@ -19,9 +22,9 @@ cmake --build build64 --config Release
 ```
 [more info on these cmake commands](https://stackoverflow.com/a/28370892/10190971)
 
-now after the build is done move the 32 bit binary into `hobovr/bin/win32` and the 64 bit binary into `hobovr/bin/win64`
+now after the build is done move the 32 bit binary into `../hobovr/bin/win32` and the 64 bit binary into `../hobovr/bin/win64`
 
-congrats, you're done, now when you start steamvr it'll load your build of `hobo_vr`
+congrats, you're done, now when you start steamvr it'll load your build of `hobovr`
 
 ## linux
 technically steamvr requires 2 binaries, a 32 bit one(for light tasks like watchdog, etc.) and a 64 bit one(the actual driver), but
@@ -43,6 +46,6 @@ cmake ..
 cmake --build .
 ```
 
-then rename `libdriver_hobovr.so` to `driver_hobovr.so` and copy it to both `hobovr/bin/linux32` *and* `hobovr/bin/linux64`
+then rename `libdriver_hobovr.so` to `driver_hobovr.so` and copy it to both `../hobovr/bin/linux32` *and* `../hobovr/bin/linux64`
 
-congrats, you're done, now when you start steamvr it'll load your build of `hobo_vr`
+congrats, you're done, now when you start steamvr it'll load your build of `hobovr`
