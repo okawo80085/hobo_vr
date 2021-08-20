@@ -1,3 +1,6 @@
+// (c) 2021 Okawo
+// This code is licensed under MIT license (see LICENSE for details)
+
 #pragma once
 #ifndef __HOBO_VR_LIB
 #define __HOBO_VR_LIB
@@ -79,7 +82,7 @@ right now includes templates only, no tracking
 // version
 static const uint32_t k_nHvrVersionMajor = 0;
 static const uint32_t k_nHvrVersionMinor = 1;
-static const uint32_t k_nHvrVersionBuild = 1;
+static const uint32_t k_nHvrVersionBuild = 2;
 static const std::string k_nHvrVersionJoke = "solid snake";
 
 // constants
@@ -139,7 +142,7 @@ public:
     virtual const char type_id() { return 'p'; }
 
     // cuz fuck you, only use these methods on controllers
-    virtual Ctrl& updateInputs() { Ctrl res({ 0 });  return res; }
+    virtual Ctrl* const updateInputs() { return nullptr; }
     virtual void updateInputs(Ctrl ni) {}
 };
 
@@ -147,8 +150,8 @@ struct ControllerPose: Pose
 {
     Ctrl inputs;
 
-    Ctrl& updateInputs() {
-        return inputs;
+    Ctrl* const updateInputs() {
+        return &inputs;
     }
 
     void updateInputs(Ctrl ni) {

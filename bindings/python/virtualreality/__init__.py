@@ -1,15 +1,15 @@
+# (c) 2021 Okawo
+# This code is licensed under MIT license (see LICENSE for details)
+
 """Virtual reality tools and drivers for python."""
-try:
-	from . import util
-	from . import templates
+__version__ = "0.1.6"
 
-	from .logging import log
 
-	logger = log.setup_custom_logger(name=__name__, level="INFO", file="./logs/app.log")
+from . import templates
+# from .logging import log
 
-	logger.debug("created app.log log file")
+# logger = log.setup_custom_logger(
+#     name=__name__, level="INFO", file="./logs/app.log"
+# )
 
-except Exception as e:
-	print (f'failed to load submodules, reason: {e}')
-
-__version__ = "0.1.5"
+# logger.debug("created app.log log file")

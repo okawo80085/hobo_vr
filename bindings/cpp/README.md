@@ -3,9 +3,15 @@
 include `virtualreality.h`
 then use `hvr::UduPoserTemplate` as a parent class, further documentation coming soon :tm:
 
-## compiling
-has no external dependencies yet, will have `docopt` soon
+## bulding
+each example has it's own CMakeLists.txt, so its a normal cmake build
+```bash
+# create a build directory
+mkdir build
+cd build
 
-just compile it any way you see fit with c++17 or higher
-
-all the source files are in `virtualreality/`, you'll need all of them
+# init cmake
+cmake ..
+# build
+cmake --build .
+```

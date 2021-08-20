@@ -1,9 +1,14 @@
-"""Templates for pose estimators, or posers. unlimited devices upgrade version."""
-import asyncio
-import numbers
-import warnings
+# (c) 2021 Okawo
+# This code is licensed under MIT license (see LICENSE for details)
 
-from ..util import utilz as u
+"""
+Templates for pose estimators, or posers. unlimited devices upgrade version.
+"""
+import asyncio
+# import numbers
+# import warnings
+
+# from ..util import utilz as u
 from .template_base import *
 from .poses import *
 import re
@@ -11,13 +16,12 @@ import struct
 import numpy as np
 
 
-
 class UduPoserTemplate(PoserTemplateBase):
     """
     udu poser template.
 
     supplies a list of poses:
-        self.poses - pose object will correspond to value of udu_string, keep in mind that, as of now, only 3 types of devices are supported(h-hmd, c-controller, t-tracker)
+        self.poses - pose objects
 
     for more info: help(PoserTemplateBase)
 
@@ -31,14 +35,13 @@ class UduPoserTemplate(PoserTemplateBase):
                 while self.coro_keep_alive['example_thread'].is_alive:
                     self.poses[0].x += 0.04
 
-                    await asyncio.sleep(self.coro_keep_alive['example_thread'].sleep_delay)
+                    await asyncio.sleep(
+                        self.coro_keep_alive['example_thread'].sleep_delay
+                    )
 
         poser = MyPoser('h c c')
 
         asyncio.run(poser.main())
-
-    more examples:
-        https://github.com/okawo80085/hobo_vr/blob/master/examples/uduPoserClient.py
 
     """
 
@@ -72,16 +75,16 @@ class UduPoserTemplate(PoserTemplateBase):
 
             elif i == "c":
                 self.poses.append(ControllerState())
-            
+
             new_struct.append(f"{i}{len(self.poses[-1])}")
 
         new_struct = " ".join(new_struct)
 
         print(
-            f"total of {len(self.poses)} device(s) have been added, your new udu settings: {repr(new_struct)}"
+            f"total of {len(self.poses)} device(s) have been added, your new udu settings: {repr(new_struct)}"  # noqa E501
         )
         print(
-            "full device list is now available through self.device_types, all device poses are in self.poses"
+            "full device list is now available through self.device_types, all device poses are in self.poses"  # noqa E501
         )
 
     async def _sync_udu(self, new_udu_string):
@@ -90,11 +93,11 @@ class UduPoserTemplate(PoserTemplateBase):
         re_s = re.search("([htc][ ])*([htc]$)", newUduString)
 
         if not newUduString or re_s is None:
-            print ('invalid udu string')
+            print('invalid udu string')
             return
 
         if re_s.group() != newUduString:
-            print ('invalid udu string')
+            print('invalid udu string')
             return
 
         newPoses = []
@@ -108,17 +111,26 @@ class UduPoserTemplate(PoserTemplateBase):
 
             new_struct.append(f"{i}{len(newPoses[-1])}")
 
-
         self.poses = newPoses
         new_struct = " ".join(new_struct)
-        print (f"new udu settings: {repr(new_struct)}, {len(self.poses)} device(s) total")
+        print(
+            f"new udu settings: {repr(new_struct)}, {len(self.poses)} device(s) total" # noqa E501
+        )
         # send new udu
         udu_len = len(self.poses)
-        type_d = {'h' : (0, 13), 'c' : (1, 22), 't' : (2, 13)}
-        packet = np.array([type_d[i] for i in newUduString.split(' ')], dtype=np.uint32)
-        packet = packet.reshape(packet.shape[0]*packet.shape[1])
+        type_d = {'h': (0, 13), 'c': (1, 22), 't': (2, 13)}
+        packet = np.array(
+            [type_d[i] for i in newUduString.split(' ')],
+            dtype=np.uint32
+        )
+        packet = packet.reshape(packet.shape[0] * packet.shape[1])
 
-        data = settManager_Message_t.pack(20, udu_len, *packet, *np.zeros((128-packet.shape[0],), dtype=np.uint32))
+        data = settManager_Message_t.pack(
+            20,
+            udu_len,
+            *packet,
+            *np.zeros((128 - packet.shape[0], ), dtype=np.uint32)
+        )
         resp = await self._send_manager(data)
         return resp
 
@@ -126,12 +138,16 @@ class UduPoserTemplate(PoserTemplateBase):
         """Send all poses thread."""
         while self.coro_keep_alive["send"].is_alive:
             try:
-                msg = b"".join([struct.pack(f"{len(i)}f", *i.get_vals()) for i in self.poses]) + self._terminator
+                msg = b"".join(
+                    [struct.pack(f"{len(i)}f", *i.get_vals()) for i in self.poses] # noqa E501
+                ) + self._terminator
                 self.writer.write(msg)
                 await self.writer.drain()
-                #print('written and drained')
+                # print('written and drained')
 
-                await asyncio.sleep(self.coro_keep_alive["send"].sleep_delay-0.0001)
+                await asyncio.sleep(
+                    self.coro_keep_alive["send"].sleep_delay - 0.0001
+                )
             except Exception as e:
                 print(f"send failed: {e}")
                 break
@@ -143,7 +159,7 @@ class UduPoserClient(UduPoserTemplate, PoserClientBase):
     UduPoserClient.
 
     example usage:
-        poser = UduPoserClient('h c c') # normal poser device setup: hmd controller controller
+        poser = UduPoserClient('h c c') # hmd, controller, controller
 
         @poser.thread_register(1)
         async def lol():

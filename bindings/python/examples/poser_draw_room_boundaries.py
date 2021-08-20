@@ -1,3 +1,6 @@
+# (c) 2021 Okawo
+# This code is licensed under MIT license (see LICENSE for details)
+
 """
 
 first positions both controllers to ROOM_CENTER then waits for resume

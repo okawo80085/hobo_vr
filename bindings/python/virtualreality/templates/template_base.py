@@ -1,17 +1,14 @@
+# (c) 2021 Okawo
+# This code is licensed under MIT license (see LICENSE for details)
+
 """base template class"""
 import asyncio
-import numbers
+# import numbers
 import warnings
 from aioconsole import ainput
 import shlex
 import docopt
 import struct
-
-try:
-    from ..util import utilz as u
-
-except Exception as e:
-    print (f'failed to import utilities, some things will be broken: {e}')
 
 
 class KeepAliveTrigger:
@@ -27,7 +24,20 @@ class KeepAliveTrigger:
         self.is_alive = is_alive
         self.sleep_delay = sleep_delay
 
+
 settManager_Message_t = struct.Struct("130I")
+
+
+def format_str_for_write(input_str: str) -> bytes:
+    """Format a string for writing to SteamVR's stream."""
+    if len(input_str) < 1:
+        return "".encode("utf-8")
+
+    if input_str[-1] != "\n":
+        return (input_str + "\n").encode("utf-8")
+
+    return input_str.encode("utf-8")
+
 
 class PoserTemplateBase(object):
     """
@@ -35,16 +45,19 @@ class PoserTemplateBase(object):
 
 
     supplies a last message from server buffer:
-        self.last_read - bytearray containing the last message from the server, it is recommended to consume it, it will be populated with new data when its received
+        self.last_read - bytearray containing the last message from the server,
+                    it is recommended to consume it,
+                    it will be populated with new data when its received
 
     supplies threading vars:
         self.coro_list - list of all methods recognized as threads
-        self.coro_keep_alive - dict of all registered threads, containing self.coro_keepAlive['memberThreadName'] = KeepAliveTrigger(is_alive, sleep_delay), this dict is populated at self.main() call
+        self.coro_keep_alive - dict of all registered threads,
+                    containing Dict[str, KeepAliveTrigger]
 
-    this class also has 3 built in threads, it is not recommended you override any of them:
-        self.send - sends all pose data, you need to implement this!
-        self.recv - receives messages from the server, the last message is stored in self.lastRead
-        self.close - closes the connection to the server and ends all threads that where registered by register_member_thread when the 'q' key is pressed
+    do not override these methods unless you know what you're doing:
+        self.recv - receives messages from the server,
+                    the last message is stored in self.lastRead
+        self.close - wait for close event thread
 
     this class will assume that every
     child method without '_' as a first character in the name is a thread,
@@ -87,8 +100,8 @@ Options:
             method_name
             for method_name in dir(self)
             if callable(getattr(self, method_name))
-            and method_name[0] != "_"
-            and method_name not in self._coro_name_exceptions
+                and method_name[0] != "_"  # noqa break before and, its unreadable otherwise
+                and method_name not in self._coro_name_exceptions # noqa break before and, its unreadable otherwise
         ]
 
         self.coro_keep_alive = {
@@ -103,7 +116,8 @@ Options:
 
     async def _socket_init(self):
         """
-        Connect to the server using self.addr and self.port and send the id message.
+        Connect to the server using self.addr and self.port
+        afterterwords send the id message.
 
         Also store socket reader and writer in self.reader and self.writer.
         It is not recommended you override this method
@@ -114,21 +128,23 @@ Options:
             self.addr, self.port, loop=asyncio.get_event_loop()
         )
         # send poser id
-        self.writer.write(u.format_str_for_write(self.id_message))
+        self.writer.write(format_str_for_write(self.id_message))
 
         # connect manager
-        self._manager_reader, self._manager_writer = await asyncio.open_connection(
+        self._manager_reader, self._manager_writer = await asyncio.open_connection( # noqa E501
             self.addr, self.port, loop=asyncio.get_event_loop()
         )
         # send manager id
-        self._manager_writer.write(u.format_str_for_write(self.manager_id_message))
+        self._manager_writer.write(
+            format_str_for_write(self.manager_id_message)
+        )
 
     async def send(self):
         """Send all poses thread, you need to implement this!"""
         raise NotImplementedError("please implement the send thread")
 
     async def _send_manager(self, byte_msg):
-        self._manager_writer.write(byte_msg+self._terminator)
+        self._manager_writer.write(byte_msg + self._terminator)
         await self._manager_writer.drain()
         resp = await self._manager_reader.read(4)
         return resp
@@ -138,7 +154,7 @@ Options:
         backBuffer = bytearray()
         while self.coro_keep_alive["recv"].is_alive:
             try:
-                # data = await u.read3(self.reader)
+                # data = await read3(self.reader)
                 # self.last_read = data
                 data = await self.reader.read(200)
                 backBuffer.extend(data)
@@ -155,15 +171,18 @@ Options:
                 break
 
     async def _cli_arg_map(self, pair):
-        ''':pair: is a pair of (key, value) from a dict returned by docopt command parse, override this if you want, it has to be async thread safe'''
+        '''
+:pair: is a pair of (key, value) from a dict returned by docopt
+override this if you want, it has to be async thread safe
+        '''
         pass
 
     async def close(self):
         """Await close thread, also the thing that does cli"""
 
-        await asyncio.sleep(1/2)
+        await asyncio.sleep(1 / 2)
 
-        print (self._CLI_SETTS.strip())
+        print(self._CLI_SETTS.strip())
 
         while self.coro_keep_alive["close"].is_alive:
             try:
@@ -176,8 +195,11 @@ Options:
                 for i in ret.items():
                     await self._cli_arg_map(i)
 
-            except:
-                print (f'error parsing {ss} arguments\n{self._CLI_SETTS.strip()}')
+            # if the exception is caught it will kill the process
+            except:  # noqa do not use bare 'except', it has to be used here
+                print(
+                    f'error parsing {ss} arguments\n{self._CLI_SETTS.strip()}'
+                )
 
             await asyncio.sleep(self.coro_keep_alive["close"].sleep_delay)
 
@@ -193,7 +215,7 @@ Options:
         await asyncio.sleep(0.5)
 
         try:
-            self.writer.write(u.format_str_for_write("CLOSE"))
+            self.writer.write(format_str_for_write("CLOSE"))
             self.writer.close()
             await self.writer.wait_closed()
 
@@ -201,7 +223,7 @@ Options:
             print(f"failed to close connection: {e}")
 
         try:
-            self._manager_writer.write(u.format_str_for_write("CLOSE"))
+            self._manager_writer.write(format_str_for_write("CLOSE"))
             self._manager_writer.close()
             await self._manager_writer.wait_closed()
 
@@ -233,21 +255,22 @@ Options:
         Registers thread functions, should only be used on member functions
 
         sleepDelay - sleep delay in seconds
-        runInDefaultExecutor - bool, set True if you want the function to be executed in asyncio's default pool executor
+        runInDefaultExecutor - bool, set True if you want the
+            function to be executed in asyncio's default pool executor
         """
 
         def _thread_reg(func):
             def _thread_reg_wrapper(self, *args, **kwargs):
 
-                if not asyncio.iscoroutinefunction(func) and not runInDefaultExecutor:
+                if not asyncio.iscoroutinefunction(func) and not runInDefaultExecutor:  # noqa E501
                     raise ValueError(
-                        f"{repr(func)} is not a coroutine function and runInDefaultExecutor is set to False"
+                        f"{repr(func)} is not a coroutine function and runInDefaultExecutor is set to False" # noqa E501
                     )
 
                 if (
                     func.__name__ not in self.coro_keep_alive
-                    and func.__name__ in self.coro_list
-                    and func.__name__ not in self._coro_name_exceptions
+                    and func.__name__ in self.coro_list  # noqa break before and, its unreadable otherwise
+                    and func.__name__ not in self._coro_name_exceptions  # noqa break before and, its unreadable otherwise
                 ):
                     self.coro_keep_alive[func.__name__] = KeepAliveTrigger(
                         True, sleepDelay
@@ -255,20 +278,22 @@ Options:
 
                 elif func.__name__ in self._coro_name_exceptions:
                     warnings.warn(
-                        "thread register ignored, thread name is in balck list",
+                        "thread ignored, thread name is in black list",
                         RuntimeWarning,
                     )
                     return func(self, *args, **kwargs)
 
                 else:
                     raise NameError(
-                        f"trying to register existing thread, thread with name {repr(func.__name__)} already exists"
+                        f"trying to register existing thread, thread with name {repr(func.__name__)} already exists"  # noqa E501
                     )
 
                 if runInDefaultExecutor:
                     loop = asyncio.get_running_loop()
 
-                    return loop.run_in_executor(None, func, self, *args, **kwargs)
+                    return loop.run_in_executor(
+                        None, func, self, *args, **kwargs
+                    )
 
                 return func(self, *args, **kwargs)
 
@@ -296,18 +321,19 @@ class PoserClientBase(PoserTemplateBase):
         Registers a thread for the client
 
         sleepDelay - sleep delay in seconds
-        runInDefaultExecutor - bool, set True if you want the function to be executed in asyncio's default pool executor
+        runInDefaultExecutor - bool, set True if you want the function
+                    to be executed in asyncio's default pool executor
         """
 
         def _thread_register(coro):
-            if not asyncio.iscoroutinefunction(coro) and not runInDefaultExecutor:
+            if not asyncio.iscoroutinefunction(coro) and not runInDefaultExecutor: # noqa E501
                 raise ValueError(
-                    f"{repr(coro)} is not a coroutine function and runInDefaultExecutor is set to False"
+                    f"{repr(coro)} is not a coroutine function and runInDefaultExecutor is set to False"  # noqa E501
                 )
 
             if (
                 coro.__name__ not in self.coro_keep_alive
-                and coro.__name__ not in self.coro_list
+                and coro.__name__ not in self.coro_list  # noqa break before and, its unreadable otherwise
             ):
                 self.coro_keep_alive[coro.__name__] = KeepAliveTrigger(
                     True, sleep_delay
@@ -317,10 +343,14 @@ class PoserClientBase(PoserTemplateBase):
                 if runInDefaultExecutor:
 
                     def _wrapper(*args, **kwargs):
-                        setattr(_wrapper, "__name__", f"{coro.__name__} _decorated")
+                        setattr(
+                            _wrapper, "__name__", f"{coro.__name__}_decorated"
+                        )
                         loop = asyncio.get_running_loop()
 
-                        return loop.run_in_executor(None, coro, *args, **kwargs)
+                        return loop.run_in_executor(
+                            None, coro, *args, **kwargs
+                        )
 
                     setattr(_wrapper, "__name__", coro.__name__)
                     setattr(self, coro.__name__, _wrapper)
@@ -331,7 +361,7 @@ class PoserClientBase(PoserTemplateBase):
 
             else:
                 raise NameError(
-                    f"trying to register existing thread, thread with name {repr(coro.__name__)} already exists"
+                    f"trying to register existing thread, thread with name {repr(coro.__name__)} already exists" # noqa E501
                 )
 
             return coro

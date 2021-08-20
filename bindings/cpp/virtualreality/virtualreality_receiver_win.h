@@ -1,3 +1,6 @@
+// (c) 2021 Okawo
+// This code is licensed under MIT license (see LICENSE for details)
+
 #pragma once
 
 #ifndef RECEIVER_H
@@ -79,7 +82,7 @@ namespace utilz {
       // addr details
       sockaddr_in addrDetails;
       addrDetails.sin_family = AF_INET;
-      InetPton(AF_INET, s2w(addr).c_str(), &addrDetails.sin_addr.s_addr);
+      InetPton(AF_INET, addr.c_str(), &addrDetails.sin_addr.s_addr);
       addrDetails.sin_port = htons(port);
 
       // connect socket
