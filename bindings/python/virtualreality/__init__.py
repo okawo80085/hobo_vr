@@ -2,7 +2,7 @@
 # This code is licensed under MIT license (see LICENSE for details)
 
 """Virtual reality tools and drivers for python."""
-__version__ = "0.1.5"
+__version__ = "0.1.6"
 
 
 from . import templates

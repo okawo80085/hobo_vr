@@ -39,14 +39,10 @@ setup(
     ],
     install_requires=[
         "numpy",
-        "pykalman",
-        "pyserial",
         "docopt",
         "aioconsole",
-        "pyrr",
-        "scipy",
     ],
-    extras_require={"camera": ["displayarray", "opencv-python"], "bluetooth": ["pybluez"]},
-    entry_points={"console_scripts": ["pyvr=virtualreality.main:main"]},
+    extras_require={},
+    entry_points={},
     python_requires=">=3.7",
 )
