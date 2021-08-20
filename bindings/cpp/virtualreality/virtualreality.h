@@ -82,7 +82,7 @@ right now includes templates only, no tracking
 // version
 static const uint32_t k_nHvrVersionMajor = 0;
 static const uint32_t k_nHvrVersionMinor = 1;
-static const uint32_t k_nHvrVersionBuild = 1;
+static const uint32_t k_nHvrVersionBuild = 2;
 static const std::string k_nHvrVersionJoke = "solid snake";
 
 // constants
