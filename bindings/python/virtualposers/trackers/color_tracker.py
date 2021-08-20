@@ -39,11 +39,11 @@ import subprocess as sub
 
 from ..util import utilz as u
 from .. import __version__
-from .. import templates
+from virtualreality import templates
 from ..calibration.manual_color_mask_calibration import CalibrationData, ColorRange
 
-from ..server import server
-from ..templates import ControllerState
+from virtualreality.server import server
+from virtualreality.templates import ControllerState
 import serial.tools.list_ports
 from typing import Optional
 from fractions import Fraction

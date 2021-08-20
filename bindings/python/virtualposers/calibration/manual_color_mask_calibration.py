@@ -28,7 +28,7 @@ from typing import Optional, List
 import cv2
 from docopt import docopt
 
-from virtualreality import __version__
+from .. import __version__
 
 
 class ColorRange(object):

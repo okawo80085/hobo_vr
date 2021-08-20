@@ -28,9 +28,9 @@ from ..util.IMU import get_i2c_imu
 from ..util.kalman import EulerKalman
 import numpy as np
 from .. import __version__
-from .. import templates
-from ..server import server
-from ..templates import PoseEuler
+from virtualreality import templates
+from virtualreality.server import server
+from virtualreality.templates import PoseEuler
 from ..calibration.manual_color_mask_calibration import CalibrationData, ColorRange
 
 

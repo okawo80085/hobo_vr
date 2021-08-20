@@ -18,10 +18,12 @@ try:
     from displayarray.effects.transform import transform_about_center
 
 except Exception as e:
-    print(f"failed to import displayarray, this module will not be available\n\n")
+    print(
+        f"failed to import displayarray, this module will not be available\n\n"
+    )
     raise e
 
-from virtualreality.calibration.ai_tracker_training.audio import (
+from .audio import (
     get_audio_thread,
     menu_music,
     easy_music,
@@ -31,8 +33,8 @@ from virtualreality.calibration.ai_tracker_training.audio import (
     normal_bpm,
     hard_bpm,
 )
-from virtualreality.calibration.ai_tracker_training.video import menu_np
-from virtualreality.util.IMU import get_coms_in_range, get_i2c_imu, IMU
+from .video import menu_np
+from ...util.IMU import get_coms_in_range, get_i2c_imu, IMU
 
 ourpath = pathlib.Path(__file__).parent
 

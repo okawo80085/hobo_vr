@@ -9,7 +9,7 @@ import serial.threaded
 from pyrr import Quaternion
 from serial import SerialException
 
-from virtualreality.util import utilz as u
+from .util import utilz as u
 
 
 def unit_vector(vector):

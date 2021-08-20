@@ -25,7 +25,7 @@ import pickle
 import cv2
 import numpy as np
 
-from virtualreality import __version__
+from .. import __version__
 
 images_location = os.path.join(os.path.dirname(__file__), "calibration_images")
 print(images_location)
