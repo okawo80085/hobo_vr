@@ -1,5 +1,5 @@
 # Hobo VR
-hobo_vr is a collection of tools made to easy prototyping of a headset for SteamVR.
+hobo_vr is a collection of tools made to prototype SteamVR headsets.
 
 hobo_vr tools and features:
 * `hobovr` a flexible SteamVR driver(see `driver/` and `hobovr/`)
@@ -12,8 +12,8 @@ Upcoming hobo_vr features and tools:
 * New tracking systems
 * New lens calibration tools
 * New camera calibration tools
-* A SteamVR driver update that adds configurable controllers
-* New pre-built `posers` bundled with installers to make user experience as easy as possible
+* New configurable controller types
+* New poser packages and installer support for them
 
 # `hobovr` SteamVR driver
 There are 2 main features of this driver that distinguish it from the rest.
