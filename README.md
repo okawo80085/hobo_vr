@@ -40,6 +40,13 @@ be it tracking(constellation tracking, SLAM, blob tracking, IMU tracking, etc.) 
 
 Most extensive poser examples can be found in `bindings/python/examples/`. C++ poser examples are also available of course, but are way less informative and there are fewer of them at the moment of writing this, the said C++ examples can be found in `bindings/cpp/examples/`.
 
+# Linux support
+Linux support is a huge concern, however it is not made easy by the absent openvr_driver API documentation not to mention the blatant disparities in the API functionality between platforms with no explanation what so ever, bugs, dead interfaces, undocumented interfaces, etc. working with openvr_driver API especially on Linux is downright repulsive!
+
+However despite all of that hobo_vr has Linux support, not without issues of course, HMD view delivery interface fails to deliver frames to it's window, spawning a controller device spams binding config loads and kills SteamVR and ALL of this behavior is produced by *the same openvr_driver API implementation for both platforms*, and to add insult to injury, there are no debugging tools, and the only tool for registering drivers opens a browser, *the only cli tool we have to register our drivers opens a fucking browser*...
+
+Linux support will get better, no matter how painful it will be or how long it will take, it will be improved and hopefully openvr_driver API will be improved as well.
+
 # Why?
 Because the alternatives suck and prototyping with openvr_driver API is a huge pain.
 
