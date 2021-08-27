@@ -3,7 +3,7 @@
 
 
 //#include "openvr.h"
-#include "openvr_driver.h"
+#include <openvr_driver.h>
 //#include "openvr_capi.h"
 #include "driverlog.h"
 
@@ -876,7 +876,7 @@ void CServerDriver_hobovr::RunFrame() {
       std::vector<int> newEps;
       auto uduBufferCopy = g_vpUduChangeBuffer;
       for (auto i : uduBufferCopy) {
-        DriverLog("pair: (%s, %d)", i.first, i.second);
+        DriverLog("pair: (%c, %d)", i.first, i.second);
         newD.push_back(i.first);
         newEps.push_back(i.second);
       }
