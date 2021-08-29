@@ -102,18 +102,18 @@ namespace hobovr {
       if (m_pBrodcastSocket == nullptr && UseHaptics)
         DriverLog("communication socket object is not supplied and haptics are enabled, this device will break on back communication requests(e.g. haptics)\n");
 
-      m_Pose.result = TrackingResult_Running_OK;
-      m_Pose.poseTimeOffset = (double)m_fPoseTimeOffset;
-      m_Pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
-      m_Pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
-      m_Pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
-      m_Pose.vecPosition[0] = 0.;
-      m_Pose.vecPosition[1] = 0.;
-      m_Pose.vecPosition[2] = 0.;
-      m_Pose.willDriftInYaw = true;
-      m_Pose.deviceIsConnected = true;
-      m_Pose.poseIsValid = true;
-      m_Pose.shouldApplyHeadModel = false;
+      // m_Pose.result = TrackingResult_Running_OK;
+      // m_Pose.poseTimeOffset = (double)m_fPoseTimeOffset;
+      // m_Pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
+      // m_Pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
+      // m_Pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
+      // m_Pose.vecPosition[0] = 0.;
+      // m_Pose.vecPosition[1] = 0.;
+      // m_Pose.vecPosition[2] = 0.;
+      // m_Pose.willDriftInYaw = true;
+      // m_Pose.deviceIsConnected = true;
+      // m_Pose.poseIsValid = true;
+      // m_Pose.shouldApplyHeadModel = false;
     }
 
     ~HobovrDevice(){
@@ -188,22 +188,24 @@ namespace hobovr {
 
     virtual void PowerOff() {
       // signal device is "aliven't"
-      m_Pose.poseIsValid = false;
-      m_Pose.deviceIsConnected = false;
+      vr::DriverPose_t pose = {0};
+      pose.poseIsValid = false;
+      pose.deviceIsConnected = false;
       if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
         vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
-            m_unObjectId, m_Pose, sizeof(DriverPose_t));
+            m_unObjectId, pose, sizeof(pose));
       }
       DriverLog("device: '%s' disconnected", m_sSerialNumber.c_str());
     }
 
     virtual void PowerOn() {
       // signal device is "alive"
-      m_Pose.poseIsValid = true;
-      m_Pose.deviceIsConnected = true;
+      vr::DriverPose_t pose = {0};
+      pose.poseIsValid = true;
+      pose.deviceIsConnected = true;
       if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
         vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
-            m_unObjectId, m_Pose, sizeof(DriverPose_t));
+            m_unObjectId, pose, sizeof(pose));
       }
       DriverLog("device: '%s' connected", m_sSerialNumber.c_str());
     }
@@ -224,7 +226,7 @@ namespace hobovr {
         pchResponseBuffer[0] = 0;
     }
 
-    virtual vr::DriverPose_t GetPose() { return m_Pose; }
+    virtual vr::DriverPose_t GetPose() { return {0}; }
 
     void *GetComponent(const char *pchComponentNameAndVersion) {
       DriverLog("device: \"%s\" got a request for \"%s\" component\n", m_sSerialNumber.c_str(), pchComponentNameAndVersion);
@@ -335,8 +337,6 @@ namespace hobovr {
 
     std::string m_sRenderModelPath; // path to the device's render model, should be populated in the constructor of the derived class
     std::string m_sBindPath; // path to the device's input bindings, should be populated in the constructor of the derived class
-
-    vr::DriverPose_t m_Pose; // device's pose, use this at runtime
 
     std::vector<HobovrComponent_t> m_vComponents; // components that this device has, should be populated in the constructor of the derived class
 

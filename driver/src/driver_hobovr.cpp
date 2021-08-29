@@ -152,26 +152,36 @@ public:
 
 
   void RunFrame(std::vector<float> &trackingPacket) {
-    m_Pose.result = TrackingResult_Running_OK;
-    m_Pose.vecPosition[0] = trackingPacket[0];
-    m_Pose.vecPosition[1] = trackingPacket[1];
-    m_Pose.vecPosition[2] = trackingPacket[2];
+    DriverPose_t pose = { 0 };
+    pose.result = TrackingResult_Running_OK;
+    pose.poseIsValid = true;
+    pose.deviceIsConnected = true;
+    pose.vecPosition[0] = trackingPacket[0];
+    pose.vecPosition[1] = trackingPacket[1];
+    pose.vecPosition[2] = trackingPacket[2];
 
-    m_Pose.qRotation =
-        HmdQuaternion_Init(trackingPacket[3], trackingPacket[4],
-                           trackingPacket[5], trackingPacket[6]);
+    pose.qRotation = 
+       HmdQuaternion_Init(trackingPacket[3], trackingPacket[4],
+                          trackingPacket[5], trackingPacket[6]);
 
-    m_Pose.vecVelocity[0] = trackingPacket[7];
-    m_Pose.vecVelocity[1] = trackingPacket[8];
-    m_Pose.vecVelocity[2] = trackingPacket[9];
+    pose.vecVelocity[0] = trackingPacket[7];
+    pose.vecVelocity[1] = trackingPacket[8];
+    pose.vecVelocity[2] = trackingPacket[9];
 
-    m_Pose.vecAngularVelocity[0] = trackingPacket[10];
-    m_Pose.vecAngularVelocity[1] = trackingPacket[11];
-    m_Pose.vecAngularVelocity[2] = trackingPacket[12];
+    pose.vecAngularVelocity[0] = trackingPacket[10];
+    pose.vecAngularVelocity[1] = trackingPacket[11];
+    pose.vecAngularVelocity[2] = trackingPacket[12];
+
+    // pose.poseIsValid = true;
+    // pose.result = TrackingResult_Running_OK;
+    // pose.deviceIsConnected = true;
+
+    // pose.qWorldFromDriverRotation = HmdQuaternion_Init( 1, 0, 0, 0 );
+    // pose.qDriverFromHeadRotation = HmdQuaternion_Init( 1, 0, 0, 0 );
 
     if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
       vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
-          m_unObjectId, m_Pose, sizeof(DriverPose_t));
+          m_unObjectId, pose, sizeof(pose));
     }
   }
 
@@ -307,56 +317,59 @@ public:
 
   void RunFrame(std::vector<float> &lastRead) {
     // update all the things
+    DriverPose_t pose = { 0 };
+    pose.result = TrackingResult_Running_OK;
+    pose.poseIsValid = true;
+    pose.deviceIsConnected = true;
+    pose.vecPosition[0] = lastRead[0];
+    pose.vecPosition[1] = lastRead[1];
+    pose.vecPosition[2] = lastRead[2];
 
-    m_Pose.result = TrackingResult_Running_OK;
-
-    m_Pose.vecPosition[0] = lastRead[0];
-    m_Pose.vecPosition[1] = lastRead[1];
-    m_Pose.vecPosition[2] = lastRead[2];
-
-    m_Pose.qRotation =
+    pose.qRotation =
         HmdQuaternion_Init(lastRead[3],
                            lastRead[4],
                            lastRead[5],
                            lastRead[6]);
 
-    m_Pose.vecVelocity[0] = lastRead[7];
-    m_Pose.vecVelocity[1] = lastRead[8];
-    m_Pose.vecVelocity[2] = lastRead[9];
+    pose.vecVelocity[0] = lastRead[7];
+    pose.vecVelocity[1] = lastRead[8];
+    pose.vecVelocity[2] = lastRead[9];
 
-    m_Pose.vecAngularVelocity[0] =
+    pose.vecAngularVelocity[0] =
         lastRead[10];
-    m_Pose.vecAngularVelocity[1] =
+    pose.vecAngularVelocity[1] =
         lastRead[11];
-    m_Pose.vecAngularVelocity[2] =
+    pose.vecAngularVelocity[2] =
         lastRead[12];
 
     if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
       vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
-          m_unObjectId, m_Pose, sizeof(DriverPose_t));
+          m_unObjectId, pose, sizeof(pose));
     }
 
-    vr::VRDriverInput()->UpdateBooleanComponent(
+    auto ivrinput_cache = vr::VRDriverInput();
+
+    ivrinput_cache->UpdateBooleanComponent(
         m_compGrip, (bool)lastRead[13], (double)m_fPoseTimeOffset);
-    vr::VRDriverInput()->UpdateBooleanComponent(
+    ivrinput_cache->UpdateBooleanComponent(
         m_compSystem, (bool)lastRead[14], (double)m_fPoseTimeOffset);
-    vr::VRDriverInput()->UpdateBooleanComponent(
+    ivrinput_cache->UpdateBooleanComponent(
         m_compAppMenu, (bool)lastRead[15], (double)m_fPoseTimeOffset);
-    vr::VRDriverInput()->UpdateBooleanComponent(
+    ivrinput_cache->UpdateBooleanComponent(
         m_compTrackpadClick, (bool)lastRead[16],
         (double)m_fPoseTimeOffset);
 
-    vr::VRDriverInput()->UpdateScalarComponent(
+    ivrinput_cache->UpdateScalarComponent(
         m_compTrigger, lastRead[17], (double)m_fPoseTimeOffset);
-    vr::VRDriverInput()->UpdateScalarComponent(
+    ivrinput_cache->UpdateScalarComponent(
         m_compTrackpadX, lastRead[18], (double)m_fPoseTimeOffset);
-    vr::VRDriverInput()->UpdateScalarComponent(
+    ivrinput_cache->UpdateScalarComponent(
         m_compTrackpadY, lastRead[19], (double)m_fPoseTimeOffset);
 
-    vr::VRDriverInput()->UpdateBooleanComponent(
+    ivrinput_cache->UpdateBooleanComponent(
         m_compTrackpadTouch, (bool)lastRead[20],
         (double)m_fPoseTimeOffset);
-    vr::VRDriverInput()->UpdateBooleanComponent(
+    ivrinput_cache->UpdateBooleanComponent(
         m_compTriggerClick, (bool)lastRead[21],
         (double)m_fPoseTimeOffset);
   }
@@ -403,33 +416,34 @@ public:
 
   void RunFrame(std::vector<float> &lastRead) {
     // update all the things
+    DriverPose_t pose = { 0 };
+    pose.result = TrackingResult_Running_OK;
+    pose.poseIsValid = true;
+    pose.deviceIsConnected = true;
+    pose.vecPosition[0] = lastRead[0];
+    pose.vecPosition[1] = lastRead[1];
+    pose.vecPosition[2] = lastRead[2];
 
-    m_Pose.result = TrackingResult_Running_OK;
-
-    m_Pose.vecPosition[0] = lastRead[0];
-    m_Pose.vecPosition[1] = lastRead[1];
-    m_Pose.vecPosition[2] = lastRead[2];
-
-    m_Pose.qRotation =
+    pose.qRotation =
         HmdQuaternion_Init(lastRead[3],
                            lastRead[4],
                            lastRead[5],
                            lastRead[6]);
 
-    m_Pose.vecVelocity[0] = lastRead[7];
-    m_Pose.vecVelocity[1] = lastRead[8];
-    m_Pose.vecVelocity[2] = lastRead[9];
+    pose.vecVelocity[0] = lastRead[7];
+    pose.vecVelocity[1] = lastRead[8];
+    pose.vecVelocity[2] = lastRead[9];
 
-    m_Pose.vecAngularVelocity[0] =
+    pose.vecAngularVelocity[0] =
         lastRead[10];
-    m_Pose.vecAngularVelocity[1] =
+    pose.vecAngularVelocity[1] =
         lastRead[11];
-    m_Pose.vecAngularVelocity[2] =
+    pose.vecAngularVelocity[2] =
         lastRead[12];
 
     if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
       vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
-          m_unObjectId, m_Pose, sizeof(DriverPose_t));
+          m_unObjectId, pose, sizeof(pose));
     }
   }
 };
