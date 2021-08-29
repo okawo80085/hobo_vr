@@ -104,7 +104,7 @@ message(NOTICE "openvr headers: ${OPENVR_INCLUDE_DIR}")
 # actual build instructions
 include_directories(
   ${OPENVR_INCLUDE_DIR}
-  include/openvr
+  "src/ref/"
 )
 
 file(GLOB driver_hobovr_src
