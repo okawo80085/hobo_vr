@@ -490,21 +490,6 @@ public:
 
     DriverLog("device: settings manager tracking reference created\n");
 
-
-    m_Pose.result = TrackingResult_Running_OK;
-    m_Pose.poseTimeOffset = 0;
-    m_Pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    m_Pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    m_Pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
-    m_Pose.vecPosition[0] = 0.01;
-    m_Pose.vecPosition[1] = 0;
-    m_Pose.vecPosition[2] = 0;
-    m_Pose.willDriftInYaw = false;
-    m_Pose.deviceIsConnected = true;
-    m_Pose.poseIsValid = true;
-    m_Pose.shouldApplyHeadModel = false;
-
-
     // manager stuff
     try {
       m_pSocketComm = std::make_shared<SockReceiver::DriverReceiver>("h520");
@@ -558,10 +543,31 @@ public:
         }
 
         case Emsg_setSelfPose: {
-          m_Pose.vecPosition[0] = (float)data[1]/(float)data[2];
-          m_Pose.vecPosition[1] = (float)data[3]/(float)data[4];
-          m_Pose.vecPosition[2] = (float)data[5]/(float)data[6];
-          m_pSocketComm->send2("2000");
+            DriverPose_t pose = { 0 };
+            pose.result = TrackingResult_Running_OK;
+            pose.poseIsValid = true;
+            pose.deviceIsConnected = true;
+            pose.poseTimeOffset = 0;
+            pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
+            pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
+            pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
+            pose.vecPosition[0] = 0.01;
+            pose.vecPosition[1] = 0;
+            pose.vecPosition[2] = 0;
+            pose.willDriftInYaw = false;
+            pose.deviceIsConnected = true;
+            pose.poseIsValid = true;
+            pose.shouldApplyHeadModel = false;
+
+            pose.vecPosition[0] = (float)data[1]/(float)data[2];
+            pose.vecPosition[1] = (float)data[3]/(float)data[4];
+            pose.vecPosition[2] = (float)data[5]/(float)data[6];
+            if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
+              vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
+                  m_unObjectId, pose, sizeof(pose));
+            }
+
+            m_pSocketComm->send2("2000");
           DriverLog("tracking reference: pose change request processed");
           break;
         }
@@ -653,6 +659,30 @@ public:
 
     vr::VRProperties()->SetBoolProperty(m_ulPropertyContainer,
       Prop_CanWirelessIdentify_Bool, false);
+
+    DriverPose_t pose = { 0 };
+    pose.result = TrackingResult_Running_OK;
+    pose.poseIsValid = true;
+    pose.deviceIsConnected = true;
+    pose.poseTimeOffset = 0;
+    pose.qWorldFromDriverRotation = HmdQuaternion_Init(1, 0, 0, 0);
+    pose.qDriverFromHeadRotation = HmdQuaternion_Init(1, 0, 0, 0);
+    pose.qRotation = HmdQuaternion_Init(1, 0, 0, 0);
+    pose.vecPosition[0] = 0.01;
+    pose.vecPosition[1] = 0;
+    pose.vecPosition[2] = 0;
+    pose.willDriftInYaw = false;
+    pose.deviceIsConnected = true;
+    pose.poseIsValid = true;
+    pose.shouldApplyHeadModel = false;
+
+    pose.vecPosition[0] = 0;
+    pose.vecPosition[1] = 0;
+    pose.vecPosition[2] = 0;
+    if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
+      vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
+          m_unObjectId, pose, sizeof(pose));
+    }
 
     return VRInitError_None;
   }
