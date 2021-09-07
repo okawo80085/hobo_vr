@@ -8,6 +8,10 @@ make sure that submodules are initialized and are up to date
 git submodule init
 git submodule update
 ```
+and for this build to be useful you need to register the development version of the driver located in `../hobovr/`, that can be either done by using on of the driver register scripts in `../scripts/` or by calling `vrpathreg` yourself (mind you if you used a driver installer previously you need to uninstall that driver)
+```bash
+vrpathreg adddriver "/full/path/to/hobo_vr/hobovr"
+```
 
 ## windows
 building the driver really comes down to 2 steps, setting up cmake and visual studio, because on windows we use visual studio as the generator for cmake. [cmake](https://cmake.org/) can be found [here](https://cmake.org/download/), set it up for your system and add it to path if you didn't already, also setup visual studio and it's C++ tool chain
