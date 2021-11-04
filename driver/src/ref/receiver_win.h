@@ -127,7 +127,7 @@ namespace SockReceiver {
 
     void stop() {
       this->close();
-      m_pCallback = &m_NullCallback;
+      m_pCallback = nullptr;
       m_bThreadKeepAlive = false;
       if (m_pMyTread) {
         m_pMyTread->join();
@@ -190,8 +190,7 @@ namespace SockReceiver {
 
     SOCKET m_pSocketObject;
 
-    Callback m_NullCallback;
-    Callback* m_pCallback = &m_NullCallback;
+    Callback* m_pCallback = nullptr;
 
     static void my_thread_enter(DriverReceiver *ptr) {
       ptr->my_thread();
@@ -215,7 +214,8 @@ namespace SockReceiver {
             if (msglen == -1 || m_bThreadReset) break;
 
             if (!m_bThreadReset)
-              m_pCallback->OnPacket(l_cpRecvBuffer, msglen);
+              if (m_pCallback != nullptr)
+                m_pCallback->OnPacket(l_cpRecvBuffer, msglen);
 
             remove_message_from_buffer(l_cpRecvBuffer, numbit, msglen);
 
