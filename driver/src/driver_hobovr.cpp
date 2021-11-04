@@ -783,11 +783,11 @@ public:
 				}
 				g_vpUduChangeBuffer = temp;
 
-				vr::VREvent_Notification_t data = {20, 0};
+				vr::VREvent_Notification_t event_data = {20, 0};
 				vr::VRServerDriverHost()->VendorSpecificEvent(
 					m_unObjectId,
 					(vr::EVREventType)HobovrVendorEvents::UduChange,
-					(VREvent_Data_t&)data,
+					(VREvent_Data_t&)event_data,
 					0
 				);
 
@@ -1382,7 +1382,7 @@ void CServerDriver_hobovr::RunFrame() {
 			auto uduBufferCopy = g_vpUduChangeBuffer;
 
 			for (auto i : uduBufferCopy) {
-				DriverLog("pair: (%c, %d)", i.first, i.second);
+				DriverLog("pair: (%s, %d)", i.first.c_str(), i.second);
 				newD.push_back(i.first);
 				newEps.push_back(i.second);
 			}
