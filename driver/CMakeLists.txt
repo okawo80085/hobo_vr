@@ -28,15 +28,16 @@ endif()
 
 if (MSVC)
     # all warnings as errors
-    add_compile_options(/WX)
+    add_compile_options(/W4 /WX)
 else()
     # all warnings as errors
-    add_compile_options(-Werror)
+    add_compile_options(-Wall -Wextra -pedantic -Werror)
 endif()
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
 
 # options
 option(INSTALL_X86_DRIVER "Overrides the platform architecture on install, will use bin/{platform}{arch}" OFF)
-
 
 
 # Check if 32 or 64 bit system or a 32 bit override.
@@ -47,7 +48,7 @@ else()
   set(HOBOVR_PROCESSOR_ARCH "32")
 endif()
 
-message(STATUS "Compilation set for ${HOBOVR_PROCESSOR_ARCH}bits architectures.")
+message(STATUS "Compilation set for ${HOBOVR_PROCESSOR_ARCH}bit architectures.")
 
 # Get platform.
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
@@ -109,10 +110,14 @@ include_directories(
 
 file(GLOB driver_hobovr_src
   "src/*.cpp"
-  "src/*.cc"
   "src/*.h"
-  "src/*.hpp"
-)
+  "src/*/*.cpp"
+  "src/*/*.h"
+  "src/*/*/*.cpp"
+  "src/*/*/*.h"
+  "src/*/*/*/*.cpp"
+  "src/*/*/*/*.h"
+) # grab all source files
 
 add_library(${TARGET_NAME} SHARED
   ${driver_hobovr_src}
