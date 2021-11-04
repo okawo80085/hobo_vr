@@ -56,5 +56,7 @@ void DebugDriverLog( const char *pMsgFormat, ... )
   DriverLogVarArgs( pMsgFormat, args );
 
   va_end(args);
+#else
+  (void)pMsgFormat; // because its not used in this case
 #endif
 }
