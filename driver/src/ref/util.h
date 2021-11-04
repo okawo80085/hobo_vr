@@ -175,7 +175,7 @@ namespace SockReceiver {
 
   class Callback {
   public:
-    virtual void OnPacket(char* buff, int len) {};
+    virtual void OnPacket(char* buff, int len) = 0;
   };
 }
 

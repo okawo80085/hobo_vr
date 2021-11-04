@@ -50,7 +50,7 @@ namespace SockReceiver {
       m_iExpectedMessageSize = std::accumulate(m_viEps.begin(), m_viEps.end(), 0);
 
       // placeholders
-      int portno, n;
+      int portno;
       struct sockaddr_in serv_addr;
       struct hostent *server;
 
@@ -117,7 +117,7 @@ namespace SockReceiver {
     void stop() {
       this->close_me();
       m_bThreadKeepAlive = false;
-      m_pCallback = &m_NullCallback;
+      // m_pCallback = &m_NullCallback;
       if (this->m_pMyTread) {
         this->m_pMyTread->join();
         delete this->m_pMyTread;
@@ -127,8 +127,9 @@ namespace SockReceiver {
 
     void close_me() {
       if (m_pSocketObject) {
-        int res = this->send2("CLOSE\n");
+        this->send2("CLOSE\n");
         close(m_pSocketObject);
+
 
       }
 
@@ -167,8 +168,9 @@ namespace SockReceiver {
     std::thread *m_pMyTread = nullptr;
     bool m_bThreadReset = false;
 
-    Callback m_NullCallback;
-    Callback* m_pCallback = &m_NullCallback;
+    // Callback m_NullCallback;
+    // Callback* m_pCallback = &m_NullCallback;
+    Callback* m_pCallback = nullptr;
 
     int m_pSocketObject;
 
@@ -193,7 +195,7 @@ namespace SockReceiver {
 
             if (msglen == -1 || m_bThreadReset) break;
 
-            if (!m_bThreadReset)
+            if (!m_bThreadReset && m_pCallback != nullptr)
               m_pCallback->OnPacket(l_cpRecvBuffer, msglen);
 
             remove_message_from_buffer(l_cpRecvBuffer, numbit, msglen);
@@ -221,7 +223,7 @@ namespace SockReceiver {
 
   };
 
-};
+}
 #undef SOCKET
 
 
