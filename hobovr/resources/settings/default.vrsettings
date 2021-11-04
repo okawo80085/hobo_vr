@@ -3,7 +3,7 @@
       "enable" : true,
       "PoseTimeOffset" : 0.035,
       "ManualUpdateURL" : "https://gist.github.com/okawo80085/dd327eda3b87c8df353cf783b17e1c82",
-      "uduSettings" : ""
+      "uduSettings" : "h13 c22 c22"
    },
    "hobovr_device_hmd": {
       "IPD" : 0.063,
@@ -18,10 +18,10 @@
       "windowHeight" : 1080,
       "renderWidth" : 1920,
       "renderHeight" : 1080,
-      "DistortionK1" : 0.,
-      "DistortionK2" : 0.,
-      "ZoomWidth" : 1.,
-      "ZoomHeight" : 1.,
+      "DistortionK1" : 0.0,
+      "DistortionK2" : 0.0,
+      "ZoomWidth" : 1.0,
+      "ZoomHeight" : 1.0,
       "EyeGapOffsetPx" : 0,
       "IsDisplayRealDisplay" : false,
       "FOVleft" : 1.0,
