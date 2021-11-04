@@ -20,8 +20,8 @@ now to actually build the thing, you'll have to build it twice btw
 ```bash
 # -DINSTALL_X86_DRIVER=1 is very important for 32 bit builds
 # because otherwise you risk installing a 32 bit driver into the 64 bit target
-cmake -G "Visual Studio 16 2019" -A Win32 . -B "build32" -DINSTALL_X86_DRIVER=1  # 32 bit
-cmake -G "Visual Studio 16 2019" -A x64 . -B "build64"    # 64 bit
+cmake -G "Visual Studio 16 2019" -A Win32 . -B "build32" -DINSTALL_X86_DRIVER=1
+cmake -G "Visual Studio 16 2019" -A x64 . -B "build64"
 
 cmake --build build32 --config Release
 cmake --build build64 --config Release
@@ -40,8 +40,8 @@ build it like normal with cmake, except you need to build it twice, 32 and 64 bi
 ```bash
 # -DINSTALL_X86_DRIVER=1 is very important for 32 bit builds
 # because otherwise you risk installing a 32 bit driver into the 64 bit target
-cmake . -DCMAKE_CXX_FLAGS=-m32 -DCMAKE_C_FLAGS=-m32 -B "build32" -DINSTALL_X86_DRIVER=1  # 32 bit
-cmake . -DCMAKE_CXX_FLAGS=-m64 -DCMAKE_C_FLAGS=-m64 -B "build64"  # 64 bit
+cmake . -DCMAKE_CXX_FLAGS=-m32 -DCMAKE_C_FLAGS=-m32 -B "build32" -DINSTALL_X86_DRIVER=1
+cmake . -DCMAKE_CXX_FLAGS=-m64 -DCMAKE_C_FLAGS=-m64 -B "build64"
 
 cmake --build build32 --config Release
 cmake --build build64 --config Release
