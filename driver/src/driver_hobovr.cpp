@@ -50,7 +50,7 @@ namespace hobovr {
   static const uint32_t k_nHobovrVersionMajor = 0;
   static const uint32_t k_nHobovrVersionMinor = 6;
   static const uint32_t k_nHobovrVersionBuild = 6;
-  static const std::string k_sHobovrVersionGG = "the hidden world";
+  static const std::string k_sHobovrVersionGG = "the under world";
 
 } // namespace hobovr
 
