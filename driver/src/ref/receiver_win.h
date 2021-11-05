@@ -81,7 +81,7 @@ namespace SockReceiver {
       sockaddr_in addrDetails;
       addrDetails.sin_family = AF_INET;
       InetPton(AF_INET, _T("127.0.0.1"), &addrDetails.sin_addr.s_addr);
-      addrDetails.sin_port = htons(port);
+      addrDetails.sin_port = htons((u_short)port);
 
       // connect socket
       int iResult2 = connect(m_pSocketObject, (SOCKADDR *) & addrDetails, sizeof (addrDetails));
@@ -139,8 +139,8 @@ namespace SockReceiver {
     void close() {
       if (m_pSocketObject != NULL) {
         int res = send2("CLOSE\n");
-        int iResult = closesocket(m_pSocketObject);
-        if (iResult == SOCKET_ERROR) {
+        res = closesocket(m_pSocketObject);
+        if (res == SOCKET_ERROR) {
           // log closesocket error
           // printf("closesocket error: %d\n", WSAGetLastError());
 #ifdef DRIVERLOG_H

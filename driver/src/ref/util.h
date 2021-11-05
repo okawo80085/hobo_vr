@@ -55,7 +55,7 @@ namespace SockReceiver {
   std::vector<std::vector<T>> split_pk(std::vector<T> arr, std::vector<int> inxs) {
     std::vector<std::vector<T>> out;
     int oof = 0;
-    int ms = arr.size();
+    int ms = (int)arr.size();
     for (int i : inxs) {
       if (oof + i <= ms) {
         std::vector<T> temp(arr.begin() + oof, arr.begin() + oof + i);
