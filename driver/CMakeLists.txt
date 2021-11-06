@@ -111,12 +111,8 @@ include_directories(
 file(GLOB driver_hobovr_src
   "src/*.cpp"
   "src/*.h"
-  "src/*/*.cpp"
-  "src/*/*.h"
-  "src/*/*/*.cpp"
-  "src/*/*/*.h"
-  "src/*/*/*/*.cpp"
-  "src/*/*/*/*.h"
+  "src/ref/*.cpp"
+  "src/ref/*.h"
 ) # grab all source files
 
 add_library(${TARGET_NAME} SHARED
