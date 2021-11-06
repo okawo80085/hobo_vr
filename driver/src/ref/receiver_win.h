@@ -81,7 +81,7 @@ namespace SockReceiver {
       sockaddr_in addrDetails;
       addrDetails.sin_family = AF_INET;
       InetPton(AF_INET, _T("127.0.0.1"), &addrDetails.sin_addr.s_addr);
-      addrDetails.sin_port = htons(port);
+      addrDetails.sin_port = htons((u_short)port);
 
       // connect socket
       int iResult2 = connect(m_pSocketObject, (SOCKADDR *) & addrDetails, sizeof (addrDetails));
@@ -127,7 +127,7 @@ namespace SockReceiver {
 
     void stop() {
       this->close();
-      m_pCallback = &m_NullCallback;
+      m_pCallback = nullptr;
       m_bThreadKeepAlive = false;
       if (m_pMyTread) {
         m_pMyTread->join();
@@ -139,8 +139,8 @@ namespace SockReceiver {
     void close() {
       if (m_pSocketObject != NULL) {
         int res = send2("CLOSE\n");
-        int iResult = closesocket(m_pSocketObject);
-        if (iResult == SOCKET_ERROR) {
+        res = closesocket(m_pSocketObject);
+        if (res == SOCKET_ERROR) {
           // log closesocket error
           // printf("closesocket error: %d\n", WSAGetLastError());
 #ifdef DRIVERLOG_H
@@ -190,8 +190,7 @@ namespace SockReceiver {
 
     SOCKET m_pSocketObject;
 
-    Callback m_NullCallback;
-    Callback* m_pCallback = &m_NullCallback;
+    Callback* m_pCallback = nullptr;
 
     static void my_thread_enter(DriverReceiver *ptr) {
       ptr->my_thread();
@@ -215,7 +214,8 @@ namespace SockReceiver {
             if (msglen == -1 || m_bThreadReset) break;
 
             if (!m_bThreadReset)
-              m_pCallback->OnPacket(l_cpRecvBuffer, msglen);
+              if (m_pCallback != nullptr)
+                m_pCallback->OnPacket(l_cpRecvBuffer, msglen);
 
             remove_message_from_buffer(l_cpRecvBuffer, numbit, msglen);
 

@@ -51,3 +51,4 @@ boost/
 venv/
 bindings/cpp/examples/uduPoserTemplate/*.h
 bindings/cpp/examples/uduPoserTemplate/uduPoserTemplate/*.h
+*.lib

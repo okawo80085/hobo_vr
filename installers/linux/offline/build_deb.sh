@@ -8,7 +8,7 @@ if [ ! -f "./hobo_vr/DEBIAN/postinst" ]; then
 fi
 
 echo "copy driver into package..."
-cp -r ../../../hobovr ./hobo_vr/usr/local/share/
+mkdir -p "./hobo_vr/usr/local/share/" && cp -r ../../../hobovr ./hobo_vr/usr/local/share/
 
 dpkg-deb --build hobo_vr
 

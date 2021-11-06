@@ -180,6 +180,8 @@ namespace hobovr {
                                                       float fV) {
       DistortionCoordinates_t coordinates;
 
+      (void)eEye; // because its not used and i cant remove this argument
+
       if constexpr(HobovrExtDisplayComp_doLensStuff) {
         if constexpr(HobovrExtDisplayComp_lensDistortionType == ELensMathType::Mt_Default) {
           // Distortion implementation from
