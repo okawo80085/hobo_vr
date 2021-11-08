@@ -76,7 +76,7 @@ static const char* const k_pch_Hmd_UserHead2EyeDepthMeters_Float = "UserHeadToEy
 
 class HeadsetDriver : public hobovr::HobovrDevice<false, false> {
 public:
-  	HeadsetDriver(std::string myserial):HobovrDevice(myserial, "hobovr_hmd_m") {
+	HeadsetDriver(std::string myserial):HobovrDevice(myserial, "hobovr_hmd_m") {
 
 		m_sRenderModelPath = "{hobovr}/rendermodels/hobovr_hmd_mh0";
 		m_sBindPath = "{hobovr}/input/hobovr_hmd_profile.json";
@@ -114,9 +114,9 @@ public:
 		extDisplayComp.tag = vr::IVRDisplayComponent_Version;
 		extDisplayComp.ptr_handle = new hobovr::HobovrExtendedDisplayComponent();
 		m_vComponents.push_back(extDisplayComp);
-  	}
+	}
 
-  	EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId) {
+	EVRInitError Activate(vr::TrackedDeviceIndex_t unObjectId) {
 		HobovrDevice::Activate(unObjectId); // let the parent handle boilerplate stuff
 
 		vr::VRProperties()->SetFloatProperty(
@@ -163,7 +163,7 @@ public:
 		);
 
 		return VRInitError_None;
-  	}
+	}
 
 	void UpdateSectionSettings() {
 		// get new ipd
@@ -188,6 +188,8 @@ public:
 		pose.result = TrackingResult_Running_OK;
 		pose.poseIsValid = true;
 		pose.deviceIsConnected = true;
+		pose.willDriftInYaw = false;
+		pose.shouldApplyHeadModel = true;
 		pose.vecPosition[0] = trackingPacket[0];
 		pose.vecPosition[1] = trackingPacket[1];
 		pose.vecPosition[2] = trackingPacket[2];
@@ -207,12 +209,15 @@ public:
 		pose.vecAngularVelocity[1] = trackingPacket[11];
 		pose.vecAngularVelocity[2] = trackingPacket[12];
 
-		// pose.poseIsValid = true;
-		// pose.result = TrackingResult_Running_OK;
-		// pose.deviceIsConnected = true;
+		pose.qWorldFromDriverRotation = { 1, 0, 0, 0 };
+		pose.qDriverFromHeadRotation = { 1, 0, 0, 0 };
+		pose.vecWorldFromDriverTranslation[0] = 0;
+		pose.vecWorldFromDriverTranslation[1] = 0;
+		pose.vecWorldFromDriverTranslation[2] = 0;
 
-		// pose.qWorldFromDriverRotation = HmdQuaternion_Init( 1, 0, 0, 0 );
-		// pose.qDriverFromHeadRotation = HmdQuaternion_Init( 1, 0, 0, 0 );
+		pose.vecDriverFromHeadTranslation[0] = 0;
+		pose.vecDriverFromHeadTranslation[1] = 0;
+		pose.vecDriverFromHeadTranslation[2] = 0;
 
 		if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
 			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
@@ -221,7 +226,7 @@ public:
 				sizeof(pose)
 			);
 		}
-  	}
+	}
 
 
 private:
@@ -521,6 +526,8 @@ public:
 		pose.result = TrackingResult_Running_OK;
 		pose.poseIsValid = true;
 		pose.deviceIsConnected = true;
+		pose.willDriftInYaw = false;
+		pose.shouldApplyHeadModel = true;
 		pose.vecPosition[0] = lastRead[0];
 		pose.vecPosition[1] = lastRead[1];
 		pose.vecPosition[2] = lastRead[2];
@@ -539,6 +546,16 @@ public:
 		pose.vecAngularVelocity[0] = lastRead[10];
 		pose.vecAngularVelocity[1] = lastRead[11];
 		pose.vecAngularVelocity[2] = lastRead[12];
+
+		pose.qWorldFromDriverRotation = { 1, 0, 0, 0 };
+		pose.qDriverFromHeadRotation = { 1, 0, 0, 0 };
+		pose.vecWorldFromDriverTranslation[0] = 0;
+		pose.vecWorldFromDriverTranslation[1] = 0;
+		pose.vecWorldFromDriverTranslation[2] = 0;
+
+		pose.vecDriverFromHeadTranslation[0] = 0;
+		pose.vecDriverFromHeadTranslation[1] = 0;
+		pose.vecDriverFromHeadTranslation[2] = 0;
 
 		if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
 			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
@@ -659,6 +676,8 @@ public:
 		pose.result = TrackingResult_Running_OK;
 		pose.poseIsValid = true;
 		pose.deviceIsConnected = true;
+		pose.willDriftInYaw = false;
+		pose.shouldApplyHeadModel = true;
 		pose.vecPosition[0] = lastRead[0];
 		pose.vecPosition[1] = lastRead[1];
 		pose.vecPosition[2] = lastRead[2];
@@ -677,6 +696,16 @@ public:
 		pose.vecAngularVelocity[0] = lastRead[10];
 		pose.vecAngularVelocity[1] = lastRead[11];
 		pose.vecAngularVelocity[2] = lastRead[12];
+
+		pose.qWorldFromDriverRotation = { 1, 0, 0, 0 };
+		pose.qDriverFromHeadRotation = { 1, 0, 0, 0 };
+		pose.vecWorldFromDriverTranslation[0] = 0;
+		pose.vecWorldFromDriverTranslation[1] = 0;
+		pose.vecWorldFromDriverTranslation[2] = 0;
+
+		pose.vecDriverFromHeadTranslation[0] = 0;
+		pose.vecDriverFromHeadTranslation[1] = 0;
+		pose.vecDriverFromHeadTranslation[2] = 0;
 
 		if (m_unObjectId != vr::k_unTrackedDeviceIndexInvalid) {
 			vr::VRServerDriverHost()->TrackedDevicePoseUpdated(
