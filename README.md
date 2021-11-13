@@ -1,3 +1,6 @@
+# ⚠️ We moved! ⚠️
+This project moved, this repository will be archived soon, however development will contienue in the new repository [here](https://github.com/HoboVR-Labs/hobo_vr)!
+
 # Hobo VR
 hobo_vr is a collection of tools made to prototype SteamVR headsets.
 
